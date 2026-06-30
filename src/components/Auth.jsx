@@ -6,7 +6,7 @@ export default function Auth() {
   const [loading, setLoading] = useState(false)
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
-  const [isSignUp, setIsSignUp] = useState(false) // Toggle between Login and Register
+  const [isSignUp, setIsSignUp] = useState(false)
   const [status, setStatus] = useState({ type: '', message: '' })
 
   const handleAuth = async (e) => {
@@ -16,21 +16,12 @@ export default function Auth() {
 
     try {
       if (isSignUp) {
-        // Register a new user
-        const { error } = await supabase.auth.signUp({
-          email,
-          password,
-        })
+        const { error } = await supabase.auth.signUp({ email, password })
         if (error) throw error
         setStatus({ type: 'success', message: 'Account created successfully! You are now logged in.' })
       } else {
-        // Log in an existing user
-        const { error } = await supabase.auth.signInWithPassword({
-          email,
-          password,
-        })
+        const { error } = await supabase.auth.signInWithPassword({ email, password })
         if (error) throw error
-        // Note: No success message needed here because App.jsx will instantly unmount this component on success
       }
     } catch (error) {
       setStatus({ type: 'error', message: error.message || 'Authentication failed.' })
@@ -42,7 +33,6 @@ export default function Auth() {
   return (
     <div className="min-h-screen bg-slate-50 flex flex-col justify-center items-center p-4">
       <div className="max-w-md w-full bg-white rounded-3xl shadow-sm border border-slate-100 p-8">
-        
         <div className="flex flex-col items-center mb-8">
           <div className="bg-slate-900 p-3 rounded-2xl mb-4 shadow-md">
             <Activity className="text-white w-6 h-6" />
@@ -54,8 +44,6 @@ export default function Auth() {
         </div>
 
         <form onSubmit={handleAuth} className="space-y-4">
-          
-          {/* Email Input */}
           <div>
             <label className="block text-sm font-medium text-slate-700 mb-1">Email</label>
             <div className="relative">
@@ -74,7 +62,6 @@ export default function Auth() {
             </div>
           </div>
 
-          {/* Password Input */}
           <div>
             <label className="block text-sm font-medium text-slate-700 mb-1">Password</label>
             <div className="relative">
@@ -103,7 +90,6 @@ export default function Auth() {
           </button>
         </form>
 
-        {/* Toggle Mode Button */}
         <div className="mt-6 text-center">
           <button
             onClick={() => {
