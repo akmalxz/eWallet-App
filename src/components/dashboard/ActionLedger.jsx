@@ -63,6 +63,16 @@ export const ActionLedger = ({
   const saveEdit = () => {
     if (!validateEdit()) return
 
+    // Log what's being sent
+    console.log('📤 Saving edit:', {
+      id: editingId,
+      data: {
+        description: editData.description.trim(),
+        category: editData.category,
+        amount: parseFloat(editData.amount)
+      }
+    })
+
     handleEditTransaction(editingId, {
       description: editData.description.trim(),
       category: editData.category,

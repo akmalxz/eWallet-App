@@ -1,5 +1,5 @@
 // src/components/modals/ManualTransactionModal.jsx
-import { useState, useEffect, useRef, useMemo } from 'react'
+import { useState, useEffect, useRef, useMemo, useCallback } from 'react' // ✅ Added useCallback
 import { supabase } from '../../lib/supabaseClient'
 import { X, ArrowUpRight, ArrowDownRight, ArrowRight, Check, AlertCircle } from 'lucide-react'
 
@@ -7,7 +7,7 @@ export const ManualTransactionModal = ({
   setIsOpen, 
   user, 
   accounts, 
-  categories, 
+  categories,  // ← Now receiving ALL categories
   getSubCategories, 
   fetchAllData, 
   showToast 
@@ -26,42 +26,47 @@ export const ManualTransactionModal = ({
   const amountInputRef = useRef(null)
   const descriptionInputRef = useRef(null)
 
-  // Smart category filtering
-  const filteredCategories = useMemo(() => {
-    if (!categories || categories.length === 0) return []
-    
-    const allCategories = [...categories]
-    const mainCats = allCategories.filter(c => !c.parent_id)
-    
-    if (mainCats.length === 0) return []
-    
+  // ============================================
+  // CATEGORY HIERARCHY - Get from ALL categories
+  // ============================================
+  // Get main categories (parent_id is null)
+  const mainCategories = useMemo(() => {
+    return categories.filter(c => !c.parent_id)
+  }, [categories])
+
+  // Get subcategories for a parent
+  const getSubCategoriesForParent = useCallback((parentId) => {
+    return categories.filter(c => c.parent_id === parentId)
+  }, [categories])
+
+  // Filter categories based on transaction type (income shows only income-related)
+  const filteredMainCategories = useMemo(() => {
     if (txType === 'income') {
       const incomeKeywords = ['income', 'salary', 'bonus', 'pay', 'paycheck', 'received', 'deposit', 'refund']
-      
-      const incomeMainCats = mainCats.filter(main => 
+      return mainCategories.filter(main => 
         incomeKeywords.some(keyword => 
           main.name.toLowerCase().includes(keyword) ||
           (main.keywords && main.keywords.some(k => incomeKeywords.includes(k.toLowerCase())))
         )
       )
-      
-      if (incomeMainCats.length > 0) {
-        return allCategories.filter(c => 
-          incomeMainCats.some(main => main.id === c.id || c.parent_id === main.id)
-        )
-      }
     }
-    
-    return allCategories
+    return mainCategories
+  }, [mainCategories, txType])
+
+  // Get filtered subcategories for a parent
+  const getFilteredSubCategories = useCallback((parentId) => {
+    const subs = categories.filter(c => c.parent_id === parentId)
+    if (txType === 'income') {
+      const incomeKeywords = ['income', 'salary', 'bonus', 'pay', 'paycheck', 'received', 'deposit', 'refund']
+      return subs.filter(sub => 
+        incomeKeywords.some(keyword => 
+          sub.name.toLowerCase().includes(keyword) ||
+          (sub.keywords && sub.keywords.some(k => incomeKeywords.includes(k.toLowerCase())))
+        )
+      )
+    }
+    return subs
   }, [categories, txType])
-
-  const filteredMainCategories = useMemo(() => {
-    return filteredCategories.filter(c => !c.parent_id)
-  }, [filteredCategories])
-
-  const getFilteredSubCategories = (parentId) => {
-    return filteredCategories.filter(c => c.parent_id === parentId)
-  }
 
   // Auto-focus amount on mount
   useEffect(() => {
@@ -76,7 +81,6 @@ export const ManualTransactionModal = ({
     setCategory('')
     
     if (accounts.length > 0) {
-      // ✅ Using consistent 'id' field
       const defaultSource = accounts[0]?.id || ''
       const defaultDest = accounts.length > 1 
         ? (accounts[1]?.id || '')
@@ -185,7 +189,7 @@ export const ManualTransactionModal = ({
     }
   }
 
-  // ✅ Using consistent 'id' field
+  // Get account name by ID
   const getAccountName = (id) => {
     const account = accounts.find(a => a.id === id)
     return account?.account_name || 'Unknown'
@@ -210,6 +214,10 @@ export const ManualTransactionModal = ({
       setIsOpen(false)
     }
   }
+
+  // Debug: Log categories to verify they're being passed
+  console.log('📋 Categories in modal:', categories)
+  console.log('📋 Main categories:', mainCategories)
 
   return (
     <div 
@@ -310,16 +318,27 @@ export const ManualTransactionModal = ({
                 aria-describedby={errors.category ? "category-error" : undefined}
               >
                 <option value="">Select category...</option>
-                {filteredMainCategories.map(main => (
-                  <optgroup key={main.id} label={main.name}>
-                    {getFilteredSubCategories(main.id).map(sub => (
-                      <option key={sub.id} value={`${main.name} > ${sub.name}`}>{sub.name}</option>
-                    ))}
-                    {getFilteredSubCategories(main.id).length === 0 && (
-                      <option value={main.name}>{main.name}</option>
-                    )}
-                  </optgroup>
-                ))}
+                {/* ✅ Show all main categories with their subcategories */}
+                {filteredMainCategories.map(main => {
+                  const subCategories = getFilteredSubCategories(main.id)
+                  return (
+                    <optgroup key={main.id} label={main.name}>
+                      {/* Show subcategories if they exist */}
+                      {subCategories.length > 0 ? (
+                        subCategories.map(sub => (
+                          <option key={sub.id} value={`${main.name} > ${sub.name}`}>
+                            {sub.name}
+                          </option>
+                        ))
+                      ) : (
+                        /* If no subcategories, show the main category itself */
+                        <option key={main.id} value={main.name}>
+                          {main.name}
+                        </option>
+                      )}
+                    </optgroup>
+                  )
+                })}
               </select>
               {errors.category && (
                 <p id="category-error" className="mt-1 text-xs text-red-500 flex items-center gap-1">
@@ -359,7 +378,7 @@ export const ManualTransactionModal = ({
             )}
           </div>
 
-          {/* Account Selection - ✅ Using consistent 'id' field */}
+          {/* Account Selection */}
           {txType === 'expense' && (
             <div>
               <label className="block text-xs font-bold text-slate-500 uppercase mb-1.5">

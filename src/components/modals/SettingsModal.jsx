@@ -1,7 +1,8 @@
 // src/components/modals/SettingsModal.jsx
 import { useState } from 'react'
 import { supabase } from '../../lib/supabaseClient'
-import { X, Plus, Trash2, CornerDownRight, Hash } from 'lucide-react'
+import { X, Plus, Trash2, CornerDownRight, Hash, Calendar, Target } from 'lucide-react'
+import { formatMYR } from '../../utils/formatters'
 
 export const SettingsModal = ({ 
   setIsOpen, 
@@ -10,6 +11,7 @@ export const SettingsModal = ({
   categories, 
   getSubCategories, 
   classifications, 
+  commitments = [],
   fetchAllData, 
   showToast 
 }) => {
@@ -23,9 +25,17 @@ export const SettingsModal = ({
   const [newSubCategoryName, setNewSubCategoryName] = useState('')
   const [newSubCategoryKeywords, setNewSubCategoryKeywords] = useState('')
   
+  // Commitment state
+  const [newCommitmentName, setNewCommitmentName] = useState('')
+  const [newCommitmentAmount, setNewCommitmentAmount] = useState('')
+  const [newCommitmentDueDay, setNewCommitmentDueDay] = useState('')
+  const [newCommitmentAccount, setNewCommitmentAccount] = useState('')
+  
   const [saving, setSaving] = useState(false)
 
-  // Bank Actions
+  // ============================================
+  // BANK ACTIONS
+  // ============================================
   const handleAddBank = async (e) => {
     e.preventDefault()
     if (!newBankName.trim()) {
@@ -87,7 +97,9 @@ export const SettingsModal = ({
     }
   }
 
-  // Category Actions
+  // ============================================
+  // CATEGORY ACTIONS
+  // ============================================
   const handleAddMainCategory = async (e) => {
     e.preventDefault()
     if (!newMainCategoryName.trim()) {
@@ -195,14 +207,92 @@ export const SettingsModal = ({
     }
   }
 
+  // ============================================
+  // COMMITMENT ACTIONS
+  // ============================================
+  const handleAddCommitment = async (e) => {
+    e.preventDefault()
+    if (!newCommitmentName.trim()) {
+      showToast('Please enter a commitment name', 'warning')
+      return
+    }
+    if (!newCommitmentAmount || parseFloat(newCommitmentAmount) <= 0) {
+      showToast('Please enter a valid amount', 'warning')
+      return
+    }
+    if (!newCommitmentDueDay || parseInt(newCommitmentDueDay) < 1 || parseInt(newCommitmentDueDay) > 31) {
+      showToast('Please enter a valid due day (1-31)', 'warning')
+      return
+    }
+    if (!newCommitmentAccount) {
+      showToast('Please select an account', 'warning')
+      return
+    }
+
+    setSaving(true)
+    try {
+      const { error } = await supabase.from('commitments').insert([{
+        user_id: user.id,
+        name: newCommitmentName.trim(),
+        amount: parseFloat(newCommitmentAmount),
+        due_day_of_month: parseInt(newCommitmentDueDay),
+        account_id: newCommitmentAccount,
+        is_active: true
+      }])
+      if (error) throw error
+      
+      setNewCommitmentName('')
+      setNewCommitmentAmount('')
+      setNewCommitmentDueDay('')
+      setNewCommitmentAccount('')
+      showToast('Commitment added successfully!', 'success')
+      fetchAllData()
+    } catch (error) {
+      showToast('Error adding commitment: ' + error.message, 'error')
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  const handleDeleteCommitment = async (id, name) => {
+    if (!window.confirm(`Delete commitment "${name}"?`)) return
+    
+    try {
+      const { error } = await supabase.from('commitments').delete().eq('id', id)
+      if (error) throw error
+      showToast('Commitment deleted successfully', 'success')
+      fetchAllData()
+    } catch (error) {
+      showToast('Error deleting commitment: ' + error.message, 'error')
+    }
+  }
+
+  const handleToggleCommitment = async (id, isActive) => {
+    try {
+      const { error } = await supabase
+        .from('commitments')
+        .update({ is_active: !isActive })
+        .eq('id', id)
+      if (error) throw error
+      showToast(`Commitment ${isActive ? 'deactivated' : 'activated'} successfully`, 'success')
+      fetchAllData()
+    } catch (error) {
+      showToast('Error toggling commitment: ' + error.message, 'error')
+    }
+  }
+
   // Get main categories
   const mainCategories = categories.filter(c => !c.parent_id)
+
+  // Get account name by ID
+  const getAccountName = (id) => {
+    const account = accounts.find(a => a.id === id)
+    return account?.account_name || 'Unknown'
+  }
 
   return (
     <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
       <div className="bg-white rounded-3xl max-w-md w-full p-6 shadow-2xl max-h-[80vh] overflow-y-auto scrollbar-hide">
-        {/* ✅ Added scrollbar-hide class above */}
-        
         <div className="flex justify-between items-center mb-6">
           <h2 className="text-xl font-bold">Vault Settings</h2>
           <button 
@@ -213,10 +303,10 @@ export const SettingsModal = ({
           </button>
         </div>
 
-        <div className="flex gap-4 mb-6 border-b border-slate-100 pb-2">
+        <div className="flex gap-4 mb-6 border-b border-slate-100 pb-2 overflow-x-auto">
           <button 
             onClick={() => setActiveTab('categories')} 
-            className={`text-sm font-bold pb-2 transition-colors ${
+            className={`text-sm font-bold pb-2 transition-colors whitespace-nowrap ${
               activeTab === 'categories' 
                 ? 'text-blue-600 border-b-2 border-blue-600' 
                 : 'text-slate-400 hover:text-slate-600'
@@ -226,7 +316,7 @@ export const SettingsModal = ({
           </button>
           <button 
             onClick={() => setActiveTab('nodes')} 
-            className={`text-sm font-bold pb-2 transition-colors ${
+            className={`text-sm font-bold pb-2 transition-colors whitespace-nowrap ${
               activeTab === 'nodes' 
                 ? 'text-blue-600 border-b-2 border-blue-600' 
                 : 'text-slate-400 hover:text-slate-600'
@@ -234,9 +324,20 @@ export const SettingsModal = ({
           >
             Nodes
           </button>
+          <button 
+            onClick={() => setActiveTab('commitments')} 
+            className={`text-sm font-bold pb-2 transition-colors whitespace-nowrap ${
+              activeTab === 'commitments' 
+                ? 'text-blue-600 border-b-2 border-blue-600' 
+                : 'text-slate-400 hover:text-slate-600'
+            }`}
+          >
+            <Target className="w-3 h-3 inline mr-1" /> Commitments
+          </button>
         </div>
 
-        {activeTab === 'categories' ? (
+        {/* Categories Tab */}
+        {activeTab === 'categories' && (
           <div>
             <div className="space-y-4 mb-6">
               {mainCategories.map(main => (
@@ -364,7 +465,10 @@ export const SettingsModal = ({
               </button>
             </form>
           </div>
-        ) : (
+        )}
+
+        {/* Nodes Tab */}
+        {activeTab === 'nodes' && (
           <div>
             <div className="space-y-3 mb-6">
               {accounts.map(acc => {
@@ -411,6 +515,114 @@ export const SettingsModal = ({
                 className="w-full bg-slate-900 hover:bg-slate-800 text-white font-medium py-3 rounded-xl text-sm transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 Add Node
+              </button>
+            </form>
+          </div>
+        )}
+
+        {/* Commitments Tab */}
+        {activeTab === 'commitments' && (
+          <div>
+            <div className="space-y-3 mb-6">
+              {commitments.length === 0 ? (
+                <div className="bg-slate-50 border border-slate-200 rounded-xl p-6 text-center">
+                  <Target className="w-8 h-8 text-slate-300 mx-auto mb-2" />
+                  <p className="text-sm text-slate-500">No commitments yet</p>
+                  <p className="text-xs text-slate-400">Add your subscriptions and bills below</p>
+                </div>
+              ) : (
+                commitments.map(comm => {
+                  const account = accounts.find(a => a.id === comm.account_id)
+                  return (
+                    <div key={comm.id} className={`flex justify-between items-center p-3 rounded-xl border ${
+                      comm.is_active ? 'bg-slate-50 border-slate-200' : 'bg-slate-50/50 border-slate-100 opacity-60'
+                    }`}>
+                      <div>
+                        <p className="text-sm font-bold text-slate-800 flex items-center gap-2">
+                          {comm.name}
+                          {!comm.is_active && <span className="text-xs text-red-400 font-normal">(Inactive)</span>}
+                        </p>
+                        <p className="text-xs text-slate-400">
+                          {formatMYR(comm.amount)} on day {comm.due_day_of_month} • {account?.account_name || 'No account'}
+                        </p>
+                      </div>
+                      <div className="flex gap-1">
+                        <button 
+                          onClick={() => handleToggleCommitment(comm.id, comm.is_active)}
+                          className={`p-1.5 rounded-lg transition-colors ${
+                            comm.is_active 
+                              ? 'text-emerald-500 hover:text-emerald-600' 
+                              : 'text-slate-300 hover:text-slate-400'
+                          }`}
+                          title={comm.is_active ? 'Deactivate' : 'Activate'}
+                        >
+                          {comm.is_active ? '✅' : '⏸️'}
+                        </button>
+                        <button 
+                          onClick={() => handleDeleteCommitment(comm.id, comm.name)}
+                          className="text-red-400 hover:text-red-600 p-1.5 transition-colors"
+                          title="Delete commitment"
+                        >
+                          <Trash2 className="w-4 h-4"/>
+                        </button>
+                      </div>
+                    </div>
+                  )
+                })
+              )}
+            </div>
+
+            <form onSubmit={handleAddCommitment} className="border-t pt-4 space-y-4">
+              <h3 className="text-xs font-bold text-slate-500 uppercase flex items-center gap-2">
+                <Target className="w-3 h-3" /> Add New Commitment
+              </h3>
+              <input 
+                type="text" 
+                required 
+                value={newCommitmentName} 
+                onChange={(e) => setNewCommitmentName(e.target.value)} 
+                className="w-full bg-slate-50 border border-slate-200 rounded-xl py-2 px-3 text-sm outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all" 
+                placeholder="e.g. Netflix, Spotify, Phone Bill" 
+              />
+              <div className="grid grid-cols-2 gap-3">
+                <input 
+                  type="number" 
+                  required 
+                  step="0.01"
+                  min="0.01"
+                  value={newCommitmentAmount} 
+                  onChange={(e) => setNewCommitmentAmount(e.target.value)} 
+                  className="w-full bg-slate-50 border border-slate-200 rounded-xl py-2 px-3 text-sm outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all" 
+                  placeholder="Amount" 
+                />
+                <input 
+                  type="number" 
+                  required 
+                  min="1" 
+                  max="31"
+                  value={newCommitmentDueDay} 
+                  onChange={(e) => setNewCommitmentDueDay(e.target.value)} 
+                  className="w-full bg-slate-50 border border-slate-200 rounded-xl py-2 px-3 text-sm outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all" 
+                  placeholder="Due day (1-31)" 
+                />
+              </div>
+              <select 
+                value={newCommitmentAccount} 
+                onChange={(e) => setNewCommitmentAccount(e.target.value)} 
+                className="w-full bg-slate-50 border border-slate-200 rounded-xl py-2 px-3 text-sm outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+                required
+              >
+                <option value="">Select account...</option>
+                {accounts.map(a => (
+                  <option key={a.id} value={a.id}>{a.account_name}</option>
+                ))}
+              </select>
+              <button 
+                type="submit" 
+                disabled={saving} 
+                className="w-full bg-slate-900 hover:bg-slate-800 text-white font-medium py-3 rounded-xl text-sm transition-colors disabled:opacity-50"
+              >
+                {saving ? 'Adding...' : 'Add Commitment'}
               </button>
             </form>
           </div>

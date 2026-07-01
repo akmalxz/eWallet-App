@@ -49,14 +49,14 @@ export default function App() {
     }, 5000)
   }, [])
 
-  // Transactions data
+  // ✅ Transactions data - commitments already included here
   const { 
     accounts, 
     setAccounts,
     recentTransactions, 
-    setRecentTransactions,    // ✅ Now available
-    commitments, 
-    setCommitments,           // ✅ Now available
+    setRecentTransactions,
+    commitments,        // ✅ From useTransactions - no need to redeclare
+    setCommitments,     // ✅ From useTransactions - no need to redeclare
     gxExpenses, 
     categories, 
     setCategories,
@@ -65,6 +65,10 @@ export default function App() {
     error,
     fetchAllData 
   } = useTransactions(user, showToast)
+
+  // ✅ REMOVE these duplicate declarations:
+  // const [commitments, setCommitments] = useState([])
+  // const [commitments, setCommitments] = useState([])
 
   // UI State
   const [isTransactionModalOpen, setIsTransactionModalOpen] = useState(false)
@@ -93,7 +97,6 @@ export default function App() {
     
     setIsRefreshingLedger(true)
     try {
-      // Only fetch transactions and commitments (lighter query)
       const [txResult, commResult] = await Promise.all([
         supabase
           .from('transactions')
@@ -129,21 +132,16 @@ export default function App() {
   // AUTO-REFRESH SETUP (Every 30 seconds)
   // ============================================
   useEffect(() => {
-    // Only set up auto-refresh if user is authenticated
     if (!user) return
 
-    // Clear any existing interval
     if (autoRefreshIntervalRef.current) {
       clearInterval(autoRefreshIntervalRef.current)
     }
 
-    // Set up new interval
     autoRefreshIntervalRef.current = setInterval(() => {
-      // Silently refresh (no toast message)
       handleRefreshLedger(false)
-    }, 30000) // 30 seconds
+    }, 30000)
 
-    // Cleanup on unmount or when user changes
     return () => {
       if (autoRefreshIntervalRef.current) {
         clearInterval(autoRefreshIntervalRef.current)
@@ -157,7 +155,7 @@ export default function App() {
     const dict = {}
     accounts.forEach(acc => {
       const name = acc.account_name.toLowerCase()
-      dict[name] = acc.id  // ✅ Using consistent 'id'
+      dict[name] = acc.id
       if (acc.classification === 'ewallet' && name.includes('tng')) dict['tng'] = acc.id
       if (acc.classification === 'digital_bank' && name.includes('gx')) dict['gx'] = acc.id
       if (acc.classification === 'hub' && name.includes('maybank')) dict['mbb'] = acc.id
@@ -246,18 +244,88 @@ export default function App() {
     }
   }
 
-  // Analytics calculations
+  // ============================================
+  // COMMITMENT HANDLERS (Manual - No auto-deduction)
+  // ============================================
+  const handleToggleCommitment = async (id, isActive) => {
+    try {
+      const { error } = await supabase
+        .from('commitments')
+        .update({ is_active: !isActive })
+        .eq('id', id)
+      
+      if (error) throw error
+      showToast(`Commitment ${isActive ? 'deactivated' : 'activated'}`, 'success')
+      fetchAllData()
+    } catch (error) {
+      showToast('Error toggling commitment: ' + error.message, 'error')
+    }
+  }
+
+  const handleDeleteCommitment = async (id, name) => {
+    if (!window.confirm(`Delete commitment "${name}"?`)) return
+    
+    try {
+      const { error } = await supabase.from('commitments').delete().eq('id', id)
+      if (error) throw error
+      showToast('Commitment deleted', 'success')
+      fetchAllData()
+    } catch (error) {
+      showToast('Error deleting commitment: ' + error.message, 'error')
+    }
+  }
+
+  // ============================================
+  // EDIT TRANSACTION HANDLER
+  // ============================================
+  const handleEditTransaction = async (id, updatedData) => {
+    try {
+      if (updatedData.amount <= 0) {
+        showToast('Amount must be greater than 0', 'error')
+        return
+      }
+
+      const { error } = await supabase
+        .from('transactions')
+        .update({
+          description: updatedData.description,
+          category: updatedData.category,
+          amount: updatedData.amount,
+          needs_review: false,
+        })
+        .eq('id', id)
+      
+      if (error) throw error
+      
+      showToast('Transaction updated successfully!', 'success')
+      fetchAllData()
+      
+    } catch (error) {
+      showToast('Error updating transaction: ' + error.message, 'error')
+    }
+  }
+
+  // ============================================
+  // ANALYTICS CALCULATIONS
+  // ============================================
   const radarStats = useMemo(() => {
     const ewalletAccount = accounts.find(a => a.classification === 'ewallet')
     const currentBalance = ewalletAccount?.balance || 0
-    const totalRequired = commitments.reduce((sum, c) => sum + Number(c.amount), 0)
+    
+    // Only active commitments count
+    const totalRequired = commitments
+      .filter(c => c.is_active)
+      .reduce((sum, c) => sum + Number(c.amount), 0)
+    
     const isSafe = currentBalance >= totalRequired
+    
     return { 
       currentBalance, 
       totalRequired, 
       isSafe, 
       shortfall: isSafe ? 0 : totalRequired - currentBalance, 
-      name: ewalletAccount?.account_name || 'eWallet' 
+      name: ewalletAccount?.account_name || 'eWallet',
+      commitments: commitments
     }
   }, [accounts, commitments])
 
@@ -271,31 +339,16 @@ export default function App() {
     const daysPassed = today.getDate()
     const daysRemaining = daysInMonth - daysPassed
     
-    // Calculate average daily spend
     const averageDailySpend = daysPassed > 0 ? (totalSpentThisMonth / daysPassed) : 0
-    
-    // Calculate daily budget (what you can spend per day to stay within balance)
     const dailyBudget = daysRemaining > 0 ? (currentBalance / daysRemaining) : 0
-    
-    // Projected runway
     const projectedRunwayDays = averageDailySpend > 0 ? (currentBalance / averageDailySpend) : 999
-    
-    // Projected end balance
     const projectedEndBalance = currentBalance - (averageDailySpend * daysRemaining)
-    
-    // Check if safe
     const isSafe = projectedRunwayDays >= daysRemaining || averageDailySpend === 0
-    
-    // Calculate overspend amount
     const overspendAmount = dailyBudget > 0 && averageDailySpend > dailyBudget 
       ? averageDailySpend - dailyBudget 
       : 0
     
-    // Calculate spending trend (compare to previous month)
-    // This requires previous month data - we'll use a simple heuristic
     const spendingTrend = (() => {
-      // If we have previous month data, we could calculate it properly
-      // For now, compare to a default daily budget of RM30/day
       const defaultDailyBudget = 30
       if (averageDailySpend === 0) return 0
       return ((averageDailySpend - defaultDailyBudget) / defaultDailyBudget) * 100
@@ -335,40 +388,6 @@ export default function App() {
       .sort((a, b) => b.value - a.value)
   }, [gxExpenses])
 
-  const handleEditTransaction = async (id, updatedData) => {
-    try {
-      // Validate amount
-      if (updatedData.amount <= 0) {
-        showToast('Amount must be greater than 0', 'error')
-        return
-      }
-
-      console.log('📝 Editing transaction:', id, updatedData)
-
-      const { error } = await supabase
-        .from('transactions')
-        .update({
-          description: updatedData.description,
-          category: updatedData.category,
-          amount: updatedData.amount,
-          needs_review: false, // Reset review flag on edit
-          updated_at: new Date().toISOString() // Optional: track when edited
-        })
-        .eq('id', id)
-      
-      if (error) throw error
-      
-      showToast('Transaction updated successfully!', 'success')
-      
-      // Refresh all data to reflect changes
-      fetchAllData()
-      
-    } catch (error) {
-      console.error('❌ Error editing transaction:', error)
-      showToast('Error updating transaction: ' + error.message, 'error')
-    }
-  }
-
   // Loading state
   if (isAuthLoading) return <LoadingSpinner message="Loading secure vault..." />
   if (!isAuthenticated) return <Auth />
@@ -382,9 +401,7 @@ export default function App() {
           <h2 className="text-xl font-bold text-slate-900 mb-2">Connection Error</h2>
           <p className="text-sm text-slate-600 mb-4">{error}</p>
           <button 
-            onClick={() => {
-              window.location.reload()
-            }}
+            onClick={() => window.location.reload()}
             className="bg-slate-900 hover:bg-slate-800 text-white px-6 py-2 rounded-xl text-sm font-medium transition-colors"
           >
             Retry
@@ -430,6 +447,7 @@ export default function App() {
           categories={categories}
           getSubCategories={getSubCategories}
           classifications={classifications}
+          commitments={commitments}
           fetchAllData={fetchAllData}
           showToast={showToast}
         />
@@ -472,7 +490,13 @@ export default function App() {
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           <section className="lg:col-span-2 space-y-6">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <CommitmentRadar radarStats={radarStats} />
+              <CommitmentRadar 
+                radarStats={radarStats}
+                commitments={commitments}
+                onAddCommitment={() => setIsSettingsModalOpen(true)}
+                onDeleteCommitment={handleDeleteCommitment}
+                onToggleCommitment={handleToggleCommitment}
+              />
               <BurnRateWidget velocityStats={velocityStats} />
             </div>
             <CashFlowHeatmap cashFlowData={cashFlowData} />
