@@ -1,5 +1,5 @@
 // src/components/dashboard/CommitmentRadar.jsx
-import { Target, ShieldCheck, AlertTriangle, Calendar, Clock, Plus, Trash2, Edit2, CheckCircle, XCircle } from 'lucide-react'
+import { Target, ShieldCheck, AlertTriangle, Calendar, Clock, Plus, Trash2, Check, CheckCircle, XCircle } from 'lucide-react'
 import { formatMYR } from '../../utils/formatters'
 
 export const CommitmentRadar = ({ 
@@ -8,7 +8,8 @@ export const CommitmentRadar = ({
   onAddCommitment, 
   onDeleteCommitment,
   onToggleCommitment,
-  onEditCommitment 
+  onEditCommitment,
+  onMarkAsPaid 
 }) => {
   const {
     currentBalance = 0,
@@ -21,10 +22,8 @@ export const CommitmentRadar = ({
   // Get today's date
   const today = new Date()
   const currentDay = today.getDate()
+  const currentMonth = today.getMonth()
   const daysInMonth = new Date(today.getFullYear(), today.getMonth() + 1, 0).getDate()
-
-  // Sort commitments by due date
-  const sortedCommitments = [...commitments].sort((a, b) => a.due_day_of_month - b.due_day_of_month)
 
   // Get days until due
   const getDaysUntil = (dueDay) => {
@@ -44,9 +43,16 @@ export const CommitmentRadar = ({
     return { label: `Day ${dueDay}`, color: 'text-slate-400', bg: 'bg-slate-100' }
   }
 
-  // Active commitments only
+  // Sort commitments by due date
+  const sortedCommitments = [...commitments].sort((a, b) => a.due_day_of_month - b.due_day_of_month)
+
+  // Separate commitments
   const activeCommitments = sortedCommitments.filter(c => c.is_active)
   const inactiveCommitments = sortedCommitments.filter(c => !c.is_active)
+  
+  // ✅ Split active commitments into unpaid and paid
+  const unpaidCommitments = activeCommitments.filter(c => c.last_paid_month !== currentMonth)
+  const paidCommitments = activeCommitments.filter(c => c.last_paid_month === currentMonth)
 
   return (
     <div className={`bg-white rounded-2xl shadow-sm border p-6 relative overflow-hidden ${
@@ -93,30 +99,54 @@ export const CommitmentRadar = ({
         </div>
       </div>
 
-      {/* Active Commitments */}
+      {/* ✅ Unpaid Commitments */}
       <div className="mb-3">
         <p className="text-[10px] text-slate-400 uppercase font-bold tracking-wider mb-2 flex items-center gap-1">
-          <Calendar className="w-3 h-3" /> Active Commitments ({activeCommitments.length})
+          <Calendar className="w-3 h-3" /> Upcoming ({unpaidCommitments.length})
         </p>
-        {activeCommitments.length === 0 ? (
-          <div className="text-xs text-slate-400 p-2 bg-slate-50 rounded-lg">
-            No active commitments. Add one using the + button.
+        {unpaidCommitments.length === 0 ? (
+          <div className="text-xs text-emerald-500 p-2 bg-emerald-50 rounded-lg flex items-center gap-2">
+            <CheckCircle className="w-4 h-4" /> All commitments paid for this month! 🎉
           </div>
         ) : (
           <div className="space-y-1.5">
-            {activeCommitments.map(comm => {
+            {unpaidCommitments.map(comm => {
               const status = getCommitmentStatus(comm.due_day_of_month)
+              const isOverdue = getDaysUntil(comm.due_day_of_month) < 0
+              
               return (
-                <div key={comm.id} className="flex items-center justify-between p-2.5 bg-slate-50 rounded-lg hover:bg-slate-100 transition-colors">
+                <div key={comm.id} className={`flex items-center justify-between p-2.5 rounded-lg transition-colors ${
+                  isOverdue ? 'bg-red-50 border border-red-200' : 'bg-slate-50 hover:bg-slate-100'
+                }`}>
                   <div className="flex items-center gap-2 min-w-0 flex-1">
-                    <span className={`text-xs font-medium px-1.5 py-0.5 rounded whitespace-nowrap ${status.bg} ${status.color}`}>
-                      {status.label}
+                    {isOverdue ? (
+                      <AlertTriangle className="w-4 h-4 text-red-500 shrink-0" />
+                    ) : (
+                      <span className={`text-xs font-medium px-1.5 py-0.5 rounded whitespace-nowrap ${status.bg} ${status.color}`}>
+                        {status.label}
+                      </span>
+                    )}
+                    <span className="text-sm font-medium truncate text-slate-700">
+                      {comm.name}
                     </span>
-                    <span className="text-sm font-medium text-slate-700 truncate">{comm.name}</span>
+                    {isOverdue && (
+                      <span className="text-[10px] text-red-500 font-medium shrink-0">Overdue</span>
+                    )}
                   </div>
                   <div className="flex items-center gap-2">
-                    <span className="text-sm font-bold text-slate-800 whitespace-nowrap">{formatMYR(comm.amount)}</span>
+                    <span className="text-sm font-bold whitespace-nowrap text-slate-800">
+                      {formatMYR(comm.amount)}
+                    </span>
                     <div className="flex items-center gap-0.5">
+                      {onMarkAsPaid && (
+                        <button 
+                          onClick={() => onMarkAsPaid(comm.id)}
+                          className="text-emerald-500 hover:text-emerald-700 p-0.5 rounded transition-colors"
+                          title="Mark as paid"
+                        >
+                          <Check className="w-3 h-3" />
+                        </button>
+                      )}
                       {onToggleCommitment && (
                         <button 
                           onClick={() => onToggleCommitment(comm.id, comm.is_active)}
@@ -143,6 +173,26 @@ export const CommitmentRadar = ({
           </div>
         )}
       </div>
+
+      {/* ✅ Paid Commitments - NEW SECTION */}
+      {paidCommitments.length > 0 && (
+        <div className="mb-3">
+          <p className="text-[10px] text-slate-400 uppercase font-bold tracking-wider mb-2 flex items-center gap-1">
+            <CheckCircle className="w-3 h-3 text-emerald-500" /> Paid This Month ({paidCommitments.length})
+          </p>
+          <div className="space-y-1">
+            {paidCommitments.map(comm => (
+              <div key={comm.id} className="flex items-center justify-between p-2 rounded-lg bg-emerald-50/50 border border-emerald-100">
+                <div className="flex items-center gap-2">
+                  <CheckCircle className="w-4 h-4 text-emerald-500" />
+                  <span className="text-sm text-slate-500 line-through">{comm.name}</span>
+                </div>
+                <span className="text-sm text-slate-400 line-through">{formatMYR(comm.amount)}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* Inactive Commitments */}
       {inactiveCommitments.length > 0 && (
@@ -185,22 +235,11 @@ export const CommitmentRadar = ({
           <p className="text-xs text-red-700 flex items-center gap-2">
             <AlertTriangle className="w-4 h-4 shrink-0" />
             <span>
-              <strong>Insufficient funds!</strong> Shortfall of {formatMYR(shortfall)}
+              <strong>Insufficient funds!</strong> Shortfall of {formatMYR(shortfall)} for upcoming commitments
             </span>
           </p>
           <p className="text-xs text-red-600 mt-1 ml-6">
-            💡 You need to add {formatMYR(shortfall)} to cover upcoming commitments
-          </p>
-        </div>
-      )}
-
-      {isSafe && totalRequired > 0 && currentBalance < totalRequired * 1.2 && (
-        <div className="mt-3 bg-amber-50 border border-amber-200 rounded-xl p-3">
-          <p className="text-xs text-amber-700 flex items-center gap-2">
-            <AlertTriangle className="w-4 h-4 shrink-0" />
-            <span>
-              <strong>Low buffer:</strong> Only {formatMYR(currentBalance - totalRequired)} buffer after commitments
-            </span>
+            💡 You need to add {formatMYR(shortfall)} to cover remaining commitments
           </p>
         </div>
       )}
@@ -209,7 +248,7 @@ export const CommitmentRadar = ({
       {commitments.length > 0 && (
         <div className="mt-3 pt-3 border-t border-slate-100">
           <p className="text-[10px] text-slate-400">
-            {activeCommitments.length} active • Total {formatMYR(totalRequired)}/month
+            {activeCommitments.length} active • {unpaidCommitments.length} unpaid • {paidCommitments.length} paid
           </p>
         </div>
       )}

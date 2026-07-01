@@ -14,10 +14,17 @@ export const ActionLedger = ({
   handleDeleteTransaction,
   handleEditTransaction,
   onRefresh,
-  isRefreshing 
+  isRefreshing,
+  accounts // ✅ NEW: Pass accounts for account selection
 }) => {
   const [editingId, setEditingId] = useState(null)
-  const [editData, setEditData] = useState({ description: '', category: '', amount: '' })
+  const [editData, setEditData] = useState({ 
+    description: '', 
+    category: '', 
+    amount: '',
+    source_account_id: '',
+    destination_account_id: ''
+  })
   const [editErrors, setEditErrors] = useState({})
 
   // Start editing a transaction
@@ -26,7 +33,9 @@ export const ActionLedger = ({
     setEditData({
       description: tx.description || '',
       category: tx.category || '',
-      amount: tx.amount || ''
+      amount: tx.amount || '',
+      source_account_id: tx.source_account_id || '',
+      destination_account_id: tx.destination_account_id || ''
     })
     setEditErrors({})
   }
@@ -34,7 +43,13 @@ export const ActionLedger = ({
   // Cancel editing
   const cancelEdit = () => {
     setEditingId(null)
-    setEditData({ description: '', category: '', amount: '' })
+    setEditData({ 
+      description: '', 
+      category: '', 
+      amount: '',
+      source_account_id: '',
+      destination_account_id: ''
+    })
     setEditErrors({})
   }
 
@@ -54,6 +69,19 @@ export const ActionLedger = ({
     if (!editData.amount || isNaN(amountNum) || amountNum <= 0) {
       errors.amount = 'Please enter a valid amount greater than 0'
     }
+
+    // Validate accounts
+    const isIncome = !editData.source_account_id && editData.destination_account_id
+    const isExpense = editData.source_account_id && !editData.destination_account_id
+    const isTransfer = editData.source_account_id && editData.destination_account_id
+
+    if (!isIncome && !isExpense && !isTransfer) {
+      errors.accounts = 'Please select at least one account'
+    }
+
+    if (isTransfer && editData.source_account_id === editData.destination_account_id) {
+      errors.accounts = 'Source and destination accounts must be different'
+    }
     
     setEditErrors(errors)
     return Object.keys(errors).length === 0
@@ -63,25 +91,34 @@ export const ActionLedger = ({
   const saveEdit = () => {
     if (!validateEdit()) return
 
-    // Log what's being sent
-    console.log('📤 Saving edit:', {
-      id: editingId,
-      data: {
-        description: editData.description.trim(),
-        category: editData.category,
-        amount: parseFloat(editData.amount)
-      }
-    })
+    const amountNum = parseFloat(editData.amount)
+    
+    // Determine transaction type from accounts
+    const isIncome = !editData.source_account_id && editData.destination_account_id
+    const isExpense = editData.source_account_id && !editData.destination_account_id
+    const isTransfer = editData.source_account_id && editData.destination_account_id
+
+    // For income, amount should be positive; for expense/transfer, it should be positive (we handle sign in the parent)
+    const finalAmount = Math.abs(amountNum)
 
     handleEditTransaction(editingId, {
       description: editData.description.trim(),
       category: editData.category,
-      amount: parseFloat(editData.amount)
+      amount: finalAmount,
+      source_account_id: editData.source_account_id || null,
+      destination_account_id: editData.destination_account_id || null,
+      transaction_type: isIncome ? 'income' : isExpense ? 'expense' : 'transfer'
     })
     
     // Reset edit state
     setEditingId(null)
-    setEditData({ description: '', category: '', amount: '' })
+    setEditData({ 
+      description: '', 
+      category: '', 
+      amount: '',
+      source_account_id: '',
+      destination_account_id: ''
+    })
     setEditErrors({})
   }
 
@@ -97,6 +134,12 @@ export const ActionLedger = ({
 
   // Check if a transaction is currently being edited
   const isEditing = (id) => editingId === id
+
+  // Get account name by ID
+  const getAccountName = (id) => {
+    const account = accounts.find(a => a.id === id)
+    return account?.account_name || 'Unknown'
+  }
 
   return (
     <section className="bg-white rounded-2xl shadow-sm border border-slate-100 flex flex-col h-[750px] overflow-hidden">
@@ -190,6 +233,11 @@ export const ActionLedger = ({
 
             // Editing Mode
             if (isEditingThis) {
+              // Determine transaction type for the edit form
+              const editIsIncome = !editData.source_account_id && editData.destination_account_id
+              const editIsExpense = editData.source_account_id && !editData.destination_account_id
+              const editIsTransfer = editData.source_account_id && editData.destination_account_id
+
               return (
                 <div key={`edit-${tx.id}`} className="bg-blue-50 border border-blue-200 rounded-xl p-4 shadow-sm mb-2">
                   <div className="flex justify-between items-start mb-3">
@@ -202,27 +250,30 @@ export const ActionLedger = ({
                     </button>
                   </div>
                   
+                  {/* Description */}
+                  <div className="mb-3">
+                    <label className="block text-xs font-medium text-slate-600 mb-1">Description</label>
+                    <input
+                      type="text"
+                      value={editData.description}
+                      onChange={(e) => {
+                        setEditData({ ...editData, description: e.target.value })
+                        setEditErrors({ ...editErrors, description: '' })
+                      }}
+                      onKeyDown={handleKeyDown}
+                      className={`w-full bg-white border ${
+                        editErrors.description ? 'border-red-300 focus:ring-red-500' : 'border-slate-200 focus:ring-blue-500'
+                      } rounded-lg px-2 py-1.5 text-sm outline-none focus:ring-2 focus:border-transparent transition-all`}
+                      placeholder="Description"
+                      autoFocus
+                    />
+                    {editErrors.description && (
+                      <p className="mt-0.5 text-xs text-red-500">{editErrors.description}</p>
+                    )}
+                  </div>
+
+                  {/* Amount and Category */}
                   <div className="grid grid-cols-2 gap-3 mb-3">
-                    <div>
-                      <label className="block text-xs font-medium text-slate-600 mb-1">Description</label>
-                      <input
-                        type="text"
-                        value={editData.description}
-                        onChange={(e) => {
-                          setEditData({ ...editData, description: e.target.value })
-                          setEditErrors({ ...editErrors, description: '' })
-                        }}
-                        onKeyDown={handleKeyDown}
-                        className={`w-full bg-white border ${
-                          editErrors.description ? 'border-red-300 focus:ring-red-500' : 'border-slate-200 focus:ring-blue-500'
-                        } rounded-lg px-2 py-1.5 text-sm outline-none focus:ring-2 focus:border-transparent transition-all`}
-                        placeholder="Description"
-                        autoFocus
-                      />
-                      {editErrors.description && (
-                        <p className="mt-0.5 text-xs text-red-500">{editErrors.description}</p>
-                      )}
-                    </div>
                     <div>
                       <label className="block text-xs font-medium text-slate-600 mb-1">Amount (RM)</label>
                       <input
@@ -244,38 +295,164 @@ export const ActionLedger = ({
                         <p className="mt-0.5 text-xs text-red-500">{editErrors.amount}</p>
                       )}
                     </div>
+                    <div>
+                      <label className="block text-xs font-medium text-slate-600 mb-1">Category</label>
+                      <select
+                        value={editData.category}
+                        onChange={(e) => {
+                          setEditData({ ...editData, category: e.target.value })
+                          setEditErrors({ ...editErrors, category: '' })
+                        }}
+                        onKeyDown={handleKeyDown}
+                        className={`w-full bg-white border ${
+                          editErrors.category ? 'border-red-300 focus:ring-red-500' : 'border-slate-200 focus:ring-blue-500'
+                        } rounded-lg px-2 py-1.5 text-sm outline-none focus:ring-2 focus:border-transparent transition-all`}
+                      >
+                        <option value="">Select category...</option>
+                        {mainCategories.map(main => (
+                          <optgroup key={main.id} label={main.name}>
+                            {getSubCategories(main.id).map(sub => (
+                              <option key={sub.id} value={`${main.name} > ${sub.name}`}>{sub.name}</option>
+                            ))}
+                            {getSubCategories(main.id).length === 0 && (
+                              <option value={main.name}>{main.name}</option>
+                            )}
+                          </optgroup>
+                        ))}
+                      </select>
+                      {editErrors.category && (
+                        <p className="mt-0.5 text-xs text-red-500">{editErrors.category}</p>
+                      )}
+                    </div>
                   </div>
-                  
+
+                  {/* ✅ NEW: Account Selection */}
                   <div className="mb-3">
-                    <label className="block text-xs font-medium text-slate-600 mb-1">Category</label>
-                    <select
-                      value={editData.category}
-                      onChange={(e) => {
-                        setEditData({ ...editData, category: e.target.value })
-                        setEditErrors({ ...editErrors, category: '' })
-                      }}
-                      onKeyDown={handleKeyDown}
-                      className={`w-full bg-white border ${
-                        editErrors.category ? 'border-red-300 focus:ring-red-500' : 'border-slate-200 focus:ring-blue-500'
-                      } rounded-lg px-2 py-1.5 text-sm outline-none focus:ring-2 focus:border-transparent transition-all`}
-                    >
-                      <option value="">Select category...</option>
-                      {mainCategories.map(main => (
-                        <optgroup key={main.id} label={main.name}>
-                          {getSubCategories(main.id).map(sub => (
-                            <option key={sub.id} value={`${main.name} > ${sub.name}`}>{sub.name}</option>
+                    <label className="block text-xs font-medium text-slate-600 mb-1">Transaction Type</label>
+                    <div className="flex gap-2">
+                      <button
+                        onClick={() => {
+                          setEditData({ 
+                            ...editData, 
+                            source_account_id: accounts[0]?.id || '',
+                            destination_account_id: ''
+                          })
+                          setEditErrors({ ...editErrors, accounts: '' })
+                        }}
+                        className={`flex-1 py-1.5 text-xs font-medium rounded-lg transition-colors ${
+                          editIsExpense 
+                            ? 'bg-red-500 text-white' 
+                            : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                        }`}
+                      >
+                        Expense
+                      </button>
+                      <button
+                        onClick={() => {
+                          setEditData({ 
+                            ...editData, 
+                            source_account_id: '',
+                            destination_account_id: accounts[0]?.id || ''
+                          })
+                          setEditErrors({ ...editErrors, accounts: '' })
+                        }}
+                        className={`flex-1 py-1.5 text-xs font-medium rounded-lg transition-colors ${
+                          editIsIncome 
+                            ? 'bg-emerald-500 text-white' 
+                            : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                        }`}
+                      >
+                        Income
+                      </button>
+                      <button
+                        onClick={() => {
+                          setEditData({ 
+                            ...editData, 
+                            source_account_id: accounts[0]?.id || '',
+                            destination_account_id: accounts[1]?.id || accounts[0]?.id || ''
+                          })
+                          setEditErrors({ ...editErrors, accounts: '' })
+                        }}
+                        className={`flex-1 py-1.5 text-xs font-medium rounded-lg transition-colors ${
+                          editIsTransfer 
+                            ? 'bg-blue-500 text-white' 
+                            : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                        }`}
+                      >
+                        Transfer
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Account Selection Based on Type */}
+                  <div className="grid grid-cols-2 gap-3 mb-3">
+                    {editIsExpense || editIsTransfer ? (
+                      <div>
+                        <label className="block text-xs font-medium text-slate-600 mb-1">
+                          {editIsExpense ? 'Pay From' : 'From'}
+                        </label>
+                        <select
+                          value={editData.source_account_id}
+                          onChange={(e) => {
+                            setEditData({ ...editData, source_account_id: e.target.value })
+                            setEditErrors({ ...editErrors, accounts: '' })
+                          }}
+                          className="w-full bg-white border border-slate-200 rounded-lg px-2 py-1.5 text-sm outline-none focus:ring-2 focus:ring-blue-500"
+                        >
+                          {accounts.map(a => (
+                            <option key={a.id} value={a.id}>{a.account_name}</option>
                           ))}
-                          {getSubCategories(main.id).length === 0 && (
-                            <option value={main.name}>{main.name}</option>
-                          )}
-                        </optgroup>
-                      ))}
-                    </select>
-                    {editErrors.category && (
-                      <p className="mt-0.5 text-xs text-red-500">{editErrors.category}</p>
+                        </select>
+                      </div>
+                    ) : (
+                      <div>
+                        <label className="block text-xs font-medium text-slate-600 mb-1">Source</label>
+                        <select
+                          value=""
+                          disabled
+                          className="w-full bg-slate-100 border border-slate-200 rounded-lg px-2 py-1.5 text-sm text-slate-400 cursor-not-allowed"
+                        >
+                          <option value="">None</option>
+                        </select>
+                      </div>
+                    )}
+
+                    {editIsIncome || editIsTransfer ? (
+                      <div>
+                        <label className="block text-xs font-medium text-slate-600 mb-1">
+                          {editIsIncome ? 'Deposit To' : 'To'}
+                        </label>
+                        <select
+                          value={editData.destination_account_id}
+                          onChange={(e) => {
+                            setEditData({ ...editData, destination_account_id: e.target.value })
+                            setEditErrors({ ...editErrors, accounts: '' })
+                          }}
+                          className="w-full bg-white border border-slate-200 rounded-lg px-2 py-1.5 text-sm outline-none focus:ring-2 focus:ring-blue-500"
+                        >
+                          {accounts.map(a => (
+                            <option key={a.id} value={a.id}>{a.account_name}</option>
+                          ))}
+                        </select>
+                      </div>
+                    ) : (
+                      <div>
+                        <label className="block text-xs font-medium text-slate-600 mb-1">Destination</label>
+                        <select
+                          value=""
+                          disabled
+                          className="w-full bg-slate-100 border border-slate-200 rounded-lg px-2 py-1.5 text-sm text-slate-400 cursor-not-allowed"
+                        >
+                          <option value="">None</option>
+                        </select>
+                      </div>
                     )}
                   </div>
-                  
+
+                  {editErrors.accounts && (
+                    <p className="mb-3 text-xs text-red-500">{editErrors.accounts}</p>
+                  )}
+
                   <div className="flex gap-2 justify-end">
                     <button
                       onClick={cancelEdit}
@@ -312,6 +489,11 @@ export const ActionLedger = ({
                   <div className="min-w-0 flex-1">
                     <p className="text-sm font-medium text-slate-800 truncate">{tx.description}</p>
                     <p className="text-xs text-slate-400 capitalize">{tx.category}</p>
+                    <p className="text-[10px] text-slate-400 mt-0.5">
+                      {isIncome ? `→ ${getAccountName(tx.destination_account_id)}` :
+                       isTransfer ? `${getAccountName(tx.source_account_id)} → ${getAccountName(tx.destination_account_id)}` :
+                       `← ${getAccountName(tx.source_account_id)}`}
+                    </p>
                   </div>
                 </div>
                 <div className="flex items-center gap-1 ml-2">

@@ -66,9 +66,61 @@ export default function App() {
     fetchAllData 
   } = useTransactions(user, showToast)
 
-  // ✅ REMOVE these duplicate declarations:
-  // const [commitments, setCommitments] = useState([])
-  // const [commitments, setCommitments] = useState([])
+  const handleMarkAsPaid = async (commitmentId) => {
+    try {
+      // Find the commitment to get its details
+      const commitment = commitments.find(c => c.id === commitmentId)
+      if (!commitment) {
+        showToast('Commitment not found', 'error')
+        return
+      }
+
+      const currentMonth = new Date().getMonth()
+      const currentYear = new Date().getFullYear()
+
+      // Create a transaction for the payment
+      const { error: txError } = await supabase
+        .from('transactions')
+        .insert({
+          user_id: user.id,
+          description: `[Paid] ${commitment.name}`,
+          amount: commitment.amount,
+          source_account_id: commitment.account_id,
+          destination_account_id: null,
+          category: 'Commitments',
+          transaction_date: new Date().toISOString(),
+          needs_review: false,
+          metadata: { 
+            commitment_id: commitment.id,
+            payment_type: 'manual',
+            paid_month: currentMonth + 1,
+            paid_year: currentYear
+          }
+        })
+
+      if (txError) throw txError
+
+      // ✅ Update the commitment with last paid date (THIS IS KEY)
+      const { error: updateError } = await supabase
+        .from('commitments')
+        .update({ 
+          last_paid: new Date().toISOString(),
+          last_paid_month: currentMonth  // ✅ This excludes it from future calculations
+        })
+        .eq('id', commitmentId)
+
+      if (updateError) throw updateError
+
+      showToast(`✅ ${commitment.name} marked as paid!`, 'success')
+      
+      // ✅ Refresh all data to update the radar
+      await fetchAllData()
+
+    } catch (error) {
+      console.error('Error marking as paid:', error)
+      showToast('Error marking as paid: ' + error.message, 'error')
+    }
+  }
 
   // UI State
   const [isTransactionModalOpen, setIsTransactionModalOpen] = useState(false)
@@ -280,28 +332,60 @@ export default function App() {
   // ============================================
   const handleEditTransaction = async (id, updatedData) => {
     try {
+      // Validate amount
       if (updatedData.amount <= 0) {
         showToast('Amount must be greater than 0', 'error')
         return
       }
 
-      const { error } = await supabase
+      // Validate description
+      if (!updatedData.description || updatedData.description.trim().length < 2) {
+        showToast('Description must be at least 2 characters', 'error')
+        return
+      }
+
+      // Validate category
+      if (!updatedData.category || updatedData.category === 'uncategorized') {
+        showToast('Please select a valid category', 'error')
+        return
+      }
+
+      // Build the update payload
+      const updatePayload = {
+        description: updatedData.description.trim(),
+        category: updatedData.category,
+        amount: updatedData.amount,
+        source_account_id: updatedData.source_account_id || null,
+        destination_account_id: updatedData.destination_account_id || null,
+        needs_review: false
+      }
+
+      console.log('📝 Updating transaction:', { id, ...updatePayload })
+
+      const { data, error } = await supabase
         .from('transactions')
-        .update({
-          description: updatedData.description,
-          category: updatedData.category,
-          amount: updatedData.amount,
-          needs_review: false,
-        })
+        .update(updatePayload)
         .eq('id', id)
-      
-      if (error) throw error
-      
+        .select()
+
+      if (error) {
+        console.error('❌ Supabase error:', {
+          message: error.message,
+          code: error.code,
+          details: error.details,
+          hint: error.hint
+        })
+        throw error
+      }
+
+      console.log('✅ Update successful:', data)
       showToast('Transaction updated successfully!', 'success')
-      fetchAllData()
-      
+      await fetchAllData()
+
     } catch (error) {
-      showToast('Error updating transaction: ' + error.message, 'error')
+      const errorMsg = error.message || 'Unknown error'
+      console.error('❌ Edit error:', errorMsg)
+      showToast(`Error updating transaction: ${errorMsg}`, 'error')
     }
   }
 
@@ -312,9 +396,11 @@ export default function App() {
     const ewalletAccount = accounts.find(a => a.classification === 'ewallet')
     const currentBalance = ewalletAccount?.balance || 0
     
-    // Only active commitments count
+    // ✅ Only count commitments that haven't been paid this month
+    const currentMonth = new Date().getMonth()
     const totalRequired = commitments
       .filter(c => c.is_active)
+      .filter(c => c.last_paid_month !== currentMonth) // Exclude already paid this month
       .reduce((sum, c) => sum + Number(c.amount), 0)
     
     const isSafe = currentBalance >= totalRequired
@@ -496,6 +582,7 @@ export default function App() {
                 onAddCommitment={() => setIsSettingsModalOpen(true)}
                 onDeleteCommitment={handleDeleteCommitment}
                 onToggleCommitment={handleToggleCommitment}
+                onMarkAsPaid={handleMarkAsPaid}
               />
               <BurnRateWidget velocityStats={velocityStats} />
             </div>
@@ -511,6 +598,7 @@ export default function App() {
             handleEditTransaction={handleEditTransaction}
             onRefresh={() => handleRefreshLedger(true)}
             isRefreshing={isRefreshingLedger}
+            accounts={accounts}  // ✅ NEW: Pass accounts
           />
         </div>
       </main>
