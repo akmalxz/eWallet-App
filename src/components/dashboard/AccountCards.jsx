@@ -16,29 +16,25 @@ const CARD_COLORS = {
     bg: 'from-blue-600 to-blue-800',
     border: 'border-blue-400',
     text: 'text-blue-100',
-    label: 'Hub',
-    iconBg: 'bg-blue-500/30'
+    label: 'Hub'
   },
   ewallet: {
     bg: 'from-purple-600 to-purple-800',
     border: 'border-purple-400',
     text: 'text-purple-100',
-    label: 'eWallet',
-    iconBg: 'bg-purple-500/30'
+    label: 'eWallet'
   },
   digital_bank: {
     bg: 'from-emerald-600 to-emerald-800',
     border: 'border-emerald-400',
     text: 'text-emerald-100',
-    label: 'Digital Bank',
-    iconBg: 'bg-emerald-500/30'
+    label: 'Digital Bank'
   },
   savings: {
     bg: 'from-amber-600 to-amber-800',
     border: 'border-amber-400',
     text: 'text-amber-100',
-    label: 'Savings',
-    iconBg: 'bg-amber-500/30'
+    label: 'Savings'
   }
 }
 
@@ -46,8 +42,7 @@ const DEFAULT_CARD = {
   bg: 'from-slate-600 to-slate-800',
   border: 'border-slate-400',
   text: 'text-slate-100',
-  label: 'Account',
-  iconBg: 'bg-slate-500/30'
+  label: 'Account'
 }
 
 export const AccountCards = ({ 
@@ -90,6 +85,9 @@ export const AccountCards = ({
     )
   }
 
+  // Find the array index of the currently active/expanded card
+  const expandedIndex = accounts.findIndex(acc => acc.id === expandedId)
+
   return (
     <div className="relative">
       {/* Header with balance toggle */}
@@ -108,38 +106,51 @@ export const AccountCards = ({
         </button>
       </div>
 
-      {/* Card Stack */}
-      <div className="relative space-y-[-20px] md:space-y-[-30px]">
+      {/* 
+        Responsive Layout Engine:
+        - Mobile: Relative base framework layout container container (No negative grid overlaps).
+        - Desktop: Standard multi-column grid layouts.
+      */}
+      <div className="relative md:grid md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 md:gap-4">
         {accounts.map((acc, index) => {
-          // Direct integration with the layout utility object
           const { Icon } = getAccountIcon(acc.classification, classifications, ICON_MAP)
           const IconComponent = Icon || Wallet
           const cardStyle = getCardStyle(acc.classification)
           const isExpanded = expandedId === acc.id
-          const isFirst = index === 0
+
+          // Dynamic Mobile Apple-Wallet Stacking Calculations
+          let mobileTranslateY = index * -110 // Base overlapping structure line value
+          
+          if (expandedIndex !== -1 && index > expandedIndex) {
+            // Push all cards underneath the active one down by an extra 85px to avoid UI clipping
+            mobileTranslateY += 85
+          }
 
           return (
             <div
               key={acc.id}
-              className={`
-                relative transition-all duration-300 ease-in-out
-                ${isExpanded ? 'z-10' : 'z-0'}
-                ${!isExpanded && !isFirst ? 'cursor-pointer' : ''}
-              `}
+              className="transition-all duration-500 cubic-bezier(0.34, 1.56, 0.64, 1) md:!transform-none md:!static"
               style={{
-                transform: !isExpanded && !isFirst ? `translateY(${(index) * 4}px)` : 'translateY(0)',
-                marginBottom: isExpanded ? '12px' : '0px'
+                transform: `translateY(${mobileTranslateY}px)`,
+                zIndex: isExpanded ? 30 : index + 1,
+                // Reserve spacing at the bottom of the container only for the last card stack member
+                marginBottom: index === accounts.length - 1 ? `${(accounts.length - 1) * -110 + (isExpanded ? 85 : 0)}px` : '0px'
               }}
-              onClick={() => !isExpanded && toggleExpand(acc.id)}
             >
-              {/* Card */}
-              <div className={`
-                relative rounded-2xl overflow-hidden shadow-lg transition-all duration-300
-                bg-gradient-to-br ${cardStyle.bg}
-                border ${cardStyle.border}
-                ${isExpanded ? 'shadow-xl scale-100' : 'shadow-md hover:shadow-lg'}
-                ${!isExpanded && !isFirst ? 'scale-[0.98]' : ''}
-              `}>
+              {/* Card Container */}
+              <div 
+                onClick={() => {
+                  if (window.innerWidth < 768 && !isExpanded) {
+                    toggleExpand(acc.id)
+                  }
+                }}
+                className={`
+                  relative rounded-2xl overflow-hidden shadow-xl transition-all duration-500 cubic-bezier(0.34, 1.56, 0.64, 1) h-full flex flex-col justify-between
+                  bg-gradient-to-br ${cardStyle.bg}
+                  border ${cardStyle.border}
+                  ${isExpanded ? 'shadow-2xl md:scale-100' : 'hover:shadow-lg md:hover:scale-[1.02] cursor-pointer md:cursor-default'}
+                `}
+              >
                 {/* Card Glow Effect */}
                 <div className="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent pointer-events-none" />
                 
@@ -150,77 +161,80 @@ export const AccountCards = ({
                 </div>
 
                 {/* Main Card Content */}
-                <div className="relative p-4 md:p-5">
-                  {/* Top Row: Icon + Classification + Toggle Button */}
-                  <div className="flex items-center justify-between mb-3">
-                    <div className="flex items-center gap-3">
-                      <div className="flex items-center justify-center p-2 rounded-xl bg-white/15 backdrop-blur-sm">
-                        <IconComponent className={`w-5 h-5 ${cardStyle.text}`} />
+                <div className="relative p-4 md:p-5 flex-1 flex flex-col justify-between">
+                  <div>
+                    {/* Top Row: Icon + Classification + Toggle Button */}
+                    <div className="flex items-center justify-between mb-3">
+                      <div className="flex items-center gap-3">
+                        <div className="flex items-center justify-center p-2 rounded-xl bg-white/15 backdrop-blur-sm">
+                          <IconComponent className={`w-5 h-5 ${cardStyle.text}`} />
+                        </div>
+                        <div>
+                          <p className={`text-xs font-medium ${cardStyle.text} opacity-80`}>
+                            {cardStyle.label}
+                          </p>
+                          <p className={`text-sm font-bold ${cardStyle.text}`}>
+                            {acc.account_name}
+                          </p>
+                        </div>
                       </div>
-                      <div>
-                        <p className={`text-xs font-medium ${cardStyle.text} opacity-80`}>
-                          {cardStyle.label}
-                        </p>
-                        <p className={`text-sm font-bold ${cardStyle.text}`}>
-                          {acc.account_name}
-                        </p>
-                      </div>
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          toggleExpand(acc.id)
+                        }}
+                        className="flex items-center justify-center p-1.5 rounded-full transition-all duration-300 bg-white/15 backdrop-blur-sm hover:bg-white/25"
+                      >
+                        {isExpanded ? (
+                          <ChevronUp className={`w-4 h-4 ${cardStyle.text}`} />
+                        ) : (
+                          <ChevronDown className={`w-4 h-4 ${cardStyle.text}`} />
+                        )}
+                      </button>
                     </div>
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation(); // Fixed: Stops event bubbling up to parent div toggle logic
-                        toggleExpand(acc.id);
-                      }}
-                      className="flex items-center justify-center p-1.5 rounded-full transition-all duration-300 bg-white/15 backdrop-blur-sm hover:bg-white/25"
-                    >
-                      {isExpanded ? (
-                        <ChevronUp className={`w-4 h-4 ${cardStyle.text}`} />
-                      ) : (
-                        <ChevronDown className={`w-4 h-4 ${cardStyle.text}`} />
-                      )}
-                    </button>
+
+                    {/* Balance */}
+                    <div className="mb-2">
+                      <p className={`text-xs ${cardStyle.text} opacity-60`}>Balance</p>
+                      <p className={`text-2xl font-bold ${cardStyle.text} tracking-tight break-all`}>
+                        {showBalances ? formatMYR(acc.balance) : '••••••'}
+                      </p>
+                    </div>
                   </div>
 
-                  {/* Balance - Always visible */}
-                  <div className="mb-2">
-                    <p className={`text-xs ${cardStyle.text} opacity-60`}>Balance</p>
-                    <p className={`text-2xl md:text-3xl font-bold ${cardStyle.text} tracking-tight`}>
-                      {showBalances ? formatMYR(acc.balance) : '••••••'}
-                    </p>
-                  </div>
-
-                  {/* Expanded Content - Core Actions */}
-                  {isExpanded && (
-                    // Fixed: Replaced dynamic custom utility class with robust standard utilities
-                    <div className="mt-4 pt-4 border-t border-white/20 transition-all opacity-100 duration-200">
-                      <div className="flex gap-3">
-                        <button 
-                          className="flex-1 bg-white/20 hover:bg-white/30 text-white text-sm font-medium py-3 rounded-xl transition-colors backdrop-blur-sm flex items-center justify-center gap-2"
-                          onClick={(e) => {
-                            e.stopPropagation()
-                            onLogTransaction?.(acc)
-                          }}
-                        >
-                          <Plus className="w-4 h-4" />
-                          Log Transaction
-                        </button>
-                        <button 
-                          className="flex-1 bg-white/10 hover:bg-white/20 text-white text-sm font-medium py-3 rounded-xl transition-colors backdrop-blur-sm flex items-center justify-center gap-2"
-                          onClick={(e) => {
-                            e.stopPropagation()
-                            onManageAccount?.(acc)
-                          }}
-                        >
-                          <Settings className="w-4 h-4" />
-                          Manage
-                        </button>
+                  {/* Expanded Content Grid Panel */}
+                  <div className={`grid transition-all duration-300 ease-in-out ${isExpanded ? 'grid-rows-[1fr] opacity-100 mt-4' : 'grid-rows-[0fr] opacity-0 mt-0'}`}>
+                    <div className="overflow-hidden">
+                      <div className="pt-4 border-t border-white/20">
+                        <div className="flex flex-col sm:flex-row gap-2">
+                          <button 
+                            className="flex-1 bg-white/20 hover:bg-white/30 text-white text-xs font-medium py-2.5 rounded-xl transition-colors backdrop-blur-sm flex items-center justify-center gap-1.5"
+                            onClick={(e) => {
+                              e.stopPropagation()
+                              onLogTransaction?.(acc)
+                            }}
+                          >
+                            <Plus className="w-3.5 h-3.5" />
+                            Transaction
+                          </button>
+                          <button 
+                            className="flex-1 bg-white/10 hover:bg-white/20 text-white text-xs font-medium py-2.5 rounded-xl transition-colors backdrop-blur-sm flex items-center justify-center gap-1.5"
+                            onClick={(e) => {
+                              e.stopPropagation()
+                              onManageAccount?.(acc)
+                            }}
+                          >
+                            <Settings className="w-3.5 h-3.5" />
+                            Manage
+                          </button>
+                        </div>
                       </div>
                     </div>
-                  )}
+                  </div>
                 </div>
 
-                {/* Card Footer - Mini card number placeholder */}
-                <div className="relative px-4 pb-3 flex items-center justify-between">
+                {/* Card Footer */}
+                <div className="relative px-4 pb-3 flex items-center justify-between mt-auto">
                   <div className="flex gap-1.5">
                     <span className={`text-[10px] ${cardStyle.text} opacity-30 font-mono`}>••••</span>
                     <span className={`text-[10px] ${cardStyle.text} opacity-30 font-mono`}>••••</span>
@@ -230,15 +244,6 @@ export const AccountCards = ({
                   <CreditCard className={`w-4 h-4 ${cardStyle.text} opacity-30`} />
                 </div>
               </div>
-
-              {/* Collapsed cards indicator - small chip showing balance */}
-              {!isExpanded && !isFirst && (
-                <div className="absolute -right-2 top-1/2 -translate-y-1/2 z-20">
-                  <div className="bg-slate-800/90 backdrop-blur-sm text-white text-[10px] font-medium px-2 py-1 rounded-full shadow-lg border border-white/10">
-                    {showBalances ? formatMYR(acc.balance) : '••••'}
-                  </div>
-                </div>
-              )}
             </div>
           )
         })}

@@ -1,4 +1,4 @@
-// src/components/modals/ManualTransactionModal.jsx - Add selectedAccount prop
+// src/components/modals/ManualTransactionModal.jsx
 import { useState, useEffect, useRef, useMemo, useCallback } from 'react'
 import { supabase } from '../../lib/supabaseClient'
 import { X, ArrowUpRight, ArrowDownRight, ArrowRight, Check, AlertCircle } from 'lucide-react'
@@ -11,7 +11,7 @@ export const ManualTransactionModal = ({
   getSubCategories, 
   fetchAllData, 
   showToast,
-  selectedAccount // ← New prop
+  selectedAccount
 }) => {
   // Form state
   const [txType, setTxType] = useState('expense')
@@ -32,10 +32,6 @@ export const ManualTransactionModal = ({
   // ============================================
   const mainCategories = useMemo(() => {
     return categories.filter(c => !c.parent_id)
-  }, [categories])
-
-  const getSubCategoriesForParent = useCallback((parentId) => {
-    return categories.filter(c => c.parent_id === parentId)
   }, [categories])
 
   const filteredMainCategories = useMemo(() => {
@@ -78,7 +74,6 @@ export const ManualTransactionModal = ({
     setCategory('')
     
     if (accounts.length > 0) {
-      // ✅ If a selectedAccount is passed, use it as default source
       const defaultSource = selectedAccount?.id || accounts[0]?.id || ''
       const defaultDest = accounts.length > 1 
         ? (accounts[1]?.id || '')
@@ -162,13 +157,8 @@ export const ManualTransactionModal = ({
         payload.destination_account_id = destAccount
       }
 
-      console.log('📤 Sending payload:', payload)
-
       const { error } = await supabase.from('transactions').insert([payload])
-      if (error) {
-        console.error('❌ Supabase error:', error)
-        throw error
-      }
+      if (error) throw error
       
       setIsOpen(false)
       showToast(
@@ -187,13 +177,11 @@ export const ManualTransactionModal = ({
     }
   }
 
-  // Get account name by ID
   const getAccountName = (id) => {
     const account = accounts.find(a => a.id === id)
     return account?.account_name || 'Unknown'
   }
 
-  // Helper function - format currency
   const formatMYR = (amount) => {
     return new Intl.NumberFormat('en-MY', { 
       style: 'currency', 
@@ -203,7 +191,6 @@ export const ManualTransactionModal = ({
     }).format(amount)
   }
 
-  // Handle keyboard shortcuts
   const handleKeyDown = (e) => {
     if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
       handleSubmit(e)
@@ -215,214 +202,150 @@ export const ManualTransactionModal = ({
 
   return (
     <div 
-      className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-50 flex items-center justify-center p-4"
+      className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 transition-all"
       onKeyDown={handleKeyDown}
     >
-      <div className="bg-white rounded-3xl max-w-md w-full p-5 md:p-6 shadow-2xl max-h-[90vh] overflow-y-auto modal-enter">
-        <div className="flex justify-between items-center mb-5 md:mb-6">
+      {/* Clean White Minimalist Container Layer */}
+      <div className="bg-white rounded-3xl max-w-md w-full overflow-hidden shadow-2xl max-h-[95vh] flex flex-col modal-enter border border-slate-100">
+        
+        {/* Header Block View */}
+        <div className="p-5 bg-white border-b border-slate-100 flex justify-between items-center">
           <div>
-            <h2 className="text-lg md:text-xl font-bold text-slate-900">Log Transaction</h2>
-            <p className="text-xs text-slate-400 mt-0.5">Quickly record your financial activity</p>
+            <h2 className="text-lg md:text-xl font-bold text-slate-900 tracking-tight">Log Transaction</h2>
           </div>
           <button 
             onClick={() => setIsOpen(false)} 
-            className="p-2 hover:bg-slate-100 rounded-full transition-colors"
+            className="p-2 bg-slate-50 hover:bg-slate-100 flex items-center justify-center rounded-full transition-colors text-slate-400 hover:text-slate-600"
             aria-label="Close modal"
           >
-            <X className="w-5 h-5 text-slate-400"/>
+            <X className="w-5 h-5"/>
           </button>
         </div>
         
-        <div className="flex gap-2 mb-5 md:mb-6 bg-slate-100 p-1.5 rounded-xl">
-          {[
-            { type: 'expense', label: 'Expense', icon: <ArrowDownRight className="w-4 h-4" />, color: 'text-red-500' },
-            { type: 'income', label: 'Income', icon: <ArrowUpRight className="w-4 h-4" />, color: 'text-emerald-500' },
-            { type: 'transfer', label: 'Transfer', icon: <ArrowRight className="w-4 h-4" />, color: 'text-blue-500' }
-          ].map(t => (
-            <button 
-              key={t.type} 
-              onClick={() => setTxType(t.type)} 
-              className={`flex-1 flex items-center justify-center gap-2 py-3 text-sm font-medium capitalize rounded-xl transition-all ${
-                txType === t.type 
-                  ? 'bg-white shadow-sm text-slate-900' 
-                  : 'text-slate-500 hover:text-slate-700'
-              }`}
-            >
-              <span className={t.color}>{t.icon}</span>
-              {t.label}
-            </button>
-          ))}
-        </div>
-
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div className="grid grid-cols-2 gap-3 md:gap-4">
-            <div>
-              <label className="block text-xs font-bold text-slate-500 uppercase mb-1.5">
-                Amount (RM)
-              </label>
-              <div className="relative">
-                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-sm font-medium">RM</span>
-                <input 
-                  ref={amountInputRef}
-                  type="number" 
-                  step="0.01" 
-                  min="0.01"
-                  required 
-                  value={amount} 
-                  onChange={(e) => setAmount(e.target.value)} 
-                  className={`w-full bg-slate-50 border ${
-                    errors.amount ? 'border-red-300 focus:ring-red-500' : 'border-slate-200 focus:ring-blue-500'
-                  } rounded-xl py-3 pl-9 pr-3 text-sm outline-none focus:ring-2 focus:border-transparent transition-all`}
-                  placeholder="0.00"
-                />
-              </div>
-              {errors.amount && (
-                <p className="mt-1 text-xs text-red-500 flex items-center gap-1">
-                  <AlertCircle className="w-3 h-3" /> {errors.amount}
-                </p>
-              )}
-            </div>
-            
-            <div>
-              <label className="block text-xs font-bold text-slate-500 uppercase mb-1.5">
-                Category
-                {txType === 'income' && (
-                  <span className="ml-1 text-xs font-normal text-emerald-500">(Income)</span>
-                )}
-                {txType === 'expense' && (
-                  <span className="ml-1 text-xs font-normal text-red-400">(Expense)</span>
-                )}
-                {txType === 'transfer' && (
-                  <span className="ml-1 text-xs font-normal text-blue-400">(Transfer)</span>
-                )}
-              </label>
-              <select 
-                value={category} 
-                onChange={(e) => {
-                  setCategory(e.target.value)
-                  setErrors({ ...errors, category: '' })
-                }} 
-                className={`w-full bg-slate-50 border ${
-                  errors.category ? 'border-red-300 focus:ring-red-500' : 'border-slate-200 focus:ring-blue-500'
-                } rounded-xl py-3 px-3 text-sm outline-none focus:ring-2 focus:border-transparent transition-all`}
+        {/* Form Scroll Area */}
+        <div className="p-5 md:p-6 overflow-y-auto flex-1 bg-white">
+          {/* Segmented Type Controller */}
+          <div className="flex gap-1 mb-5 bg-slate-100 p-1 rounded-xl">
+            {[
+              { type: 'expense', label: 'Expense', icon: <ArrowDownRight className="w-4 h-4" />, color: 'text-red-500', active: 'bg-white text-slate-900 shadow-sm' },
+              { type: 'income', label: 'Income', icon: <ArrowUpRight className="w-4 h-4" />, color: 'text-emerald-500', active: 'bg-white text-slate-900 shadow-sm' },
+              { type: 'transfer', label: 'Transfer', icon: <ArrowRight className="w-4 h-4" />, color: 'text-blue-500', active: 'bg-white text-slate-900 shadow-sm' }
+            ].map(t => (
+              <button 
+                key={t.type} 
+                type="button"
+                onClick={() => setTxType(t.type)} 
+                className={`flex-1 flex items-center justify-center gap-1.5 py-2.5 text-xs font-semibold rounded-lg transition-all ${
+                  txType === t.type 
+                    ? t.active 
+                    : 'text-slate-500 hover:text-slate-700'
+                }`}
               >
-                <option value="">Select category...</option>
-                {filteredMainCategories.map(main => {
-                  const subCategories = getFilteredSubCategories(main.id)
-                  return (
-                    <optgroup key={main.id} label={main.name}>
-                      {subCategories.length > 0 ? (
-                        subCategories.map(sub => (
-                          <option key={sub.id} value={`${main.name} > ${sub.name}`}>
-                            {sub.name}
-                          </option>
-                        ))
-                      ) : (
-                        <option key={main.id} value={main.name}>
-                          {main.name}
-                        </option>
-                      )}
-                    </optgroup>
-                  )
-                })}
-              </select>
-              {errors.category && (
-                <p className="mt-1 text-xs text-red-500 flex items-center gap-1">
-                  <AlertCircle className="w-3 h-3" /> {errors.category}
-                </p>
-              )}
-              {filteredMainCategories.length === 0 && (
-                <p className="mt-1 text-xs text-amber-500 flex items-center gap-1">
-                  <AlertCircle className="w-3 h-3" /> No categories found. Please add categories in Settings.
-                </p>
-              )}
-            </div>
+                <span className={txType === t.type ? (txType === 'expense' ? 'text-red-500' : txType === 'income' ? 'text-emerald-500' : 'text-blue-500') : t.color}>
+                  {t.icon}
+                </span>
+                {t.label}
+              </button>
+            ))}
           </div>
 
-          <div>
-            <label className="block text-xs font-bold text-slate-500 uppercase mb-1.5">Description</label>
-            <input 
-              ref={descriptionInputRef}
-              type="text" 
-              required 
-              value={description} 
-              onChange={(e) => {
-                setDescription(e.target.value)
-                setErrors({ ...errors, description: '' })
-              }} 
-              className={`w-full bg-slate-50 border ${
-                errors.description ? 'border-red-300 focus:ring-red-500' : 'border-slate-200 focus:ring-blue-500'
-              } rounded-xl py-3 px-3 text-sm outline-none focus:ring-2 focus:border-transparent transition-all`}
-              placeholder="e.g. Lunch at Nasi Kandar, Salary, Rent"
-            />
-            {errors.description && (
-              <p className="mt-1 text-xs text-red-500 flex items-center gap-1">
-                <AlertCircle className="w-3 h-3" /> {errors.description}
-              </p>
-            )}
-          </div>
-
-          {txType === 'expense' && (
-            <div>
-              <label className="block text-xs font-bold text-slate-500 uppercase mb-1.5">
-                Pay From
-                <span className="ml-1 text-xs font-normal text-slate-400">(Select source account)</span>
-              </label>
-              <select 
-                value={sourceAccount} 
-                onChange={(e) => {
-                  setSourceAccount(e.target.value)
-                  setErrors({ ...errors, source: '' })
-                }} 
-                className={`w-full bg-slate-50 border ${
-                  errors.source ? 'border-red-300 focus:ring-red-500' : 'border-slate-200 focus:ring-blue-500'
-                } rounded-xl py-3 px-3 text-sm outline-none focus:ring-2 focus:border-transparent transition-all`}
-              >
-                {accounts.map(a => (
-                  <option key={a.id} value={a.id}>{a.account_name}</option>
-                ))}
-              </select>
-              {errors.source && (
-                <p className="mt-1 text-xs text-red-500 flex items-center gap-1">
-                  <AlertCircle className="w-3 h-3" /> {errors.source}
-                </p>
-              )}
-              {sourceAccount && (
-                <p className="mt-1.5 text-xs text-slate-400">
-                  Balance: <span className="font-medium">{formatMYR(accounts.find(a => a.id === sourceAccount)?.balance || 0)}</span>
-                </p>
-              )}
-            </div>
-          )}
-
-          {txType === 'income' && (
-            <div>
-              <label className="block text-xs font-bold text-slate-500 uppercase mb-1.5">
-                Deposit To
-                <span className="ml-1 text-xs font-normal text-slate-400">(Select destination account)</span>
-              </label>
-              <select 
-                value={sourceAccount} 
-                onChange={(e) => {
-                  setSourceAccount(e.target.value)
-                  setErrors({ ...errors, dest: '' })
-                }} 
-                className="w-full bg-slate-50 border border-slate-200 rounded-xl py-3 px-3 text-sm outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
-              >
-                {accounts.map(a => (
-                  <option key={a.id} value={a.id}>{a.account_name}</option>
-                ))}
-              </select>
-            </div>
-          )}
-
-          {txType === 'transfer' && (
+          <form onSubmit={handleSubmit} className="space-y-4">
             <div className="grid grid-cols-2 gap-3 md:gap-4">
               <div>
-                <label className="block text-xs font-bold text-slate-500 uppercase mb-1.5">
-                  From
-                  <span className="ml-1 text-xs font-normal text-slate-400">(Source)</span>
+                <label className="block text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-1.5">
+                  Amount (RM)
                 </label>
+                <div className="relative">
+                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-sm font-medium">RM</span>
+                  <input 
+                    ref={amountInputRef}
+                    type="number" 
+                    step="0.01" 
+                    min="0.01"
+                    required 
+                    value={amount} 
+                    onChange={(e) => setAmount(e.target.value)} 
+                    className={`w-full bg-slate-50 border ${
+                      errors.amount ? 'border-red-300 focus:ring-red-500' : 'border-slate-200 focus:ring-slate-900'
+                    } rounded-xl py-3 pl-9 pr-3 text-sm outline-none focus:ring-2 focus:border-transparent transition-all`}
+                    placeholder="0.00"
+                  />
+                </div>
+                {errors.amount && (
+                  <p className="mt-1 text-xs text-red-500 flex items-center gap-1">
+                    <AlertCircle className="w-3 h-3" /> {errors.amount}
+                  </p>
+                )}
+              </div>
+              
+              <div>
+                <label className="block text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-1.5">
+                  Category
+                </label>
+                <select 
+                  value={category} 
+                  onChange={(e) => {
+                    setCategory(e.target.value)
+                    setErrors({ ...errors, category: '' })
+                  }} 
+                  className={`w-full bg-slate-50 border ${
+                    errors.category ? 'border-red-300 focus:ring-red-500' : 'border-slate-200 focus:ring-slate-900'
+                  } rounded-xl py-3 px-3 text-sm outline-none focus:ring-2 focus:border-transparent transition-all`}
+                >
+                  <option value="">Select category...</option>
+                  {filteredMainCategories.map(main => {
+                    const subCategories = getFilteredSubCategories(main.id)
+                    return (
+                      <optgroup key={main.id} label={main.name}>
+                        {subCategories.length > 0 ? (
+                          subCategories.map(sub => (
+                            <option key={sub.id} value={`${main.name} > ${sub.name}`}>
+                              {sub.name}
+                            </option>
+                          ))
+                        ) : (
+                          <option key={main.id} value={main.name}>
+                            {main.name}
+                          </option>
+                        )}
+                      </optgroup>
+                    )
+                  })}
+                </select>
+                {errors.category && (
+                  <p className="mt-1 text-xs text-red-500 flex items-center gap-1">
+                    <AlertCircle className="w-3 h-3" /> {errors.category}
+                  </p>
+                )}
+              </div>
+            </div>
+
+            <div>
+              <label className="block text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-1.5">Description</label>
+              <input 
+                ref={descriptionInputRef}
+                type="text" 
+                required 
+                value={description} 
+                onChange={(e) => {
+                  setDescription(e.target.value)
+                  setErrors({ ...errors, description: '' })
+                }} 
+                className={`w-full bg-slate-50 border ${
+                  errors.description ? 'border-red-300 focus:ring-red-500' : 'border-slate-200 focus:ring-slate-900'
+                } rounded-xl py-3 px-3 text-sm outline-none focus:ring-2 focus:border-transparent transition-all`}
+                placeholder="e.g. Lunch at Nasi Kandar, Salary, Rent"
+              />
+              {errors.description && (
+                <p className="mt-1 text-xs text-red-500 flex items-center gap-1">
+                  <AlertCircle className="w-3 h-3" /> {errors.description}
+                </p>
+              )}
+            </div>
+
+            {txType === 'expense' && (
+              <div>
+                <label className="block text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-1.5">Pay From</label>
                 <select 
                   value={sourceAccount} 
                   onChange={(e) => {
@@ -430,98 +353,130 @@ export const ManualTransactionModal = ({
                     setErrors({ ...errors, source: '' })
                   }} 
                   className={`w-full bg-slate-50 border ${
-                    errors.source ? 'border-red-300 focus:ring-red-500' : 'border-slate-200 focus:ring-blue-500'
+                    errors.source ? 'border-red-300 focus:ring-red-500' : 'border-slate-200 focus:ring-slate-900'
                   } rounded-xl py-3 px-3 text-sm outline-none focus:ring-2 focus:border-transparent transition-all`}
                 >
                   {accounts.map(a => (
                     <option key={a.id} value={a.id}>{a.account_name}</option>
                   ))}
                 </select>
-                {errors.source && (
-                  <p className="mt-1 text-xs text-red-500 flex items-center gap-1">
-                    <AlertCircle className="w-3 h-3" /> {errors.source}
+                {sourceAccount && (
+                  <p className="mt-1.5 text-xs text-slate-400">
+                    Available Balance: <span className="font-semibold text-slate-600">{formatMYR(accounts.find(a => a.id === sourceAccount)?.balance || 0)}</span>
                   </p>
                 )}
               </div>
-              
+            )}
+
+            {txType === 'income' && (
               <div>
-                <label className="block text-xs font-bold text-slate-500 uppercase mb-1.5">
-                  To
-                  <span className="ml-1 text-xs font-normal text-slate-400">(Destination)</span>
-                </label>
+                <label className="block text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-1.5">Deposit To</label>
                 <select 
-                  value={destAccount} 
-                  onChange={(e) => {
-                    setDestAccount(e.target.value)
-                    setErrors({ ...errors, dest: '' })
-                  }} 
-                  className={`w-full bg-slate-50 border ${
-                    errors.dest ? 'border-red-300 focus:ring-red-500' : 'border-slate-200 focus:ring-blue-500'
-                  } rounded-xl py-3 px-3 text-sm outline-none focus:ring-2 focus:border-transparent transition-all`}
+                  value={sourceAccount} 
+                  onChange={(e) => setSourceAccount(e.target.value)} 
+                  className="w-full bg-slate-50 border border-slate-200 focus:ring-slate-900 rounded-xl py-3 px-3 text-sm outline-none focus:ring-2 focus:border-transparent transition-all"
                 >
                   {accounts.map(a => (
                     <option key={a.id} value={a.id}>{a.account_name}</option>
                   ))}
                 </select>
-                {errors.dest && (
-                  <p className="mt-1 text-xs text-red-500 flex items-center gap-1">
-                    <AlertCircle className="w-3 h-3" /> {errors.dest}
-                  </p>
-                )}
+              </div>
+            )}
+
+            {txType === 'transfer' && (
+              <div className="grid grid-cols-2 gap-3 md:gap-4">
+                <div>
+                  <label className="block text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-1.5">From</label>
+                  <select 
+                    value={sourceAccount} 
+                    onChange={(e) => {
+                      setSourceAccount(e.target.value)
+                      setErrors({ ...errors, source: '' })
+                    }} 
+                    className={`w-full bg-slate-50 border ${
+                      errors.source ? 'border-red-300 focus:ring-red-500' : 'border-slate-200 focus:ring-slate-900'
+                    } rounded-xl py-3 px-3 text-sm outline-none focus:ring-2 focus:border-transparent transition-all`}
+                  >
+                    {accounts.map(a => (
+                      <option key={a.id} value={a.id}>{a.account_name}</option>
+                    ))}
+                  </select>
+                </div>
+                
+                <div>
+                  <label className="block text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-1.5">To</label>
+                  <select 
+                    value={destAccount} 
+                    onChange={(e) => {
+                      setDestAccount(e.target.value)
+                      setErrors({ ...errors, dest: '' })
+                    }} 
+                    className={`w-full bg-slate-50 border ${
+                      errors.dest ? 'border-red-300 focus:ring-red-500' : 'border-slate-200 focus:ring-slate-900'
+                    } rounded-xl py-3 px-3 text-sm outline-none focus:ring-2 focus:border-transparent transition-all`}
+                  >
+                    {accounts.map(a => (
+                      <option key={a.id} value={a.id}>{a.account_name}</option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+            )}
+
+            {/* Neutral slate-themed summary panel */}
+            <div className="bg-slate-50 rounded-xl p-3.5 border border-slate-100 flex items-start gap-3">
+              <div className={`flex items-center justify-center p-2 rounded-lg bg-slate-200/60 ${txType === 'expense' ? 'text-red-500' : txType === 'income' ? 'text-emerald-500' : 'text-blue-500'}`}>
+                {txType === 'expense' ? <ArrowDownRight className="w-4 h-4" /> : txType === 'income' ? <ArrowUpRight className="w-4 h-4" /> : <ArrowRight className="w-4 h-4" />}
+              </div>
+              <div>
+                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-0.5">Summary Preview</p>
+                <p className="text-xs text-slate-600 leading-relaxed">
+                  {txType === 'expense' && sourceAccount && (
+                    <>Deducting <span className="font-semibold text-slate-900">{formatMYR(parseFloat(amount) || 0)}</span> from <span className="font-semibold text-slate-900">{getAccountName(sourceAccount)}</span></>
+                  )}
+                  {txType === 'income' && sourceAccount && (
+                    <>Depositing <span className="font-semibold text-slate-900">{formatMYR(parseFloat(amount) || 0)}</span> into <span className="font-semibold text-slate-900">{getAccountName(sourceAccount)}</span></>
+                  )}
+                  {txType === 'transfer' && sourceAccount && destAccount && (
+                    <>Moving <span className="font-semibold text-slate-900">{formatMYR(parseFloat(amount) || 0)}</span> from <span className="font-semibold text-slate-900">{getAccountName(sourceAccount)}</span> → <span className="font-semibold text-slate-900">{getAccountName(destAccount)}</span></>
+                  )}
+                  {description && <span className="text-slate-400 italic"> &ldquo;{description}&rdquo;</span>}
+                </p>
               </div>
             </div>
-          )}
 
-          <div className="bg-slate-50 rounded-xl p-3 border border-slate-100">
-            <p className="text-xs text-slate-400 mb-1">Transaction Summary</p>
-            <p className="text-sm text-slate-700">
-              {txType === 'expense' && sourceAccount && (
-                <>💳 <span className="font-medium">{formatMYR(parseFloat(amount) || 0)}</span> from <span className="font-medium">{getAccountName(sourceAccount)}</span></>
-              )}
-              {txType === 'income' && sourceAccount && (
-                <>💰 <span className="font-medium">{formatMYR(parseFloat(amount) || 0)}</span> to <span className="font-medium">{getAccountName(sourceAccount)}</span></>
-              )}
-              {txType === 'transfer' && sourceAccount && destAccount && (
-                <>🔄 <span className="font-medium">{formatMYR(parseFloat(amount) || 0)}</span> from <span className="font-medium">{getAccountName(sourceAccount)}</span> → <span className="font-medium">{getAccountName(destAccount)}</span></>
-              )}
-              {description && <span className="text-slate-400 ml-1">· {description}</span>}
-              {category && <span className="text-xs text-slate-400 ml-1">({category})</span>}
-              {(!amount || !description || !category) && (
-                <span className="text-xs text-slate-400">Fill in the fields above to see summary</span>
-              )}
-            </p>
-          </div>
-
-          <div className="flex gap-3 pt-2">
-            <button 
-              type="button"
-              onClick={() => setIsOpen(false)}
-              className="flex-1 bg-slate-100 hover:bg-slate-200 text-slate-700 font-medium py-3 rounded-xl transition-colors text-sm"
-            >
-              Cancel
-            </button>
-            <button 
-              type="submit" 
-              disabled={saving} 
-              className="flex-1 bg-slate-900 hover:bg-slate-800 text-white font-medium py-3 rounded-xl transition-colors disabled:opacity-50 disabled:cursor-not-allowed text-sm flex items-center justify-center"
-            >
-              {saving ? (
-                <span className="flex items-center justify-center gap-2">
-                  <svg className="animate-spin h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                  </svg>
-                  Saving...
-                </span>
-              ) : (
-                <span className="flex items-center justify-center gap-2">
-                  <Check className="w-4 h-4" />
-                  Log Transaction
-                </span>
-              )}
-            </button>
-          </div>
-        </form>
+            {/* Action Panel Buttons */}
+            <div className="flex gap-3 pt-2">
+              <button 
+                type="button"
+                onClick={() => setIsOpen(false)}
+                className="flex-1 bg-slate-100 hover:bg-slate-200 text-slate-700 font-medium py-3 rounded-xl transition-colors text-sm"
+              >
+                Cancel
+              </button>
+              <button 
+                type="submit" 
+                disabled={saving} 
+                className="flex-1 bg-slate-900 hover:bg-slate-800 text-white font-medium py-3 rounded-xl transition-all shadow-md disabled:opacity-50 disabled:cursor-not-allowed text-sm flex items-center justify-center"
+              >
+                {saving ? (
+                  <span className="flex items-center justify-center gap-2">
+                    <svg className="animate-spin h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    </svg>
+                    Saving...
+                  </span>
+                ) : (
+                  <span className="flex items-center justify-center gap-2">
+                    <Check className="w-4 h-4" />
+                    Log Transaction
+                  </span>
+                )}
+              </button>
+            </div>
+          </form>
+        </div>
       </div>
     </div>
   )

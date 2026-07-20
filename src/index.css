@@ -254,3 +254,23 @@ input, select, textarea {
 .card-stack-hover:hover {
   transform: scale(1.01);
 }
+
+/* ============================================
+   ADVANCED WALLET STACK ANIMATION EFFECTS
+   ============================================ */
+
+/* Replaces old standard transitions with high-performance CSS curves */
+.cubic-bezier\(0\.34\,\ 1\.56\,\ 0\.64\,\ 1\) {
+  transition-timing-function: cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+/* Fixes display jumping on desktop when responsive states reset */
+@media (min-width: 768px) {
+  .md\:\!transform-none {
+    transform: none !important;
+  }
+  .md\:\!static {
+    position: static !important;
+    margin-bottom: 0px !important;
+  }
+}
