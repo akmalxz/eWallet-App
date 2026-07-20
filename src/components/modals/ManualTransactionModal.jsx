@@ -1,5 +1,5 @@
-// src/components/modals/ManualTransactionModal.jsx
-import { useState, useEffect, useRef, useMemo, useCallback } from 'react' // ✅ Added useCallback
+// src/components/modals/ManualTransactionModal.jsx - Add selectedAccount prop
+import { useState, useEffect, useRef, useMemo, useCallback } from 'react'
 import { supabase } from '../../lib/supabaseClient'
 import { X, ArrowUpRight, ArrowDownRight, ArrowRight, Check, AlertCircle } from 'lucide-react'
 
@@ -7,10 +7,11 @@ export const ManualTransactionModal = ({
   setIsOpen, 
   user, 
   accounts, 
-  categories,  // ← Now receiving ALL categories
+  categories,
   getSubCategories, 
   fetchAllData, 
-  showToast 
+  showToast,
+  selectedAccount // ← New prop
 }) => {
   // Form state
   const [txType, setTxType] = useState('expense')
@@ -29,17 +30,14 @@ export const ManualTransactionModal = ({
   // ============================================
   // CATEGORY HIERARCHY - Get from ALL categories
   // ============================================
-  // Get main categories (parent_id is null)
   const mainCategories = useMemo(() => {
     return categories.filter(c => !c.parent_id)
   }, [categories])
 
-  // Get subcategories for a parent
   const getSubCategoriesForParent = useCallback((parentId) => {
     return categories.filter(c => c.parent_id === parentId)
   }, [categories])
 
-  // Filter categories based on transaction type (income shows only income-related)
   const filteredMainCategories = useMemo(() => {
     if (txType === 'income') {
       const incomeKeywords = ['income', 'salary', 'bonus', 'pay', 'paycheck', 'received', 'deposit', 'refund']
@@ -53,7 +51,6 @@ export const ManualTransactionModal = ({
     return mainCategories
   }, [mainCategories, txType])
 
-  // Get filtered subcategories for a parent
   const getFilteredSubCategories = useCallback((parentId) => {
     const subs = categories.filter(c => c.parent_id === parentId)
     if (txType === 'income') {
@@ -81,14 +78,15 @@ export const ManualTransactionModal = ({
     setCategory('')
     
     if (accounts.length > 0) {
-      const defaultSource = accounts[0]?.id || ''
+      // ✅ If a selectedAccount is passed, use it as default source
+      const defaultSource = selectedAccount?.id || accounts[0]?.id || ''
       const defaultDest = accounts.length > 1 
         ? (accounts[1]?.id || '')
         : (accounts[0]?.id || '')
       setSourceAccount(defaultSource)
       setDestAccount(defaultDest)
     }
-  }, [accounts, txType])
+  }, [accounts, txType, selectedAccount])
 
   // Validate form before submission
   const validateForm = () => {
@@ -215,20 +213,15 @@ export const ManualTransactionModal = ({
     }
   }
 
-  // Debug: Log categories to verify they're being passed
-  console.log('📋 Categories in modal:', categories)
-  console.log('📋 Main categories:', mainCategories)
-
   return (
     <div 
       className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-50 flex items-center justify-center p-4"
       onKeyDown={handleKeyDown}
     >
-      <div className="bg-white rounded-3xl max-w-md w-full p-6 shadow-2xl max-h-[90vh] overflow-y-auto">
-        {/* Header */}
-        <div className="flex justify-between items-center mb-6">
+      <div className="bg-white rounded-3xl max-w-md w-full p-5 md:p-6 shadow-2xl max-h-[90vh] overflow-y-auto modal-enter">
+        <div className="flex justify-between items-center mb-5 md:mb-6">
           <div>
-            <h2 className="text-xl font-bold text-slate-900">Log Transaction</h2>
+            <h2 className="text-lg md:text-xl font-bold text-slate-900">Log Transaction</h2>
             <p className="text-xs text-slate-400 mt-0.5">Quickly record your financial activity</p>
           </div>
           <button 
@@ -240,8 +233,7 @@ export const ManualTransactionModal = ({
           </button>
         </div>
         
-        {/* Transaction Type Selector */}
-        <div className="flex gap-2 mb-6 bg-slate-100 p-1 rounded-xl">
+        <div className="flex gap-2 mb-5 md:mb-6 bg-slate-100 p-1.5 rounded-xl">
           {[
             { type: 'expense', label: 'Expense', icon: <ArrowDownRight className="w-4 h-4" />, color: 'text-red-500' },
             { type: 'income', label: 'Income', icon: <ArrowUpRight className="w-4 h-4" />, color: 'text-emerald-500' },
@@ -250,7 +242,7 @@ export const ManualTransactionModal = ({
             <button 
               key={t.type} 
               onClick={() => setTxType(t.type)} 
-              className={`flex-1 flex items-center justify-center gap-2 py-2.5 text-sm font-medium capitalize rounded-xl transition-all ${
+              className={`flex-1 flex items-center justify-center gap-2 py-3 text-sm font-medium capitalize rounded-xl transition-all ${
                 txType === t.type 
                   ? 'bg-white shadow-sm text-slate-900' 
                   : 'text-slate-500 hover:text-slate-700'
@@ -263,8 +255,7 @@ export const ManualTransactionModal = ({
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-4">
-          {/* Amount and Category Row */}
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-2 gap-3 md:gap-4">
             <div>
               <label className="block text-xs font-bold text-slate-500 uppercase mb-1.5">
                 Amount (RM)
@@ -281,13 +272,12 @@ export const ManualTransactionModal = ({
                   onChange={(e) => setAmount(e.target.value)} 
                   className={`w-full bg-slate-50 border ${
                     errors.amount ? 'border-red-300 focus:ring-red-500' : 'border-slate-200 focus:ring-blue-500'
-                  } rounded-xl py-2.5 pl-9 pr-3 text-sm outline-none focus:ring-2 focus:border-transparent transition-all`}
+                  } rounded-xl py-3 pl-9 pr-3 text-sm outline-none focus:ring-2 focus:border-transparent transition-all`}
                   placeholder="0.00"
-                  aria-describedby={errors.amount ? "amount-error" : undefined}
                 />
               </div>
               {errors.amount && (
-                <p id="amount-error" className="mt-1 text-xs text-red-500 flex items-center gap-1">
+                <p className="mt-1 text-xs text-red-500 flex items-center gap-1">
                   <AlertCircle className="w-3 h-3" /> {errors.amount}
                 </p>
               )}
@@ -314,16 +304,13 @@ export const ManualTransactionModal = ({
                 }} 
                 className={`w-full bg-slate-50 border ${
                   errors.category ? 'border-red-300 focus:ring-red-500' : 'border-slate-200 focus:ring-blue-500'
-                } rounded-xl py-2.5 px-3 text-sm outline-none focus:ring-2 focus:border-transparent transition-all`}
-                aria-describedby={errors.category ? "category-error" : undefined}
+                } rounded-xl py-3 px-3 text-sm outline-none focus:ring-2 focus:border-transparent transition-all`}
               >
                 <option value="">Select category...</option>
-                {/* ✅ Show all main categories with their subcategories */}
                 {filteredMainCategories.map(main => {
                   const subCategories = getFilteredSubCategories(main.id)
                   return (
                     <optgroup key={main.id} label={main.name}>
-                      {/* Show subcategories if they exist */}
                       {subCategories.length > 0 ? (
                         subCategories.map(sub => (
                           <option key={sub.id} value={`${main.name} > ${sub.name}`}>
@@ -331,7 +318,6 @@ export const ManualTransactionModal = ({
                           </option>
                         ))
                       ) : (
-                        /* If no subcategories, show the main category itself */
                         <option key={main.id} value={main.name}>
                           {main.name}
                         </option>
@@ -341,7 +327,7 @@ export const ManualTransactionModal = ({
                 })}
               </select>
               {errors.category && (
-                <p id="category-error" className="mt-1 text-xs text-red-500 flex items-center gap-1">
+                <p className="mt-1 text-xs text-red-500 flex items-center gap-1">
                   <AlertCircle className="w-3 h-3" /> {errors.category}
                 </p>
               )}
@@ -353,7 +339,6 @@ export const ManualTransactionModal = ({
             </div>
           </div>
 
-          {/* Description */}
           <div>
             <label className="block text-xs font-bold text-slate-500 uppercase mb-1.5">Description</label>
             <input 
@@ -367,18 +352,16 @@ export const ManualTransactionModal = ({
               }} 
               className={`w-full bg-slate-50 border ${
                 errors.description ? 'border-red-300 focus:ring-red-500' : 'border-slate-200 focus:ring-blue-500'
-              } rounded-xl py-2.5 px-3 text-sm outline-none focus:ring-2 focus:border-transparent transition-all`}
+              } rounded-xl py-3 px-3 text-sm outline-none focus:ring-2 focus:border-transparent transition-all`}
               placeholder="e.g. Lunch at Nasi Kandar, Salary, Rent"
-              aria-describedby={errors.description ? "description-error" : undefined}
             />
             {errors.description && (
-              <p id="description-error" className="mt-1 text-xs text-red-500 flex items-center gap-1">
+              <p className="mt-1 text-xs text-red-500 flex items-center gap-1">
                 <AlertCircle className="w-3 h-3" /> {errors.description}
               </p>
             )}
           </div>
 
-          {/* Account Selection */}
           {txType === 'expense' && (
             <div>
               <label className="block text-xs font-bold text-slate-500 uppercase mb-1.5">
@@ -393,7 +376,7 @@ export const ManualTransactionModal = ({
                 }} 
                 className={`w-full bg-slate-50 border ${
                   errors.source ? 'border-red-300 focus:ring-red-500' : 'border-slate-200 focus:ring-blue-500'
-                } rounded-xl py-2.5 px-3 text-sm outline-none focus:ring-2 focus:border-transparent transition-all`}
+                } rounded-xl py-3 px-3 text-sm outline-none focus:ring-2 focus:border-transparent transition-all`}
               >
                 {accounts.map(a => (
                   <option key={a.id} value={a.id}>{a.account_name}</option>
@@ -424,7 +407,7 @@ export const ManualTransactionModal = ({
                   setSourceAccount(e.target.value)
                   setErrors({ ...errors, dest: '' })
                 }} 
-                className="w-full bg-slate-50 border border-slate-200 rounded-xl py-2.5 px-3 text-sm outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+                className="w-full bg-slate-50 border border-slate-200 rounded-xl py-3 px-3 text-sm outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
               >
                 {accounts.map(a => (
                   <option key={a.id} value={a.id}>{a.account_name}</option>
@@ -434,7 +417,7 @@ export const ManualTransactionModal = ({
           )}
 
           {txType === 'transfer' && (
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-2 gap-3 md:gap-4">
               <div>
                 <label className="block text-xs font-bold text-slate-500 uppercase mb-1.5">
                   From
@@ -448,7 +431,7 @@ export const ManualTransactionModal = ({
                   }} 
                   className={`w-full bg-slate-50 border ${
                     errors.source ? 'border-red-300 focus:ring-red-500' : 'border-slate-200 focus:ring-blue-500'
-                  } rounded-xl py-2.5 px-3 text-sm outline-none focus:ring-2 focus:border-transparent transition-all`}
+                  } rounded-xl py-3 px-3 text-sm outline-none focus:ring-2 focus:border-transparent transition-all`}
                 >
                   {accounts.map(a => (
                     <option key={a.id} value={a.id}>{a.account_name}</option>
@@ -474,7 +457,7 @@ export const ManualTransactionModal = ({
                   }} 
                   className={`w-full bg-slate-50 border ${
                     errors.dest ? 'border-red-300 focus:ring-red-500' : 'border-slate-200 focus:ring-blue-500'
-                  } rounded-xl py-2.5 px-3 text-sm outline-none focus:ring-2 focus:border-transparent transition-all`}
+                  } rounded-xl py-3 px-3 text-sm outline-none focus:ring-2 focus:border-transparent transition-all`}
                 >
                   {accounts.map(a => (
                     <option key={a.id} value={a.id}>{a.account_name}</option>
@@ -489,7 +472,6 @@ export const ManualTransactionModal = ({
             </div>
           )}
 
-          {/* Summary Preview */}
           <div className="bg-slate-50 rounded-xl p-3 border border-slate-100">
             <p className="text-xs text-slate-400 mb-1">Transaction Summary</p>
             <p className="text-sm text-slate-700">
@@ -510,7 +492,6 @@ export const ManualTransactionModal = ({
             </p>
           </div>
 
-          {/* Action Buttons */}
           <div className="flex gap-3 pt-2">
             <button 
               type="button"
@@ -522,7 +503,7 @@ export const ManualTransactionModal = ({
             <button 
               type="submit" 
               disabled={saving} 
-              className="flex-1 bg-slate-900 hover:bg-slate-800 text-white font-medium py-3 rounded-xl transition-colors disabled:opacity-50 disabled:cursor-not-allowed text-sm"
+              className="flex-1 bg-slate-900 hover:bg-slate-800 text-white font-medium py-3 rounded-xl transition-colors disabled:opacity-50 disabled:cursor-not-allowed text-sm flex items-center justify-center"
             >
               {saving ? (
                 <span className="flex items-center justify-center gap-2">

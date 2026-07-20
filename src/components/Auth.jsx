@@ -1,6 +1,7 @@
+// src/components/Auth.jsx
 import { useState } from 'react'
 import { supabase } from '../lib/supabaseClient'
-import { Activity, Mail, Lock, CheckCircle, AlertCircle } from 'lucide-react'
+import { Activity, Mail, Lock, CheckCircle, AlertCircle, Eye, EyeOff } from 'lucide-react'
 
 export default function Auth() {
   const [loading, setLoading] = useState(false)
@@ -8,6 +9,7 @@ export default function Auth() {
   const [password, setPassword] = useState('')
   const [isSignUp, setIsSignUp] = useState(false)
   const [status, setStatus] = useState({ type: '', message: '' })
+  const [showPassword, setShowPassword] = useState(false)
 
   const handleAuth = async (e) => {
     e.preventDefault()
@@ -32,7 +34,7 @@ export default function Auth() {
 
   return (
     <div className="min-h-screen bg-slate-50 flex flex-col justify-center items-center p-4">
-      <div className="max-w-md w-full bg-white rounded-3xl shadow-sm border border-slate-100 p-8">
+      <div className="max-w-md w-full bg-white rounded-3xl shadow-sm border border-slate-100 p-6 md:p-8">
         <div className="flex flex-col items-center mb-8">
           <div className="bg-slate-900 p-3 rounded-2xl mb-4 shadow-md">
             <Activity className="text-white w-6 h-6" />
@@ -69,15 +71,23 @@ export default function Auth() {
                 <Lock className="h-5 w-5 text-slate-400" />
               </div>
               <input
-                type="password"
+                type={showPassword ? 'text' : 'password'}
                 required
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 placeholder="••••••••"
                 minLength={6}
-                className="w-full bg-slate-50 border border-slate-200 rounded-xl py-3 pl-10 pr-4 text-sm focus:ring-2 focus:ring-slate-900 outline-none transition-all"
+                className="w-full bg-slate-50 border border-slate-200 rounded-xl py-3 pl-10 pr-12 text-sm focus:ring-2 focus:ring-slate-900 outline-none transition-all"
                 disabled={loading}
               />
+              <button
+                type="button"
+                onClick={() => setShowPassword(!showPassword)}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 transition-colors"
+                tabIndex="-1"
+              >
+                {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+              </button>
             </div>
           </div>
 

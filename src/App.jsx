@@ -49,14 +49,14 @@ export default function App() {
     }, 5000)
   }, [])
 
-  // ✅ Transactions data - commitments already included here
+  // Transactions data
   const { 
     accounts, 
     setAccounts,
     recentTransactions, 
     setRecentTransactions,
-    commitments,        // ✅ From useTransactions - no need to redeclare
-    setCommitments,     // ✅ From useTransactions - no need to redeclare
+    commitments,
+    setCommitments,
     gxExpenses, 
     categories, 
     setCategories,
@@ -66,68 +66,13 @@ export default function App() {
     fetchAllData 
   } = useTransactions(user, showToast)
 
-  const handleMarkAsPaid = async (commitmentId) => {
-    try {
-      // Find the commitment to get its details
-      const commitment = commitments.find(c => c.id === commitmentId)
-      if (!commitment) {
-        showToast('Commitment not found', 'error')
-        return
-      }
-
-      const currentMonth = new Date().getMonth()
-      const currentYear = new Date().getFullYear()
-
-      // Create a transaction for the payment
-      const { error: txError } = await supabase
-        .from('transactions')
-        .insert({
-          user_id: user.id,
-          description: `[Paid] ${commitment.name}`,
-          amount: commitment.amount,
-          source_account_id: commitment.account_id,
-          destination_account_id: null,
-          category: 'Commitments',
-          transaction_date: new Date().toISOString(),
-          needs_review: false,
-          metadata: { 
-            commitment_id: commitment.id,
-            payment_type: 'manual',
-            paid_month: currentMonth + 1,
-            paid_year: currentYear
-          }
-        })
-
-      if (txError) throw txError
-
-      // ✅ Update the commitment with last paid date (THIS IS KEY)
-      const { error: updateError } = await supabase
-        .from('commitments')
-        .update({ 
-          last_paid: new Date().toISOString(),
-          last_paid_month: currentMonth  // ✅ This excludes it from future calculations
-        })
-        .eq('id', commitmentId)
-
-      if (updateError) throw updateError
-
-      showToast(`✅ ${commitment.name} marked as paid!`, 'success')
-      
-      // ✅ Refresh all data to update the radar
-      await fetchAllData()
-
-    } catch (error) {
-      console.error('Error marking as paid:', error)
-      showToast('Error marking as paid: ' + error.message, 'error')
-    }
-  }
-
   // UI State
   const [isTransactionModalOpen, setIsTransactionModalOpen] = useState(false)
   const [isSettingsModalOpen, setIsSettingsModalOpen] = useState(false)
   const [omnibarText, setOmnibarText] = useState('')
   const [omnibarStatus, setOmnibarStatus] = useState({ type: '', message: '' })
   const [isRefreshingLedger, setIsRefreshingLedger] = useState(false)
+  const [selectedAccount, setSelectedAccount] = useState(null)
   const statusTimeoutRef = useRef(null)
   const hasFetchedRef = useRef(false)
   const autoRefreshIntervalRef = useRef(null)
@@ -202,7 +147,108 @@ export default function App() {
     }
   }, [user, handleRefreshLedger])
 
-  // Computed values
+  // ============================================
+  // COMMITMENT HANDLERS (Manual - No auto-deduction)
+  // ============================================
+  const handleMarkAsPaid = async (commitmentId) => {
+    try {
+      const commitment = commitments.find(c => c.id === commitmentId)
+      if (!commitment) {
+        showToast('Commitment not found', 'error')
+        return
+      }
+
+      const currentMonth = new Date().getMonth()
+      const currentYear = new Date().getFullYear()
+
+      const { error: txError } = await supabase
+        .from('transactions')
+        .insert({
+          user_id: user.id,
+          description: `[Paid] ${commitment.name}`,
+          amount: commitment.amount,
+          source_account_id: commitment.account_id,
+          destination_account_id: null,
+          category: 'Commitments',
+          transaction_date: new Date().toISOString(),
+          needs_review: false,
+          metadata: { 
+            commitment_id: commitment.id,
+            payment_type: 'manual',
+            paid_month: currentMonth + 1,
+            paid_year: currentYear
+          }
+        })
+
+      if (txError) throw txError
+
+      const { error: updateError } = await supabase
+        .from('commitments')
+        .update({ 
+          last_paid: new Date().toISOString(),
+          last_paid_month: currentMonth
+        })
+        .eq('id', commitmentId)
+
+      if (updateError) throw updateError
+
+      showToast(`✅ ${commitment.name} marked as paid!`, 'success')
+      await fetchAllData()
+
+    } catch (error) {
+      console.error('Error marking as paid:', error)
+      showToast('Error marking as paid: ' + error.message, 'error')
+    }
+  }
+
+  const handleToggleCommitment = async (id, isActive) => {
+    try {
+      const { error } = await supabase
+        .from('commitments')
+        .update({ is_active: !isActive })
+        .eq('id', id)
+      
+      if (error) throw error
+      showToast(`Commitment ${isActive ? 'deactivated' : 'activated'}`, 'success')
+      fetchAllData()
+    } catch (error) {
+      showToast('Error toggling commitment: ' + error.message, 'error')
+    }
+  }
+
+  const handleDeleteCommitment = async (id, name) => {
+    if (!window.confirm(`Delete commitment "${name}"?`)) return
+    
+    try {
+      const { error } = await supabase.from('commitments').delete().eq('id', id)
+      if (error) throw error
+      showToast('Commitment deleted', 'success')
+      fetchAllData()
+    } catch (error) {
+      showToast('Error deleting commitment: ' + error.message, 'error')
+    }
+  }
+
+  // ============================================
+  // ACCOUNT HANDLERS
+  // ============================================
+  const handleAddAccount = () => {
+    setIsSettingsModalOpen(true)
+  }
+
+  const handleLogTransactionFromAccount = (account) => {
+    setSelectedAccount(account)
+    setIsTransactionModalOpen(true)
+  }
+
+  const handleManageAccount = (account) => {
+    setSelectedAccount(account)
+    setIsSettingsModalOpen(true)
+  }
+
+  // ============================================
+  // COMPUTED VALUES
+  // ============================================
   const dynamicAccountDict = useMemo(() => {
     const dict = {}
     accounts.forEach(acc => {
@@ -221,7 +267,9 @@ export default function App() {
   const mainCategories = useMemo(() => categories.filter(c => !c.parent_id), [categories])
   const getSubCategories = useCallback((parentId) => categories.filter(c => c.parent_id === parentId), [categories])
 
-  // Omnibar handler
+  // ============================================
+  // OMNIBAR HANDLER
+  // ============================================
   const handleOmnibarSubmit = async (e) => {
     e.preventDefault()
     if (!omnibarText.trim() || !user) return
@@ -262,7 +310,9 @@ export default function App() {
     statusTimeoutRef.current = setTimeout(() => setOmnibarStatus({ type: '', message: '' }), 4000)
   }
 
-  // Transaction handlers
+  // ============================================
+  // TRANSACTION HANDLERS
+  // ============================================
   const handleApproveTransaction = async (id, updatedCategory) => {
     if (!updatedCategory || updatedCategory === 'uncategorized') {
       showToast('Please select a category before approving', 'warning')
@@ -296,61 +346,23 @@ export default function App() {
     }
   }
 
-  // ============================================
-  // COMMITMENT HANDLERS (Manual - No auto-deduction)
-  // ============================================
-  const handleToggleCommitment = async (id, isActive) => {
-    try {
-      const { error } = await supabase
-        .from('commitments')
-        .update({ is_active: !isActive })
-        .eq('id', id)
-      
-      if (error) throw error
-      showToast(`Commitment ${isActive ? 'deactivated' : 'activated'}`, 'success')
-      fetchAllData()
-    } catch (error) {
-      showToast('Error toggling commitment: ' + error.message, 'error')
-    }
-  }
-
-  const handleDeleteCommitment = async (id, name) => {
-    if (!window.confirm(`Delete commitment "${name}"?`)) return
-    
-    try {
-      const { error } = await supabase.from('commitments').delete().eq('id', id)
-      if (error) throw error
-      showToast('Commitment deleted', 'success')
-      fetchAllData()
-    } catch (error) {
-      showToast('Error deleting commitment: ' + error.message, 'error')
-    }
-  }
-
-  // ============================================
-  // EDIT TRANSACTION HANDLER
-  // ============================================
   const handleEditTransaction = async (id, updatedData) => {
     try {
-      // Validate amount
       if (updatedData.amount <= 0) {
         showToast('Amount must be greater than 0', 'error')
         return
       }
 
-      // Validate description
       if (!updatedData.description || updatedData.description.trim().length < 2) {
         showToast('Description must be at least 2 characters', 'error')
         return
       }
 
-      // Validate category
       if (!updatedData.category || updatedData.category === 'uncategorized') {
         showToast('Please select a valid category', 'error')
         return
       }
 
-      // Build the update payload
       const updatePayload = {
         description: updatedData.description.trim(),
         category: updatedData.category,
@@ -389,6 +401,10 @@ export default function App() {
     }
   }
 
+  const handleAddTransaction = () => {
+    setIsTransactionModalOpen(true)
+  }
+
   // ============================================
   // ANALYTICS CALCULATIONS
   // ============================================
@@ -396,11 +412,10 @@ export default function App() {
     const ewalletAccount = accounts.find(a => a.classification === 'ewallet')
     const currentBalance = ewalletAccount?.balance || 0
     
-    // ✅ Only count commitments that haven't been paid this month
     const currentMonth = new Date().getMonth()
     const totalRequired = commitments
       .filter(c => c.is_active)
-      .filter(c => c.last_paid_month !== currentMonth) // Exclude already paid this month
+      .filter(c => c.last_paid_month !== currentMonth)
       .reduce((sum, c) => sum + Number(c.amount), 0)
     
     const isSafe = currentBalance >= totalRequired
@@ -474,11 +489,12 @@ export default function App() {
       .sort((a, b) => b.value - a.value)
   }, [gxExpenses])
 
-  // Loading state
+  // ============================================
+  // LOADING & AUTH STATES
+  // ============================================
   if (isAuthLoading) return <LoadingSpinner message="Loading secure vault..." />
   if (!isAuthenticated) return <Auth />
 
-  // Show error if any
   if (error) {
     return (
       <div className="min-h-screen bg-slate-50 flex items-center justify-center p-4">
@@ -522,6 +538,7 @@ export default function App() {
           getSubCategories={getSubCategories}
           fetchAllData={fetchAllData}
           showToast={showToast}
+          selectedAccount={selectedAccount}
         />
       )}
 
@@ -536,6 +553,7 @@ export default function App() {
           commitments={commitments}
           fetchAllData={fetchAllData}
           showToast={showToast}
+          selectedAccount={selectedAccount}
         />
       )}
 
@@ -550,32 +568,34 @@ export default function App() {
         supabase={supabase}
       />
 
-      <main className="max-w-6xl mx-auto px-4 py-8 space-y-8">
+      <main className="max-w-6xl mx-auto px-3 md:px-4 py-4 md:py-8 space-y-4 md:space-y-8">
         {/* Account Cards */}
         <section>
-          <h2 className="text-sm font-bold text-slate-400 uppercase tracking-wider mb-4 flex items-center gap-2">
-            <Wallet className="w-4 h-4" /> Node Balances
+          <h2 className="text-xs md:text-sm font-bold text-slate-400 uppercase tracking-wider mb-3 md:mb-4 flex items-center gap-2">
+            <Wallet className="w-3 h-3 md:w-4 md:h-4" /> Node Balances
           </h2>
           {isLoading ? (
-            <div className="flex items-center justify-center h-48">
+            <div className="flex items-center justify-center h-32 md:h-48">
               <div className="flex flex-col items-center gap-3">
-                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500"></div>
-                <p className="text-sm text-slate-400">Loading balances...</p>
+                <div className="animate-spin rounded-full h-6 w-6 md:h-8 md:w-8 border-b-2 border-blue-500"></div>
+                <p className="text-xs md:text-sm text-slate-400">Loading balances...</p>
               </div>
             </div>
-          ) : accounts.length === 0 ? (
-            <div className="bg-white rounded-2xl p-8 text-center border border-slate-200">
-              <p className="text-slate-500">No accounts found. Create your first account in Settings.</p>
-            </div>
           ) : (
-            <AccountCards accounts={accounts} classifications={classifications} />
+            <AccountCards 
+              accounts={accounts} 
+              classifications={classifications}
+              onAddAccount={handleAddAccount}
+              onLogTransaction={handleLogTransactionFromAccount}
+              onManageAccount={handleManageAccount}
+            />
           )}
         </section>
 
         {/* Analytics Grid */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          <section className="lg:col-span-2 space-y-6">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 md:gap-6">
+          <section className="lg:col-span-2 space-y-4 md:space-y-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6">
               <CommitmentRadar 
                 radarStats={radarStats}
                 commitments={commitments}
@@ -586,7 +606,10 @@ export default function App() {
               />
               <BurnRateWidget velocityStats={velocityStats} />
             </div>
-            <CashFlowHeatmap cashFlowData={cashFlowData} />
+            <CashFlowHeatmap 
+              cashFlowData={cashFlowData}
+              onAddTransaction={handleAddTransaction}
+            />
           </section>
 
           <ActionLedger 
@@ -598,7 +621,8 @@ export default function App() {
             handleEditTransaction={handleEditTransaction}
             onRefresh={() => handleRefreshLedger(true)}
             isRefreshing={isRefreshingLedger}
-            accounts={accounts}  // ✅ NEW: Pass accounts
+            accounts={accounts}
+            onAddTransaction={handleAddTransaction}
           />
         </div>
       </main>
