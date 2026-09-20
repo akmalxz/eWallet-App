@@ -60,38 +60,94 @@ export function LogItemPage({
     }
   }
 
-  // Reusable Accordion Wrapper
-  const AccordionSection = ({ id, title, icon: Icon, badgeCount, children }) => {
+  // Reusable Accordion Wrapper with Smooth Slide Animation
+    const AccordionSection = ({ id, title, icon: Icon, badgeCount, children }) => {
     const isOpen = activeSection === id
+
     return (
-      <div className="bg-white/60 backdrop-blur-xl border border-white/40 rounded-3xl overflow-hidden shadow-sm transition-all mb-4">
-        <button 
-          onClick={() => setActiveSection(isOpen ? null : id)} 
-          className="w-full flex items-center justify-between p-5 hover:bg-white/40 transition-colors outline-none"
+        <div
+        className={`bg-white/60 backdrop-blur-xl border border-white/40 rounded-3xl shadow-sm transition-all duration-300 mb-4 ${
+            isOpen
+            ? 'ring-2 ring-blue-500/20'
+            : 'hover:bg-white/80'
+        }`}
         >
-          <div className="flex items-center gap-4">
-            <div className={`p-2.5 rounded-xl ${isOpen ? 'bg-blue-100 text-blue-600' : 'bg-slate-100 text-slate-600'}`}>
-              <Icon className="w-5 h-5" />
+        {/* Accordion Header */}
+        <button
+            type="button"
+            onClick={() => setActiveSection(isOpen ? null : id)}
+            className="w-full flex items-center justify-between p-5 transition-colors outline-none group rounded-3xl"
+        >
+            {/* Left side */}
+            <div className="flex items-center gap-4">
+            <div
+                className={`p-2.5 rounded-xl transition-all duration-300 ${
+                isOpen
+                    ? 'bg-blue-500 text-white shadow-md'
+                    : 'bg-slate-100 text-slate-500 group-hover:bg-slate-200 group-hover:text-slate-700'
+                }`}
+            >
+                <Icon className="w-5 h-5" />
             </div>
+
             <div className="flex items-center gap-2">
-              <span className="font-bold text-slate-800 text-base">{title}</span>
-              {badgeCount > 0 && (
-                <span className="bg-amber-100 text-amber-700 text-[10px] font-black px-2 py-0.5 rounded-full">
-                  {badgeCount}
+                <span
+                className={`font-bold text-base transition-colors duration-300 ${
+                    isOpen ? 'text-blue-900' : 'text-slate-700'
+                }`}
+                >
+                {title}
                 </span>
-              )}
+
+                {badgeCount > 0 && (
+                <span
+                    className={`text-[10px] font-black px-2 py-0.5 rounded-full transition-all duration-300 ${
+                    isOpen
+                        ? 'bg-blue-100 text-blue-700'
+                        : 'bg-amber-100 text-amber-700'
+                    }`}
+                >
+                    {badgeCount}
+                </span>
+                )}
             </div>
-          </div>
-          {isOpen ? <ChevronUp className="w-5 h-5 text-slate-400" /> : <ChevronDown className="w-5 h-5 text-slate-400" />}
+            </div>
+
+            {/* Chevron */}
+            <div
+            className={`p-1 rounded-full transition-all duration-300 ${
+                isOpen
+                ? 'bg-blue-50 text-blue-500 rotate-180'
+                : 'text-slate-400 group-hover:bg-slate-100'
+            }`}
+            >
+            <ChevronDown className="w-5 h-5" />
+            </div>
         </button>
-        {isOpen && (
-          <div className="p-5 border-t border-white/40 bg-white/30 animate-in fade-in duration-300">
-            {children}
-          </div>
-        )}
-      </div>
+
+        {/* Accordion Content */}
+        <div
+            className={`grid transition-all duration-300 ease-[cubic-bezier(0.4,0,0.2,1)] ${
+            isOpen
+                ? 'grid-rows-[1fr] opacity-100'
+                : 'grid-rows-[0fr] opacity-0'
+            }`}
+        >
+            <div className="min-h-0 overflow-hidden">
+            <div
+                className={`px-5 pb-5 pt-0 border-t border-white/40 bg-white/30 transition-transform duration-300 ease-out ${
+                isOpen
+                    ? 'translate-y-0'
+                    : '-translate-y-2'
+                }`}
+            >
+                {children}
+            </div>
+            </div>
+        </div>
+        </div>
     )
-  }
+    }
 
   return (
     <div className="max-w-2xl mx-auto animate-in fade-in slide-in-from-bottom-4 duration-500 pb-12">
@@ -164,9 +220,21 @@ export function LogItemPage({
 
         {/* SECTION 2: LOG NEW EXPENSES */}
         <AccordionSection id="log" title="Log New Expense" icon={PlusCircle}>
-          <div className="flex gap-2 mb-6 bg-white/50 p-1 rounded-xl border border-white/40">
-            {['expense', 'income', 'transfer'].map(t => (
-              <button key={t} onClick={() => setTxType(t)} className={`flex-1 py-2 text-sm font-medium capitalize rounded-lg transition-all ${txType === t ? 'bg-white shadow-sm text-blue-600' : 'text-slate-500'}`}>
+          {/* Segmented Type Controller */}
+          <div className="flex p-1 mb-6 bg-slate-100/80 backdrop-blur-md rounded-xl shadow-inner border border-slate-200/50 relative">
+            {['expense', 'income', 'transfer'].map((t) => (
+              <button 
+                key={t} 
+                onClick={(e) => {
+                  e.preventDefault()
+                  setTxType(t)
+                }} 
+                className={`flex-1 py-2 text-sm font-bold capitalize rounded-lg transition-all duration-300 z-10 ${
+                  txType === t 
+                    ? 'text-slate-800 shadow-sm bg-white' 
+                    : 'text-slate-500 hover:text-slate-700'
+                }`}
+              >
                 {t}
               </button>
             ))}
@@ -256,19 +324,20 @@ export function LogItemPage({
         </AccordionSection>
 
         {/* SECTION 4: ACTION LEDGER */}
-        <div className="mt-8 h-[600px] flex flex-col">
-          <ActionLedger 
-            recentTransactions={verifiedTransactions} // Only pass verified items
-            mainCategories={mainCategories} 
-            getSubCategories={getSubCategories}
-            handleApproveTransaction={handleApproveTransaction} 
-            handleDeleteTransaction={handleDeleteTransaction}
-            handleEditTransaction={handleEditTransaction} 
-            onRefresh={onRefresh}
-            isRefreshing={isRefreshing} 
-            accounts={accounts} 
-            onAddTransaction={() => setActiveSection('log')} 
-          />
+        <div className="mt-3 animate-in fade-in slide-in-from-bottom-8 duration-700 delay-100">
+          
+            <ActionLedger 
+              recentTransactions={verifiedTransactions}
+              mainCategories={mainCategories} 
+              getSubCategories={getSubCategories}
+              handleApproveTransaction={handleApproveTransaction} 
+              handleDeleteTransaction={handleDeleteTransaction}
+              handleEditTransaction={handleEditTransaction} 
+              onRefresh={onRefresh}
+              isRefreshing={isRefreshing} 
+              accounts={accounts} 
+              onAddTransaction={() => setActiveSection('log')} 
+            />
         </div>
 
       </div>

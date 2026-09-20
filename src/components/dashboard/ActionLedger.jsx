@@ -1,7 +1,7 @@
 // src/components/dashboard/ActionLedger.jsx
 import { useState, useRef, useMemo } from 'react'
 import { 
-  Clock, ArrowDownRight, ArrowUpRight, RefreshCw, AlertTriangle, 
+  Clock, ArrowDownRight, ArrowUpRight, RefreshCw, AlertTriangle, List,
   Check, Trash2, Edit2, X, Save, Plus, Inbox, Calendar, ChevronDown, ChevronUp 
 } from 'lucide-react'
 import { formatMYR } from '../../utils/formatters'
@@ -234,22 +234,33 @@ export const ActionLedger = ({
     return (
       <section className="bg-white rounded-2xl shadow-md border border-slate-100 flex flex-col overflow-hidden transition-all duration-300">
         <div className="p-4 border-b border-slate-100 bg-slate-50/60 flex items-center justify-between flex-shrink-0">
-          <h2 className="text-sm font-bold text-slate-800 flex items-center gap-2">
-            <Clock className="w-4 h-4 text-slate-400" /> Action Ledger
-          </h2>
-          <button 
-            onClick={onRefresh}
-            disabled={isRefreshing}
-            className={`w-8 h-8 flex items-center justify-center rounded-lg transition-all ${
-              isRefreshing 
-                ? 'text-slate-300 cursor-not-allowed' 
-                : 'text-slate-400 hover:text-slate-600 hover:bg-slate-100'
-            }`}
-            title="Refresh transactions"
-          >
-            <RefreshCw className={`w-4 h-4 ${isRefreshing ? 'animate-spin' : ''}`} />
-          </button>
-        </div>
+        <div className="flex items-center gap-3 px-1 mb-3">
+            <div className="p-2 rounded-xl bg-slate-200/60 text-slate-600 border border-slate-200/50">
+              <List className="w-5 h-5" />
+            </div>
+            <div>
+              <h2 className="text-lg font-bold text-slate-800 leading-tight">Action Ledger</h2>
+              <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Verified History</p>
+            </div>
+          </div>
+
+        {/* Refresh button - Right */}
+        <button 
+          onClick={onRefresh}
+          disabled={isRefreshing}
+          className={`ml-auto w-8 h-8 flex items-center justify-center rounded-lg transition-all ${
+            isRefreshing 
+              ? 'text-slate-300 cursor-not-allowed' 
+              : 'text-slate-400 hover:text-slate-600 hover:bg-slate-100'
+          }`}
+          title="Refresh transactions"
+        >
+          <RefreshCw 
+            className={`w-4 h-4 ${isRefreshing ? 'animate-spin' : ''}`} 
+          />
+        </button>
+
+      </div>
         <div className="flex-1 flex flex-col items-center justify-center p-8 text-slate-400">
           <div className="w-14 h-14 bg-slate-50 border border-slate-100 rounded-2xl flex items-center justify-center mb-4 text-slate-300 shadow-sm shadow-slate-100/40">
             <Inbox className="w-6 h-6" />
@@ -273,26 +284,32 @@ export const ActionLedger = ({
     <section className="bg-white rounded-2xl shadow-md border border-slate-100 flex flex-col overflow-hidden transition-all duration-300">
       {/* Header */}
       <div className="p-4 border-b border-slate-100 bg-slate-50/60 flex items-center justify-between flex-shrink-0">
-        <h2 className="text-xs md:text-sm font-bold text-slate-800 flex items-center gap-2">
-          <Clock className="w-4 h-4 text-slate-400" /> Action Ledger
-        </h2>
-        <div className="flex items-center gap-2">
-          <span className="text-[10px] text-slate-400 font-medium hidden sm:inline">
-            {recentTransactions.length} transactions
-          </span>
-          <button 
-            onClick={onRefresh}
-            disabled={isRefreshing}
-            className={`w-8 h-8 flex items-center justify-center rounded-lg transition-all ${
-              isRefreshing 
-                ? 'text-slate-300 cursor-not-allowed' 
-                : 'text-slate-400 hover:text-slate-600 hover:bg-slate-100'
-            }`}
-            title="Refresh transactions"
-          >
-            <RefreshCw className={`w-4 h-4 ${isRefreshing ? 'animate-spin' : ''}`} />
-          </button>
-        </div>
+        <div className="flex items-center gap-3 px-1 mb-3">
+            <div className="p-2 rounded-xl bg-slate-200/60 text-slate-600 border border-slate-200/50">
+              <List className="w-5 h-5" />
+            </div>
+            <div>
+              <h2 className="text-lg font-bold text-slate-800 leading-tight">Action Ledger</h2>
+              <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Verified History</p>
+            </div>
+          </div>
+
+        {/* Refresh button - Right */}
+        <button 
+          onClick={onRefresh}
+          disabled={isRefreshing}
+          className={`ml-auto w-8 h-8 flex items-center justify-center rounded-lg transition-all ${
+            isRefreshing 
+              ? 'text-slate-300 cursor-not-allowed' 
+              : 'text-slate-400 hover:text-slate-600 hover:bg-slate-100'
+          }`}
+          title="Refresh transactions"
+        >
+          <RefreshCw 
+            className={`w-4 h-4 ${isRefreshing ? 'animate-spin' : ''}`} 
+          />
+        </button>
+
       </div>
       
       {/* Transaction List Box */}
