@@ -1,6 +1,6 @@
 // src/components/dashboard/CashFlowHeatmap.jsx
 import { useState, useMemo } from 'react'
-import { Target, TrendingUp, Plus } from 'lucide-react'
+import { Target, TrendingUp, Plus, ChevronDown } from 'lucide-react'
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip as RechartsTooltip } from 'recharts'
 import { formatMYR } from '../../utils/formatters'
 
@@ -20,7 +20,13 @@ const CustomTooltip = ({ active, payload }) => {
   return null
 }
 
-export const CashFlowHeatmap = ({ cashFlowData = [], onAddTransaction }) => {
+export const CashFlowHeatmap = ({ 
+  cashFlowData = [], 
+  onAddTransaction,
+  accounts = [],           // NEW
+  selectedAccountId,       // NEW
+  onSelectAccount          // NEW
+}) => {
   const [activeItem, setActiveItem] = useState(null)
 
   // Memoize total sum to ensure high performance updates
@@ -38,11 +44,29 @@ export const CashFlowHeatmap = ({ cashFlowData = [], onAddTransaction }) => {
 
   if (!cashFlowData || cashFlowData.length === 0) {
     return (
-      <div className="bg-white rounded-2xl shadow-md border border-slate-100 p-5 md:p-6 transition-all duration-300 shadow-slate-100/40">
-        <div className="absolute top-0 inset-x-0 h-1 bg-slate-300" />
-        <h2 className="text-sm font-bold text-slate-800 mb-4 flex items-center gap-2">
-          <Target className="w-4 h-4 text-blue-500" /> Cash Flow Heatmap
-        </h2>
+      <div className="bg-white rounded-2xl shadow-md border border-slate-100 p-5 md:p-6 transition-all duration-300 shadow-slate-100/40 relative overflow-hidden">
+        <div className="absolute top-0 inset-x-0 h-1 bg-slate-200" />
+        
+        {/* Empty State Header Layout */}
+        <div className="flex justify-between items-start mb-6">
+          <div className="flex flex-col items-start gap-3">
+            <div>
+              <h2 className="text-sm font-bold text-slate-800">Cash Flow Heatmap</h2>
+              <p className="text-xs text-slate-400 mt-0.5">Macro category distribution</p>
+            </div>
+            
+            <div className="relative inline-flex items-center group">
+              <select 
+                value={selectedAccountId || ''} 
+                onChange={(e) => onSelectAccount(e.target.value)}
+                className="appearance-none bg-white border border-slate-200 shadow-sm hover:bg-slate-50 text-slate-800 text-sm font-bold py-1.5 pl-3 pr-9 rounded-lg outline-none cursor-pointer transition-all w-auto max-w-[220px] md:max-w-[280px] text-ellipsis"
+              >
+                {accounts.map(a => <option key={a.id} value={a.id}>{a.account_name}</option>)}
+              </select>
+              <ChevronDown className="w-4 h-4 text-slate-400 absolute right-2.5 pointer-events-none group-hover:text-slate-600 transition-colors" />
+            </div>
+          </div>
+        </div>
         <div className="h-56 flex flex-col items-center justify-center text-slate-400">
           <div className="w-14 h-14 bg-slate-50 border border-slate-100 rounded-2xl flex items-center justify-center mb-4 text-slate-300 shadow-sm shadow-slate-100/40">
             <TrendingUp className="w-6 h-6" />
@@ -68,14 +92,26 @@ export const CashFlowHeatmap = ({ cashFlowData = [], onAddTransaction }) => {
       <div className="absolute top-0 inset-x-0 h-1 bg-blue-500" />
       
       {/* Header Layout */}
-      <div className="flex justify-between items-center mb-5 border-b border-slate-50 pb-3">
-        <div>
-          <h2 className="text-sm font-bold text-slate-800 flex items-center gap-2">
-            Cash Flow Heatmap
-          </h2>
-          <p className="text-xs text-slate-400 mt-0.5">Macro category distribution</p>
+      <div className="flex justify-between items-start mb-6 border-b border-slate-50 pb-4">
+        <div className="flex flex-col items-start gap-3">
+          <div>
+            <h2 className="text-sm font-bold text-slate-800">Cash Flow Heatmap</h2>
+            <p className="text-xs text-slate-400 mt-0.5">Macro category distribution</p>
+          </div>
+          
+          <div className="relative inline-flex items-center group">
+            <select 
+              value={selectedAccountId || ''} 
+              onChange={(e) => onSelectAccount(e.target.value)}
+              className="appearance-none bg-white border border-slate-200 shadow-sm hover:bg-slate-50 text-slate-800 text-sm font-bold py-1.5 pl-3 pr-9 rounded-lg outline-none cursor-pointer transition-all w-auto max-w-[220px] md:max-w-[280px] text-ellipsis"
+            >
+              {accounts.map(a => <option key={a.id} value={a.id}>{a.account_name}</option>)}
+            </select>
+            <ChevronDown className="w-4 h-4 text-slate-400 absolute right-2.5 pointer-events-none group-hover:text-slate-600 transition-colors" />
+          </div>
         </div>
-        <div className="text-right">
+        
+        <div className="text-right mt-1">
           <p className="text-[9px] text-slate-400 uppercase font-bold tracking-wider mb-0.5">Total Outflow</p>
           <p className="text-base font-black text-slate-800">{formatMYR(totalExpenses)}</p>
         </div>

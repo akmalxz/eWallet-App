@@ -5,7 +5,10 @@ import { formatMYR } from '../../utils/formatters'
 
 export const CommitmentRadar = ({ 
   radarStats, 
-  commitments = [], 
+  commitments = [],
+  accounts = [],           // NEW
+  selectedAccountId,       // NEW
+  onSelectAccount,         // NEW
   onAddCommitment, 
   onDeleteCommitment,
   onToggleCommitment,
@@ -61,7 +64,13 @@ export const CommitmentRadar = ({
       <div className="flex justify-between items-center mb-5">
         <div>
           <h2 className="text-sm font-bold text-slate-800 flex items-center gap-2">
-             Commitment Tracker
+            <select 
+              value={selectedAccountId || ''} 
+              onChange={(e) => onSelectAccount(e.target.value)}
+              className="bg-transparent font-bold text-slate-800 outline-none cursor-pointer appearance-none hover:text-blue-600 transition-colors"
+            >
+              {accounts.map(a => <option key={a.id} value={a.id}>{a.account_name} Radar</option>)}
+            </select>
           </h2>
           <p className="text-xs text-slate-400 mt-0.5">Track your subscriptions & bills</p>
         </div>

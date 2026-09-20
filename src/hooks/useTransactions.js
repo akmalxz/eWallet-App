@@ -6,7 +6,7 @@ export const useTransactions = (user, showToast) => {
   const [accounts, setAccounts] = useState([])
   const [recentTransactions, setRecentTransactions] = useState([])
   const [commitments, setCommitments] = useState([])
-  const [gxExpenses, setGxExpenses] = useState([])
+  const [monthlyExpenses, setMonthlyExpenses] = useState([])
   const [categories, setCategories] = useState([])
   const [classifications, setClassifications] = useState([])
   const [isLoading, setIsLoading] = useState(true)
@@ -234,19 +234,20 @@ export const useTransactions = (user, showToast) => {
       console.log(`✅ Commitments loaded: ${commResult.data?.length || 0} found`)
       setCommitments(commResult.data || [])
 
-      // Fetch GX expenses - ✅ Use normalized id
-      const digitalBankId = normalizedAccounts.find(a => a.classification === 'digital_bank')?.id
-      if (digitalBankId) {
-        console.log('📊 Fetching GX expenses...')
-        const startOfMonth = new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString()
-        const { data: gxData } = await supabase
-          .from('transactions')
-          .select('*')
-          .eq('source_account_id', digitalBankId)
-          .is('destination_account_id', null)
-          .gte('transaction_date', startOfMonth)
-        setGxExpenses(gxData || [])
-        console.log(`✅ GX expenses loaded: ${gxData?.length || 0} found`)
+      // Fetch ALL expenses for the current month
+      console.log('📊 Fetching monthly expenses...')
+      const startOfMonth = new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString()
+      const { data: monthData, error: monthError } = await supabase
+        .from('transactions')
+        .select('*')
+        .is('destination_account_id', null) // Only expenses, not transfers/income
+        .gte('transaction_date', startOfMonth)
+      
+      if (monthError) {
+        console.error('❌ Monthly expenses fetch error:', monthError)
+      } else {
+        setMonthlyExpenses(monthData || [])
+        console.log(`✅ Monthly expenses loaded: ${monthData?.length || 0} found`)
       }
 
       console.log('✅ All data loaded successfully!')
@@ -265,7 +266,7 @@ export const useTransactions = (user, showToast) => {
     accounts,
     recentTransactions,
     commitments,
-    gxExpenses,
+    monthlyExpenses,
     categories,
     classifications,
     isLoading,
@@ -274,7 +275,7 @@ export const useTransactions = (user, showToast) => {
     setAccounts,
     setRecentTransactions,
     setCommitments,
-    setGxExpenses,
+    setMonthlyExpenses,
     setCategories,
     setClassifications,
     setIsLoading,
