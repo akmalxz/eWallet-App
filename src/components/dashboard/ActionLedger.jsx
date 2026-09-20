@@ -23,6 +23,7 @@ export const ActionLedger = ({
     description: '', 
     category: '', 
     amount: '',
+    transaction_date: '',
     source_account_id: '',
     destination_account_id: ''
   })
@@ -90,11 +91,15 @@ export const ActionLedger = ({
   }
 
   const startEdit = (tx) => {
+    const rawDate = tx.transaction_date || tx.created_at
+    const formattedDate = rawDate ? new Date(rawDate).toISOString().split('T')[0] : new Date().toISOString().split('T')[0]
+
     setEditingId(tx.id)
     setEditData({
       description: tx.description || '',
       category: tx.category || '',
       amount: tx.amount || '',
+      transaction_date: formattedDate,
       source_account_id: tx.source_account_id || '',
       destination_account_id: tx.destination_account_id || ''
     })
@@ -107,6 +112,7 @@ export const ActionLedger = ({
       description: '', 
       category: '', 
       amount: '',
+      transaction_date: '',
       source_account_id: '',
       destination_account_id: ''
     })
@@ -159,6 +165,7 @@ export const ActionLedger = ({
       description: editData.description.trim(),
       category: editData.category,
       amount: finalAmount,
+      transaction_date: editData.transaction_date,
       source_account_id: editData.source_account_id || null,
       destination_account_id: editData.destination_account_id || null,
       transaction_type: isIncome ? 'income' : isExpense ? 'expense' : 'transfer'
@@ -343,58 +350,6 @@ export const ActionLedger = ({
                     const isTransfer = tx.source_account_id && tx.destination_account_id
                     const isEditingThis = isEditing(tx.id)
                     const globalIndex = recentTransactions.findIndex(t => t.id === tx.id)
-                    
-                    if (tx.needs_review && !isEditingThis) {
-                      return (
-                        <div key={tx.id} className="bg-amber-50/40 border border-amber-200 rounded-xl p-3.5 shadow-sm shadow-amber-50/20 animate-fadeIn">
-                          <div className="flex justify-between items-start mb-3">
-                            <div className="pr-4">
-                              <p className="text-sm font-bold text-amber-900 leading-tight">{tx.description}</p>
-                              <p className="text-[10px] font-bold uppercase tracking-wider text-amber-600 mt-1 flex items-center gap-1">
-                                <AlertTriangle className="w-3.5 h-3.5"/> Pending Verification
-                              </p>
-                            </div>
-                            <span className="text-sm font-black text-slate-800 whitespace-nowrap">{formatMYR(tx.amount)}</span>
-                          </div>
-                          <div className="flex gap-2">
-                            <select 
-                              className="flex-1 min-w-[120px] bg-white border border-amber-200 text-xs font-medium rounded-xl px-3 py-2 outline-none focus:ring-2 focus:ring-amber-500"
-                              defaultValue={tx.category}
-                              id={`cat-select-${tx.id}`}
-                            >
-                              <option value="uncategorized">Select category...</option>
-                              {mainCategories.map(main => (
-                                <optgroup key={main.id} label={main.name}>
-                                  {getSubCategories(main.id).map(sub => (
-                                    <option key={sub.id} value={`${main.name} > ${sub.name}`}>{sub.name}</option>
-                                  ))}
-                                  {getSubCategories(main.id).length === 0 && (
-                                    <option value={main.name}>{main.name} (General)</option>
-                                  )}
-                                </optgroup>
-                              ))}
-                            </select>
-                            <button 
-                              onClick={() => handleApproveTransaction(
-                                tx.id, 
-                                document.getElementById(`cat-select-${tx.id}`).value
-                              )}
-                              className="w-9 h-9 bg-amber-500 hover:bg-amber-600 text-white rounded-xl shadow-sm transition-colors flex items-center justify-center shrink-0"
-                              title="Approve transaction"
-                            >
-                              <Check className="w-4 h-4" />
-                            </button>
-                            <button 
-                              onClick={() => handleDeleteTransaction(tx.id, tx.description)}
-                              className="w-9 h-9 bg-red-100 border border-red-200 text-red-600 rounded-xl hover:bg-red-200/80 transition-colors flex items-center justify-center shrink-0"
-                              title="Delete transaction"
-                            >
-                              <Trash2 className="w-4 h-4" />
-                            </button>
-                          </div>
-                        </div>
-                      )
-                    }
 
                     const editIsIncome = !editData.source_account_id && editData.destination_account_id
                     const editIsExpense = editData.source_account_id && !editData.destination_account_id
@@ -436,7 +391,19 @@ export const ActionLedger = ({
                               )}
                             </div>
 
-                            <div className="grid grid-cols-2 gap-3">
+                            {/* Date & Amount Row */}
+                            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                              <div>
+                                <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1.5">Date</label>
+                                <input
+                                  type="date"
+                                  value={editData.transaction_date}
+                                  onChange={(e) => setEditData({ ...editData, transaction_date: e.target.value })}
+                                  onKeyDown={handleKeyDown}
+                                  className="w-full bg-white border border-slate-200 focus:ring-slate-900 rounded-xl px-3 py-2.5 text-sm outline-none focus:ring-2 focus:border-transparent transition-all"
+                                />
+                              </div>
+
                               <div>
                                 <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1.5">Amount (RM)</label>
                                 <input
@@ -458,6 +425,7 @@ export const ActionLedger = ({
                                   <p className="mt-1 text-[11px] text-red-500 font-medium">{editErrors.amount}</p>
                                 )}
                               </div>
+
                               <div>
                                 <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1.5">Category</label>
                                 <select

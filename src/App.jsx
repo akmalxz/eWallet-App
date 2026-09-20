@@ -227,10 +227,15 @@ export default function App() {
     statusTimeoutRef.current = setTimeout(() => setOmnibarStatus({ type: '', message: '' }), 4000)
   }
 
-  const handleApproveTransaction = async (id, updatedCategory) => {
+  const handleApproveTransaction = async (id, updatedCategory, updatedDate = null) => {
     if (!updatedCategory || updatedCategory === 'uncategorized') return showToast('Please select a category before approving', 'warning')
     try {
-      const { error } = await supabase.from('transactions').update({ needs_review: false, category: updatedCategory }).eq('id', id)
+      const updatePayload = { needs_review: false, category: updatedCategory }
+      if (updatedDate) {
+        updatePayload.transaction_date = new Date(`${updatedDate}T12:00:00`).toISOString()
+      }
+
+      const { error } = await supabase.from('transactions').update(updatePayload).eq('id', id)
       if (error) throw error
       showToast('Transaction approved successfully!', 'success')
       fetchAllData()
@@ -254,8 +259,16 @@ export default function App() {
       if (!updatedData.category || updatedData.category === 'uncategorized') return showToast('Please select a valid category', 'error')
 
       const updatePayload = {
-        description: updatedData.description.trim(), category: updatedData.category, amount: updatedData.amount,
-        source_account_id: updatedData.source_account_id || null, destination_account_id: updatedData.destination_account_id || null, needs_review: false
+        description: updatedData.description.trim(), 
+        category: updatedData.category, 
+        amount: updatedData.amount,
+        source_account_id: updatedData.source_account_id || null, 
+        destination_account_id: updatedData.destination_account_id || null, 
+        needs_review: false
+      }
+
+      if (updatedData.transaction_date) {
+        updatePayload.transaction_date = new Date(`${updatedData.transaction_date}T12:00:00`).toISOString()
       }
 
       const { data, error } = await supabase.from('transactions').update(updatePayload).eq('id', id).select()
@@ -387,9 +400,6 @@ export default function App() {
         {currentView === 'dashboard' && (
           <div className="space-y-4 md:space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
             <section>
-              <h2 className="text-xs md:text-sm font-bold text-slate-400 uppercase tracking-wider mb-3 md:mb-4 flex items-center gap-2">
-                <Wallet className="w-3 h-3 md:w-4 md:h-4" /> Node Balances
-              </h2>
               {isLoading ? (
                 <div className="flex items-center justify-center h-32 md:h-48">
                   <div className="flex flex-col items-center gap-3">

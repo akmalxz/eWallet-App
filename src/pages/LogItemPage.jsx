@@ -28,6 +28,7 @@ export function LogItemPage({
   const [amount, setAmount] = useState('')
   const [desc, setDesc] = useState('')
   const [category, setCategory] = useState('uncategorized')
+  const [txDate, setTxDate] = useState(new Date().toISOString().split('T')[0]) // NEW: default today YYYY-MM-DD
   const [source, setSource] = useState(accounts[0]?.id || '')
   const [dest, setDest] = useState(accounts[0]?.id || '')
   const [saving, setSaving] = useState(false)
@@ -41,6 +42,7 @@ export function LogItemPage({
         description: desc || 'Manual Entry', 
         amount: Math.abs(parseFloat(amount)), 
         category,
+        transaction_date: new Date(`${txDate}T12:00:00`).toISOString(), // NEW
         source_account_id: txType === 'income' ? null : source,
         destination_account_id: txType === 'expense' ? null : (txType === 'income' ? source : dest)
       }
@@ -72,7 +74,7 @@ export function LogItemPage({
               <Icon className="w-5 h-5" />
             </div>
             <div className="flex items-center gap-2">
-              <span className="font-bold text-slate-800 text-lg">{title}</span>
+              <span className="font-bold text-slate-800 text-base">{title}</span>
               {badgeCount > 0 && (
                 <span className="bg-amber-100 text-amber-700 text-[10px] font-black px-2 py-0.5 rounded-full">
                   {badgeCount}
@@ -121,7 +123,13 @@ export function LogItemPage({
                     </div>
                     <span className="text-sm font-bold text-slate-900 whitespace-nowrap">{formatMYR(tx.amount)}</span>
                   </div>
-                  <div className="flex gap-2">
+                  <div className="flex flex-col sm:flex-row gap-2">
+                    <input 
+                      type="date"
+                      id={`date-select-${tx.id}`}
+                      defaultValue={new Date(tx.transaction_date || tx.created_at).toISOString().split('T')[0]}
+                      className="bg-white/80 border border-amber-200 text-xs rounded-xl px-2.5 py-1.5 outline-none focus:ring-2 focus:ring-amber-500"
+                    />
                     <select 
                       id={`cat-select-${tx.id}`}
                       defaultValue={tx.category} 
@@ -138,10 +146,14 @@ export function LogItemPage({
                       ))}
                     </select>
                     <button 
-                      onClick={() => handleApproveTransaction(tx.id, document.getElementById(`cat-select-${tx.id}`).value)} 
-                      className="bg-amber-500 hover:bg-amber-600 text-white p-2 rounded-xl transition-colors shadow-sm"
+                        onClick={() => handleApproveTransaction(
+                            tx.id,
+                            document.getElementById(`cat-select-${tx.id}`).value,
+                            document.getElementById(`date-select-${tx.id}`).value
+                        )} 
+                        className="bg-amber-500 hover:bg-amber-600 text-white p-2 rounded-xl transition-colors shadow-sm flex items-center justify-center shrink-0"
                     >
-                      <Check className="w-4 h-4" />
+                        <Check className="w-4 h-4" />
                     </button>
                   </div>
                 </div>
@@ -161,10 +173,20 @@ export function LogItemPage({
           </div>
 
           <form onSubmit={handleSubmit} className="space-y-4">
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+              <div>
+                <label className="block text-xs font-bold text-slate-500 uppercase mb-1">Date</label>
+                <input 
+                  type="date" 
+                  required 
+                  value={txDate} 
+                  onChange={(e) => setTxDate(e.target.value)} 
+                  className="w-full bg-white/60 border border-white/40 rounded-xl py-2 px-3 outline-none focus:ring-2 focus:ring-blue-500 text-xs sm:text-sm transition-all" 
+                />
+              </div>
               <div>
                 <label className="block text-xs font-bold text-slate-500 uppercase mb-1">Amount</label>
-                <input type="number" step="0.01" required value={amount} onChange={(e) => setAmount(e.target.value)} className="w-full bg-white/60 border border-white/40 rounded-xl py-2 px-3 outline-none focus:ring-2 focus:ring-blue-500 transition-all" placeholder="0.00" />
+                <input type="number" step="0.01" required value={amount} onChange={(e) => setAmount(e.target.value)} className="w-full bg-white/60 border border-white/40 rounded-xl py-2 px-3 outline-none focus:ring-2 focus:ring-blue-500 transition-all text-sm" placeholder="0.00" />
               </div>
               <div>
                 <label className="block text-xs font-bold text-slate-500 uppercase mb-1">Category</label>
@@ -233,15 +255,9 @@ export function LogItemPage({
           </div>
         </AccordionSection>
 
-        {/* SECTION 4: ACTION LEDGER (Static Section) */}
-        <div className="mt-8 mb-4 flex items-center gap-2 px-2">
-          <div className="p-2 rounded-lg bg-slate-200 text-slate-600">
-            <List className="w-4 h-4" />
-          </div>
-          <h2 className="text-lg font-bold text-slate-800">Action Ledger</h2>
-        </div>
-        
-        <ActionLedger 
+        {/* SECTION 4: ACTION LEDGER */}
+        <div className="mt-8 h-[600px] flex flex-col">
+          <ActionLedger 
             recentTransactions={verifiedTransactions} // Only pass verified items
             mainCategories={mainCategories} 
             getSubCategories={getSubCategories}
@@ -252,7 +268,8 @@ export function LogItemPage({
             isRefreshing={isRefreshing} 
             accounts={accounts} 
             onAddTransaction={() => setActiveSection('log')} 
-        />
+          />
+        </div>
 
       </div>
     </div>
