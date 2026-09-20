@@ -189,7 +189,7 @@ export function ProfilePage({
         <div className="bg-slate-900 p-4 rounded-full text-white"><User className="w-8 h-8" /></div>
         <div className="flex-1">
           <h2 className="text-lg font-bold text-slate-900">Your Vault</h2>
-          <p className="text-sm text-slate-500">{user?.email}</p>
+          <p className="text-xs text-slate-500">{user?.email}</p>
         </div>
         <button onClick={() => supabase.auth.signOut()} className="bg-red-50/80 text-red-500 p-3 rounded-xl hover:bg-red-100 transition-colors">
           <LogOut className="w-5 h-5"/>
