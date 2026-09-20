@@ -157,7 +157,7 @@ export function ProfilePage({
         <div className="p-2.5 bg-slate-100 rounded-xl text-slate-900">
           <Icon className="w-5 h-5" />
         </div>
-        <span className="font-bold text-slate-800 text-lg">{title}</span>
+        <span className="font-bold text-slate-800 text-base">{title}</span>
       </div>
       <ChevronRight className="w-5 h-5 text-slate-400" />
     </button>
@@ -167,7 +167,7 @@ export function ProfilePage({
     <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-[100] flex items-center justify-center p-4 animate-in fade-in duration-200">
       <div className="bg-white/90 backdrop-blur-xl border border-white/50 rounded-3xl max-w-md w-full p-6 shadow-2xl max-h-[85vh] flex flex-col">
         <div className="flex justify-between items-center mb-6 shrink-0">
-          <h2 className="text-xl font-bold text-slate-900">{title}</h2>
+          <h2 className="text-lg font-bold text-slate-900">{title}</h2>
           <button onClick={closeModal} className="p-2 hover:bg-slate-200/50 rounded-full transition-colors">
             <X className="w-5 h-5 text-slate-500"/>
           </button>
@@ -188,7 +188,7 @@ export function ProfilePage({
       <div className="bg-white/60 backdrop-blur-xl border border-white/40 p-6 rounded-3xl shadow-sm flex items-center gap-4 mb-8">
         <div className="bg-slate-900 p-4 rounded-full text-white"><User className="w-8 h-8" /></div>
         <div className="flex-1">
-          <h2 className="text-xl font-bold text-slate-900">Your Vault</h2>
+          <h2 className="text-lg font-bold text-slate-900">Your Vault</h2>
           <p className="text-sm text-slate-500">{user?.email}</p>
         </div>
         <button onClick={() => supabase.auth.signOut()} className="bg-red-50/80 text-red-500 p-3 rounded-xl hover:bg-red-100 transition-colors">
@@ -220,7 +220,7 @@ export function ProfilePage({
             ))}
           </div>
           <form onSubmit={handleAddBank} className="border-t border-slate-200/50 pt-6 space-y-3">
-            <h3 className="text-xs font-bold text-slate-500 uppercase">Add New Node</h3>
+            <h3 className="text-xs font-bold text-slate-500 uppercase">Add New Account</h3>
             <input type="text" required value={newBankName} onChange={(e) => setNewBankName(e.target.value)} className="w-full bg-white/60 border border-white/40 rounded-xl py-2 px-3 text-sm outline-none focus:ring-2 focus:ring-blue-500" placeholder="Bank Name (e.g. Maybank)" />
             <select value={newBankClass} onChange={(e) => setNewBankClass(e.target.value)} className="w-full bg-white/60 border border-white/40 rounded-xl py-2 px-3 text-sm outline-none focus:ring-2 focus:ring-blue-500">
               {classifications.map(c => <option key={c.id} value={c.key_name}>{c.label}</option>)}

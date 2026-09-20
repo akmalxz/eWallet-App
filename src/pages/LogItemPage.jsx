@@ -61,7 +61,7 @@ export function LogItemPage({
   }
 
   // Reusable Accordion Wrapper with Smooth Slide Animation
-    // Reusable Accordion Wrapper with Smooth Slide Animation
+
   const AccordionSection = ({ id, title, icon: Icon, badgeCount, children }) => {
     const isOpen = activeSection === id
     return (

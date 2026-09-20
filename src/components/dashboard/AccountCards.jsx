@@ -93,9 +93,7 @@ export const AccountCards = ({
       {/* Header with balance toggle */}
       <div className="flex items-center justify-between mb-4">
         <div className="flex items-center gap-2">
-          <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">Accounts</span>
-          <span className="text-xs text-slate-300">•</span>
-          <span className="text-xs text-slate-400">{accounts.length} nodes</span>
+          <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">{accounts.length} Accounts</span>
         </div>
         <button
           onClick={toggleBalances}

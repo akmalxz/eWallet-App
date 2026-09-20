@@ -322,7 +322,7 @@ export const SettingsModal = ({
                 : 'text-slate-400 hover:text-slate-600'
             }`}
           >
-            Nodes
+            Accounts
           </button>
           <button 
             onClick={() => setActiveTab('commitments')} 
@@ -491,7 +491,7 @@ export const SettingsModal = ({
               })}
             </div>
             <form onSubmit={handleAddBank} className="border-t pt-4 space-y-4">
-              <h3 className="text-xs font-bold text-slate-500 uppercase">Add New Node</h3>
+              <h3 className="text-xs font-bold text-slate-500 uppercase">Add New Account</h3>
               <input 
                 type="text" 
                 required 
@@ -514,7 +514,7 @@ export const SettingsModal = ({
                 disabled={saving || !newBankName.trim()} 
                 className="w-full bg-slate-900 hover:bg-slate-800 text-white font-medium py-3 rounded-xl text-sm transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                Add Node
+                Add Account
               </button>
             </form>
           </div>
