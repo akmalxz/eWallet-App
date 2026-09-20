@@ -66,7 +66,7 @@ export const ActionLedger = ({
           label, 
           date: dateKey, 
           transactions: [],
-          isExpanded: isToday // ✅ Today expanded by default
+          isExpanded: isToday
         }
       }
       groups[dateKey].transactions.push(tx)

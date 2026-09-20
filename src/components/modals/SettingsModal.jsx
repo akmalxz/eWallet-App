@@ -1,7 +1,7 @@
 // src/components/modals/SettingsModal.jsx
 import { useState } from 'react'
 import { supabase } from '../../lib/supabaseClient'
-import { X, Plus, Trash2, CornerDownRight, Hash, Calendar, Target } from 'lucide-react'
+import { X, Plus, Trash2, CornerDownRight, Hash, Calendar, Target, CheckCircle, PauseCircle } from 'lucide-react'
 import { formatMYR } from '../../utils/formatters'
 
 export const SettingsModal = ({ 
@@ -556,7 +556,7 @@ export const SettingsModal = ({
                           }`}
                           title={comm.is_active ? 'Deactivate' : 'Activate'}
                         >
-                          {comm.is_active ? '✅' : '⏸️'}
+                          {comm.is_active ? <CheckCircle className="w-4 h-4" /> : <PauseCircle className="w-4 h-4" />}
                         </button>
                         <button 
                           onClick={() => handleDeleteCommitment(comm.id, comm.name)}

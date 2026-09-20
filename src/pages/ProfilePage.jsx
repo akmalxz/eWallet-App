@@ -2,11 +2,56 @@
 import { useState } from 'react'
 import { supabase } from '../lib/supabaseClient'
 import { 
-  User, LogOut, Plus, Trash2, CornerDownRight, 
+  User, LogOut, Plus, Trash2, CornerDownRight, CheckCircle, PauseCircle,
   Target, Building2, TrendingUp, TrendingDown, ChevronRight, X
 } from 'lucide-react'
 
 import { formatMYR } from '../utils/formatters' 
+
+const ModalWrapper = ({ title, closeModal, children }) => (
+  <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-[100] flex items-center justify-center p-4 animate-in fade-in duration-200">
+    <div className="bg-white/90 backdrop-blur-xl border border-white/50 rounded-3xl max-w-md w-full p-6 shadow-2xl max-h-[85vh] flex flex-col">
+      <div className="flex justify-between items-center mb-6 shrink-0">
+        <h2 className="text-lg font-bold text-slate-900">{title}</h2>
+        <button onClick={closeModal} className="p-2 hover:bg-slate-200/50 rounded-full transition-colors">
+          <X className="w-5 h-5 text-slate-500"/>
+        </button>
+      </div>
+      <div className="overflow-y-auto flex-1 pr-2 scrollbar-hide space-y-6">
+        {children}
+      </div>
+    </div>
+  </div>
+)
+
+const SetupButton = ({ id, title, icon: Icon, activeModal, openModal }) => {
+  const isThisActive = activeModal === id;
+
+  return (
+    <button 
+      onClick={() => openModal(id)} 
+      className={`w-full bg-white/90 backdrop-blur-xl border border-white/60 rounded-3xl p-5 mb-4 flex items-center justify-between transition-all duration-300 shadow-sm outline-none group ${
+        isThisActive ? 'ring-2 ring-slate-900 shadow-md scale-[1.01]' : 'hover:bg-white/100 hover:shadow-md hover:-translate-y-0.5'
+      }`}
+    >
+      <div className="flex items-center gap-4">
+        <div className={`p-2.5 rounded-xl transition-colors duration-300 ${
+          isThisActive ? 'bg-slate-900 text-white' : 'bg-slate-100 text-slate-600 group-hover:bg-slate-200'
+        }`}>
+          <Icon className="w-5 h-5" />
+        </div>
+        <span className={`font-bold text-base transition-colors ${
+          isThisActive ? 'text-slate-900' : 'text-slate-800'
+        }`}>
+          {title}
+        </span>
+      </div>
+      <ChevronRight className={`w-5 h-5 transition-transform duration-300 ${
+        isThisActive ? 'text-slate-900 rotate-90' : 'text-slate-400 group-hover:translate-x-1'
+      }`} />
+    </button>
+  )
+}
 
 export function ProfilePage({ 
   user, accounts, categories, getSubCategories, classifications, 
@@ -144,43 +189,6 @@ export function ProfilePage({
     } catch (error) { showToast(error.message, 'error') }
   }
 
-  // ============================================
-  // UI COMPONENTS
-  // ============================================
-  const SetupButton = ({ id, title, icon: Icon }) => (
-    <button 
-      onClick={() => openModal(id)} 
-      className="w-full bg-white/60 backdrop-blur-xl border border-white/40 rounded-3xl p-5 mb-4 flex items-center justify-between hover:bg-white/80 transition-all shadow-sm outline-none"
-    >
-      <div className="flex items-center gap-4">
-        {/* Switched to simple slate/black icons */}
-        <div className="p-2.5 bg-slate-100 rounded-xl text-slate-900">
-          <Icon className="w-5 h-5" />
-        </div>
-        <span className="font-bold text-slate-800 text-base">{title}</span>
-      </div>
-      <ChevronRight className="w-5 h-5 text-slate-400" />
-    </button>
-  )
-
-  const ModalWrapper = ({ title, children }) => (
-    <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-[100] flex items-center justify-center p-4 animate-in fade-in duration-200">
-      <div className="bg-white/90 backdrop-blur-xl border border-white/50 rounded-3xl max-w-md w-full p-6 shadow-2xl max-h-[85vh] flex flex-col">
-        <div className="flex justify-between items-center mb-6 shrink-0">
-          <h2 className="text-lg font-bold text-slate-900">{title}</h2>
-          <button onClick={closeModal} className="p-2 hover:bg-slate-200/50 rounded-full transition-colors">
-            <X className="w-5 h-5 text-slate-500"/>
-          </button>
-        </div>
-        
-        {/* Scrollable Form Content */}
-        <div className="overflow-y-auto flex-1 pr-2 scrollbar-hide space-y-6">
-          {children}
-        </div>
-      </div>
-    </div>
-  )
-
   return (
     <div className="max-w-xl mx-auto animate-in fade-in slide-in-from-bottom-4 duration-500 pb-12">
       
@@ -197,17 +205,19 @@ export function ProfilePage({
       </div>
 
       {/* Trigger Buttons */}
-      <SetupButton id="banks" title="Bank Accounts" icon={Building2} />
-      <SetupButton id="income" title="Income Categories" icon={TrendingUp} />
-      <SetupButton id="expense" title="Expense Categories" icon={TrendingDown} />
-      <SetupButton id="commitments" title="Monthly Commitments" icon={Target} />
+      <div className="space-y-4">
+        <SetupButton id="banks" title="Bank Accounts" icon={Building2} activeModal={activeModal} openModal={openModal} />
+        <SetupButton id="income" title="Income Categories" icon={TrendingUp} activeModal={activeModal} openModal={openModal} />
+        <SetupButton id="expense" title="Expense Categories" icon={TrendingDown} activeModal={activeModal} openModal={openModal} />
+        <SetupButton id="commitments" title="Monthly Commitments" icon={Target} activeModal={activeModal} openModal={openModal} />
+      </div>
 
       {/* ============================================ */}
       {/* MODALS */}
       {/* ============================================ */}
 
       {activeModal === 'banks' && (
-        <ModalWrapper title="Bank Accounts">
+        <ModalWrapper title="Bank Accounts" closeModal={closeModal}>
           <div className="space-y-3">
             {accounts.map(acc => (
               <div key={acc.id} className="flex justify-between items-center bg-white/50 p-3 rounded-xl border border-white/60">
@@ -231,7 +241,7 @@ export function ProfilePage({
       )}
 
       {activeModal === 'income' && (
-        <ModalWrapper title="Income Setup">
+        <ModalWrapper title="Income Setup" closeModal={closeModal}>
           {!incomeCategory ? (
             <div className="text-center p-4">
               <p className="text-sm text-slate-500 mb-3">You don't have an Income category set up yet.</p>
@@ -248,7 +258,17 @@ export function ProfilePage({
               
               {addingSubToId === incomeCategory.id ? (
                 <div className="flex gap-2 pt-4">
-                  <input autoFocus type="text" value={newSubCategoryName} onChange={(e) => setNewSubCategoryName(e.target.value)} placeholder="e.g. Salary, Side Hustle" className="flex-1 bg-white/60 border border-white/40 rounded-xl px-3 py-2 text-sm outline-none focus:border-blue-500" />
+                  <input 
+                    id="income-subcat-name"
+                    name="income-subcat-name"
+                    aria-label="Income Subcategory Name"
+                    autoFocus 
+                    type="text" 
+                    value={newSubCategoryName} 
+                    onChange={(e) => setNewSubCategoryName(e.target.value)} 
+                    placeholder="e.g. Salary, Side Hustle" 
+                    className="flex-1 bg-white/60 border border-white/40 rounded-xl px-3 py-2 text-sm outline-none focus:border-blue-500" 
+                  />
                   <button onClick={() => handleAddSubCategory(incomeCategory.id)} className="bg-slate-900 text-white px-4 py-2 rounded-xl text-sm font-bold">Save</button>
                 </div>
               ) : (
@@ -262,7 +282,7 @@ export function ProfilePage({
       )}
 
       {activeModal === 'expense' && (
-        <ModalWrapper title="Expense Setup">
+        <ModalWrapper title="Expense Setup" closeModal={closeModal} >
           <div className="space-y-4">
             {expenseCategories.map(main => (
               <div key={main.id} className="bg-white/40 border border-white/60 rounded-xl overflow-hidden">
@@ -282,7 +302,17 @@ export function ProfilePage({
                   ))}
                   {addingSubToId === main.id && (
                     <div className="pl-6 pr-2 py-2 flex gap-2">
-                      <input autoFocus type="text" value={newSubCategoryName} onChange={(e) => setNewSubCategoryName(e.target.value)} placeholder="Subcategory..." className="flex-1 bg-white/80 border border-white/60 rounded-lg px-2 py-1.5 text-xs outline-none focus:border-blue-500" />
+                      <input 
+                        id={`expense-subcat-${main.id}`}
+                        name={`expense-subcat-${main.id}`}
+                        aria-label="Expense Subcategory Name"
+                        autoFocus 
+                        type="text" 
+                        value={newSubCategoryName} 
+                        onChange={(e) => setNewSubCategoryName(e.target.value)} 
+                        placeholder="Subcategory..." 
+                        className="flex-1 bg-white/80 border border-white/60 rounded-lg px-2 py-1.5 text-xs outline-none focus:border-blue-500" 
+                      />
                       <button onClick={() => handleAddSubCategory(main.id)} className="bg-slate-900 text-white px-3 py-1.5 rounded-lg text-xs font-bold">Save</button>
                     </div>
                   )}
@@ -293,7 +323,17 @@ export function ProfilePage({
           <form onSubmit={handleAddMainCategory} className="border-t border-slate-200/50 pt-6 space-y-3">
             <h3 className="text-xs font-bold text-slate-500 uppercase">New Master Expense Category</h3>
             <div className="flex gap-2">
-              <input type="text" required value={newMainCategoryName} onChange={(e) => setNewMainCategoryName(e.target.value)} className="flex-1 bg-white/60 border border-white/40 rounded-xl py-2 px-3 text-sm outline-none focus:ring-2 focus:ring-blue-500" placeholder="e.g. Housing, Transportation" />
+              <label htmlFor="new-master-category" className="sr-only">Category Name</label>
+              <input 
+                id="new-master-category"
+                name="new-master-category"
+                type="text" 
+                required 
+                value={newMainCategoryName} 
+                onChange={(e) => setNewMainCategoryName(e.target.value)} 
+                className="flex-1 bg-white/60 border border-white/40 rounded-xl py-2 px-3 text-sm outline-none focus:ring-2 focus:ring-blue-500" 
+                placeholder="e.g. Housing, Transportation" 
+              />
               <button type="submit" disabled={saving || !newMainCategoryName} className="bg-slate-900 text-white font-medium px-4 py-2 rounded-xl text-sm">Add</button>
             </div>
           </form>
@@ -301,7 +341,7 @@ export function ProfilePage({
       )}
 
       {activeModal === 'commitments' && (
-        <ModalWrapper title="Commitments">
+        <ModalWrapper title="Commitments" closeModal={closeModal}>
           <div className="space-y-3">
             {commitments.length === 0 ? (
               <p className="text-sm text-slate-500 text-center py-4">No fixed commitments tracked yet.</p>
@@ -313,8 +353,16 @@ export function ProfilePage({
                     <p className="text-xs text-slate-500 mt-0.5">{formatMYR(comm.amount)} on day {comm.due_day_of_month}</p>
                   </div>
                   <div className="flex gap-1">
-                    <button onClick={() => handleToggleCommitment(comm.id, comm.is_active)} className="p-1.5 text-slate-400 hover:text-slate-600" title="Toggle active status">
-                      {comm.is_active ? '✅' : '⏸️'}
+                    <button 
+                      onClick={() => handleToggleCommitment(comm.id, comm.is_active)}
+                      className={`p-1.5 rounded-lg transition-colors ${
+                        comm.is_active 
+                          ? 'text-emerald-500 hover:text-emerald-600 bg-emerald-50/50' 
+                          : 'text-slate-400 hover:text-slate-600 bg-slate-100/50'
+                      }`}
+                      title={comm.is_active ? 'Deactivate' : 'Activate'}
+                    >
+                      {comm.is_active ? <CheckCircle className="w-4 h-4" /> : <PauseCircle className="w-4 h-4" />}
                     </button>
                     <button onClick={() => handleDeleteCommitment(comm.id, comm.name)} className="text-red-400 hover:text-red-600 p-1.5"><Trash2 className="w-4 h-4"/></button>
                   </div>
@@ -324,15 +372,65 @@ export function ProfilePage({
           </div>
           <form onSubmit={handleAddCommitment} className="border-t border-slate-200/50 pt-6 space-y-3">
             <h3 className="text-xs font-bold text-slate-500 uppercase">Add New Commitment</h3>
-            <input type="text" required value={newCommitmentName} onChange={(e) => setNewCommitmentName(e.target.value)} className="w-full bg-white/60 border border-white/40 rounded-xl py-2 px-3 text-sm outline-none focus:ring-2 focus:ring-blue-500" placeholder="e.g. Netflix, Rent" />
+            
+            <label htmlFor="comm-name" className="sr-only">Commitment Name</label>
+            <input 
+              id="comm-name"
+              name="comm-name"
+              type="text" 
+              required 
+              value={newCommitmentName} 
+              onChange={(e) => setNewCommitmentName(e.target.value)} 
+              className="w-full bg-white/60 border border-white/40 rounded-xl py-2 px-3 text-sm outline-none focus:ring-2 focus:ring-blue-500" 
+              placeholder="e.g. Netflix, Rent" 
+            />
+            
             <div className="grid grid-cols-2 gap-3">
-              <input type="number" required step="0.01" min="0.01" value={newCommitmentAmount} onChange={(e) => setNewCommitmentAmount(e.target.value)} className="w-full bg-white/60 border border-white/40 rounded-xl py-2 px-3 text-sm outline-none focus:ring-2 focus:ring-blue-500" placeholder="Amount" />
-              <input type="number" required min="1" max="31" value={newCommitmentDueDay} onChange={(e) => setNewCommitmentDueDay(e.target.value)} className="w-full bg-white/60 border border-white/40 rounded-xl py-2 px-3 text-sm outline-none focus:ring-2 focus:ring-blue-500" placeholder="Due day (1-31)" />
+              <div>
+                <label htmlFor="comm-amount" className="sr-only">Amount</label>
+                <input 
+                  id="comm-amount"
+                  name="comm-amount"
+                  type="number" 
+                  required 
+                  step="0.01" 
+                  min="0.01" 
+                  value={newCommitmentAmount} 
+                  onChange={(e) => setNewCommitmentAmount(e.target.value)} 
+                  className="w-full bg-white/60 border border-white/40 rounded-xl py-2 px-3 text-sm outline-none focus:ring-2 focus:ring-blue-500" 
+                  placeholder="Amount" 
+                />
+              </div>
+              <div>
+                <label htmlFor="comm-day" className="sr-only">Due Day</label>
+                <input 
+                  id="comm-day"
+                  name="comm-day"
+                  type="number" 
+                  required 
+                  min="1" 
+                  max="31" 
+                  value={newCommitmentDueDay} 
+                  onChange={(e) => setNewCommitmentDueDay(e.target.value)} 
+                  className="w-full bg-white/60 border border-white/40 rounded-xl py-2 px-3 text-sm outline-none focus:ring-2 focus:ring-blue-500" 
+                  placeholder="Due day (1-31)" 
+                />
+              </div>
             </div>
-            <select required value={newCommitmentAccount} onChange={(e) => setNewCommitmentAccount(e.target.value)} className="w-full bg-white/60 border border-white/40 rounded-xl py-2 px-3 text-sm outline-none focus:ring-2 focus:ring-blue-500">
+            
+            <label htmlFor="comm-account" className="sr-only">Deduction Account</label>
+            <select 
+              id="comm-account"
+              name="comm-account"
+              required 
+              value={newCommitmentAccount} 
+              onChange={(e) => setNewCommitmentAccount(e.target.value)} 
+              className="w-full bg-white/60 border border-white/40 rounded-xl py-2 px-3 text-sm outline-none focus:ring-2 focus:ring-blue-500"
+            >
               <option value="">Select deduct account...</option>
               {accounts.map(a => <option key={a.id} value={a.id}>{a.account_name}</option>)}
             </select>
+            
             <button type="submit" disabled={saving} className="w-full bg-slate-900 hover:bg-slate-800 text-white font-medium py-3 rounded-xl text-sm transition-colors">Add Commitment</button>
           </form>
         </ModalWrapper>

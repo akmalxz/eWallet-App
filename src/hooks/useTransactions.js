@@ -14,18 +14,18 @@ export const useTransactions = (user, showToast) => {
 
   const fetchAllData = useCallback(async () => {
     if (!user) {
-      console.log('⏳ No user yet, skipping fetch')
+      //console.log('⏳ No user yet, skipping fetch')
       setIsLoading(false)
       return
     }
 
-    console.log('🔄 Fetching data for user:', user.id)
+    //console.log('🔄 Fetching data for user:', user.id)
     setIsLoading(true)
     setError(null)
     
     try {
       // Test connection first
-      console.log('📡 Testing database connection...')
+      //console.log('📡 Testing database connection...')
       const { error: testError } = await supabase
         .from('accounts')
         .select('id')
@@ -35,10 +35,10 @@ export const useTransactions = (user, showToast) => {
         console.error('❌ Database connection test failed:', testError)
         throw new Error(`Database connection failed: ${testError.message}`)
       }
-      console.log('✅ Database connection successful')
+      //console.log(' Database connection successful')
 
       // Fetch accounts - NORMALIZE account_id to id
-      console.log('📊 Fetching accounts...')
+      //console.log('📊 Fetching accounts...')
       const accResult = await supabase
         .from('v_account_balances')
         .select('*')
@@ -49,7 +49,7 @@ export const useTransactions = (user, showToast) => {
         throw accResult.error
       }
       
-      // ✅ NORMALIZE: Rename account_id to id for consistent usage
+      //  NORMALIZE: Rename account_id to id for consistent usage
       const normalizedAccounts = (accResult.data || []).map(acc => {
         const { account_id, ...rest } = acc
         return {
@@ -58,12 +58,12 @@ export const useTransactions = (user, showToast) => {
         }
       })
       
-      console.log(`✅ Accounts loaded: ${normalizedAccounts.length} found`)
+      //console.log(` Accounts loaded: ${normalizedAccounts.length} found`)
       setAccounts(normalizedAccounts)
 
       // Create default accounts if none exist
       if (normalizedAccounts.length === 0) {
-        console.log('📝 No accounts found, creating defaults...')
+        //console.log('📝 No accounts found, creating defaults...')
         const defaultAccounts = [
           { user_id: user.id, account_name: 'Maybank', classification: 'hub' },
           { user_id: user.id, account_name: 'TNG eWallet', classification: 'ewallet' },
@@ -78,7 +78,7 @@ export const useTransactions = (user, showToast) => {
         if (insertError) {
           console.error('❌ Failed to create default accounts:', insertError)
         } else {
-          console.log('✅ Default accounts created')
+          //console.log(' Default accounts created')
           // Re-fetch with normalization
           const { data: newAccounts } = await supabase
             .from('v_account_balances')
@@ -94,7 +94,7 @@ export const useTransactions = (user, showToast) => {
       }
 
       // Fetch categories
-      console.log('📊 Fetching categories...')
+      //console.log('📊 Fetching categories...')
       const catResult = await supabase
         .from('categories')
         .select('*')
@@ -104,10 +104,10 @@ export const useTransactions = (user, showToast) => {
         console.error('❌ Categories fetch error:', catResult.error)
         throw catResult.error
       }
-      console.log(`✅ Categories loaded: ${catResult.data?.length || 0} found`)
+      //console.log(` Categories loaded: ${catResult.data?.length || 0} found`)
 
       if (!catResult.data || catResult.data.length === 0) {
-        console.log('📝 No categories found, creating defaults...')
+        //console.log('📝 No categories found, creating defaults...')
         const { data: mainCats, error: mainError } = await supabase
           .from('categories')
           .insert([
@@ -122,7 +122,7 @@ export const useTransactions = (user, showToast) => {
         if (mainError) {
           console.error('❌ Failed to create default categories:', mainError)
         } else if (mainCats) {
-          console.log('✅ Default categories created')
+          //console.log(' Default categories created')
           const foodId = mainCats.find(c => c.name === 'Food & Beverages')?.id
           if (foodId) {
             await supabase.from('categories').insert([
@@ -143,7 +143,7 @@ export const useTransactions = (user, showToast) => {
       }
 
       // Fetch classifications - HANDLE 403 GRACEFULLY
-      console.log('📊 Fetching classifications...')
+      //console.log('📊 Fetching classifications...')
       const classResult = await supabase
         .from('classifications')
         .select('*')
@@ -158,10 +158,10 @@ export const useTransactions = (user, showToast) => {
         ]
         setClassifications(fallbackClass)
       } else {
-        console.log(`✅ Classifications loaded: ${classResult.data?.length || 0} found`)
+        //console.log(` Classifications loaded: ${classResult.data?.length || 0} found`)
         
         if (!classResult.data || classResult.data.length === 0) {
-          console.log('📝 No classifications found, creating defaults...')
+          //console.log('📝 No classifications found, creating defaults...')
           try {
             const defaultClass = [
               { user_id: user.id, key_name: 'hub', label: 'Main Hub', icon_name: 'Landmark', color_class: 'text-blue-500', bg_class: 'bg-blue-50' },
@@ -184,7 +184,7 @@ export const useTransactions = (user, showToast) => {
               ]
               setClassifications(fallbackClass)
             } else {
-              console.log('✅ Default classifications created')
+              //console.log(' Default classifications created')
               const { data: refreshedClass } = await supabase
                 .from('classifications')
                 .select('*')
@@ -206,7 +206,7 @@ export const useTransactions = (user, showToast) => {
       }
 
       // Fetch transactions
-      console.log('📊 Fetching transactions...')
+      //console.log('📊 Fetching transactions...')
       const txResult = await supabase
         .from('transactions')
         .select('*')
@@ -218,11 +218,11 @@ export const useTransactions = (user, showToast) => {
         console.error('❌ Transactions fetch error:', txResult.error)
         throw txResult.error
       }
-      console.log(`✅ Transactions loaded: ${txResult.data?.length || 0} found`)
+      //console.log(` Transactions loaded: ${txResult.data?.length || 0} found`)
       setRecentTransactions(txResult.data || [])
 
       // Fetch commitments
-      console.log('📊 Fetching commitments...')
+      //console.log('📊 Fetching commitments...')
       const commResult = await supabase
         .from('commitments')
         .select('*')
@@ -231,11 +231,11 @@ export const useTransactions = (user, showToast) => {
         console.error('❌ Commitments fetch error:', commResult.error)
         throw commResult.error
       }
-      console.log(`✅ Commitments loaded: ${commResult.data?.length || 0} found`)
+      //console.log(` Commitments loaded: ${commResult.data?.length || 0} found`)
       setCommitments(commResult.data || [])
 
       // Fetch ALL expenses for the current month
-      console.log('📊 Fetching monthly expenses...')
+      //console.log('📊 Fetching monthly expenses...')
       const startOfMonth = new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString()
       const { data: monthData, error: monthError } = await supabase
         .from('transactions')
@@ -247,10 +247,10 @@ export const useTransactions = (user, showToast) => {
         console.error('❌ Monthly expenses fetch error:', monthError)
       } else {
         setMonthlyExpenses(monthData || [])
-        console.log(`✅ Monthly expenses loaded: ${monthData?.length || 0} found`)
+        //console.log(` Monthly expenses loaded: ${monthData?.length || 0} found`)
       }
 
-      console.log('✅ All data loaded successfully!')
+      //console.log(' All data loaded successfully!')
       
     } catch (error) {
       console.error('❌ Error fetching data:', error)

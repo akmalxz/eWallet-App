@@ -254,7 +254,7 @@ serve(async (req) => {
   }
 
   try {
-    // ✅ SECURITY FIX: Use environment variable for secret
+    //  SECURITY FIX: Use environment variable for secret
     const WEBHOOK_SECRET = Deno.env.get('WEBHOOK_SECRET') ?? '';
     
     if (!WEBHOOK_SECRET) {
@@ -267,7 +267,7 @@ serve(async (req) => {
 
     const authHeader = req.headers.get('Authorization');
     
-    // ✅ SECURITY FIX: Proper token validation
+    //  SECURITY FIX: Proper token validation
     if (!authHeader || authHeader !== `Bearer ${WEBHOOK_SECRET}`) {
       return new Response(JSON.stringify({ error: 'Unauthorized - Invalid token' }), { 
         status: 401, 
@@ -303,7 +303,7 @@ serve(async (req) => {
       });
     }
 
-    // ✅ RATE LIMITING: Check rate limit per user
+    //  RATE LIMITING: Check rate limit per user
     const rateLimitCheck = checkRateLimit(userId);
     if (!rateLimitCheck.allowed) {
       return new Response(JSON.stringify({ error: rateLimitCheck.message }), {
@@ -400,7 +400,7 @@ serve(async (req) => {
       }
     };
 
-    // ✅ VALIDATION: Validate transaction before insert
+    //  VALIDATION: Validate transaction before insert
     const validation = validateTransaction(payload);
     if (!validation.valid) {
       return new Response(JSON.stringify({ 

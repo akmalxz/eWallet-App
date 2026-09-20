@@ -30,7 +30,7 @@ serve(async (req) => {
 
     if (error) throw error
 
-    console.log(`📋 Found ${commitments?.length || 0} commitments due today`)
+    //console.log(`📋 Found ${commitments?.length || 0} commitments due today`)
 
     const results = []
 
@@ -105,7 +105,7 @@ serve(async (req) => {
           transaction_id: inserted?.[0]?.id,
           is_overdraft: isOverdraft
         })
-        console.log(`✅ Processed: ${commitment.name} (${isOverdraft ? '⚠️ overdraft' : '✅'})`)
+        //console.log(` Processed: ${commitment.name} (${isOverdraft ? '⚠️ overdraft' : ''})`)
       }
     }
 
