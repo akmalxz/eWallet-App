@@ -301,22 +301,27 @@ export default function App() {
     return commitments.filter(c => c.account_id === activeRadarId)
   }, [commitments, activeRadarId])
 
+  // 1. Radar Engine (Universal View - Analyzes ALL active commitments)
   const radarStats = useMemo(() => {
-    const account = accounts.find(a => a.id === activeRadarId)
-    const currentBalance = account?.balance || 0
+    // Total available liquidity across all accounts
+    const currentBalance = accounts.reduce((sum, a) => sum + (a.balance || 0), 0)
     const currentMonth = new Date().getMonth()
     
-    const totalRequired = radarCommitments
+    // Total required for ALL unpaid active commitments this month
+    const totalRequired = commitments
       .filter(c => c.is_active && c.last_paid_month !== currentMonth)
       .reduce((sum, c) => sum + Number(c.amount), 0)
     
     const isSafe = currentBalance >= totalRequired
     
     return { 
-      currentBalance, totalRequired, isSafe, shortfall: isSafe ? 0 : totalRequired - currentBalance, 
-      name: account?.account_name || 'Select Account'
+      currentBalance, 
+      totalRequired, 
+      isSafe, 
+      shortfall: isSafe ? 0 : totalRequired - currentBalance, 
+      name: 'Total Vault' // Not used in UI anymore, but kept for object shape
     }
-  }, [accounts, radarCommitments, activeRadarId])
+  }, [accounts, commitments])
 
   // 2. Burn Rate Engine
   const velocityStats = useMemo(() => {
