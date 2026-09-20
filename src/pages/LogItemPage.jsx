@@ -61,93 +61,47 @@ export function LogItemPage({
   }
 
   // Reusable Accordion Wrapper with Smooth Slide Animation
-    const AccordionSection = ({ id, title, icon: Icon, badgeCount, children }) => {
+    // Reusable Accordion Wrapper with Smooth Slide Animation
+  const AccordionSection = ({ id, title, icon: Icon, badgeCount, children }) => {
     const isOpen = activeSection === id
-
     return (
-        <div
-        className={`bg-white/60 backdrop-blur-xl border border-white/40 rounded-3xl shadow-sm transition-all duration-300 mb-4 ${
-            isOpen
-            ? 'ring-2 ring-blue-500/20'
-            : 'hover:bg-white/80'
-        }`}
+      <div className={`bg-white/60 backdrop-blur-xl border border-white/40 rounded-3xl overflow-hidden shadow-sm transition-all duration-300 mb-4 ${isOpen ? 'ring-2 ring-blue-500/20' : 'hover:bg-white/80'}`}>
+        
+        {/* Header Button */}
+        <button 
+          onClick={() => setActiveSection(isOpen ? null : id)} 
+          className="w-full flex items-center justify-between p-5 transition-colors outline-none group"
         >
-        {/* Accordion Header */}
-        <button
-            type="button"
-            onClick={() => setActiveSection(isOpen ? null : id)}
-            className="w-full flex items-center justify-between p-5 transition-colors outline-none group rounded-3xl"
-        >
-            {/* Left side */}
-            <div className="flex items-center gap-4">
-            <div
-                className={`p-2.5 rounded-xl transition-all duration-300 ${
-                isOpen
-                    ? 'bg-blue-500 text-white shadow-md'
-                    : 'bg-slate-100 text-slate-500 group-hover:bg-slate-200 group-hover:text-slate-700'
-                }`}
-            >
-                <Icon className="w-5 h-5" />
+          <div className="flex items-center gap-4">
+            <div className={`p-2.5 rounded-xl transition-all duration-300 ${isOpen ? 'bg-blue-500 text-white shadow-md' : 'bg-slate-100 text-slate-500 group-hover:bg-slate-200 group-hover:text-slate-700'}`}>
+              <Icon className="w-5 h-5" />
             </div>
-
             <div className="flex items-center gap-2">
-                <span
-                className={`font-bold text-base transition-colors duration-300 ${
-                    isOpen ? 'text-blue-900' : 'text-slate-700'
-                }`}
-                >
-                {title}
+              <span className={`font-bold text-base transition-colors ${isOpen ? 'text-blue-900' : 'text-slate-700'}`}>{title}</span>
+              {badgeCount > 0 && (
+                <span className={`text-[10px] font-black px-2 py-0.5 rounded-full transition-all duration-300 ${isOpen ? 'bg-blue-100 text-blue-700' : 'bg-amber-100 text-amber-700'}`}>
+                  {badgeCount}
                 </span>
-
-                {badgeCount > 0 && (
-                <span
-                    className={`text-[10px] font-black px-2 py-0.5 rounded-full transition-all duration-300 ${
-                    isOpen
-                        ? 'bg-blue-100 text-blue-700'
-                        : 'bg-amber-100 text-amber-700'
-                    }`}
-                >
-                    {badgeCount}
-                </span>
-                )}
+              )}
             </div>
-            </div>
-
-            {/* Chevron */}
-            <div
-            className={`p-1 rounded-full transition-all duration-300 ${
-                isOpen
-                ? 'bg-blue-50 text-blue-500 rotate-180'
-                : 'text-slate-400 group-hover:bg-slate-100'
-            }`}
-            >
+          </div>
+          <div className={`p-1 rounded-full transition-all duration-300 ${isOpen ? 'bg-blue-50 text-blue-500 rotate-180' : 'text-slate-400 group-hover:bg-slate-100'}`}>
             <ChevronDown className="w-5 h-5" />
-            </div>
+          </div>
         </button>
-
-        {/* Accordion Content */}
-        <div
-            className={`grid transition-all duration-300 ease-[cubic-bezier(0.4,0,0.2,1)] ${
-            isOpen
-                ? 'grid-rows-[1fr] opacity-100'
-                : 'grid-rows-[0fr] opacity-0'
-            }`}
-        >
-            <div className="min-h-0 overflow-hidden">
-            <div
-                className={`px-5 pb-5 pt-0 border-t border-white/40 bg-white/30 transition-transform duration-300 ease-out ${
-                isOpen
-                    ? 'translate-y-0'
-                    : '-translate-y-2'
-                }`}
-            >
-                {children}
+        
+        {/* CSS Grid Smooth Slide Transition */}
+        <div className={`grid transition-[grid-template-rows,opacity] duration-500 ease-[cubic-bezier(0.34,1.56,0.64,1)] ${isOpen ? 'grid-rows-[1fr] opacity-100' : 'grid-rows-[0fr] opacity-0'}`}>
+          <div className="overflow-hidden min-h-0">
+            <div className="p-5 pt-0 border-t border-white/40 bg-white/30">
+              {children}
             </div>
-            </div>
+          </div>
         </div>
-        </div>
+        
+      </div>
     )
-    }
+  }
 
   return (
     <div className="max-w-2xl mx-auto animate-in fade-in slide-in-from-bottom-4 duration-500 pb-12">
@@ -183,11 +137,15 @@ export function LogItemPage({
                     <input 
                       type="date"
                       id={`date-select-${tx.id}`}
+                      name={`date-select-${tx.id}`}
+                      aria-label="Transaction Date"
                       defaultValue={new Date(tx.transaction_date || tx.created_at).toISOString().split('T')[0]}
                       className="bg-white/80 border border-amber-200 text-xs rounded-xl px-2.5 py-1.5 outline-none focus:ring-2 focus:ring-amber-500"
                     />
                     <select 
                       id={`cat-select-${tx.id}`}
+                      name={`cat-select-${tx.id}`}
+                      aria-label="Transaction Category"
                       defaultValue={tx.category} 
                       className="flex-1 bg-white/80 border border-amber-200 text-xs rounded-xl px-2 py-1.5 outline-none focus:ring-2 focus:ring-amber-500"
                     >
@@ -207,6 +165,7 @@ export function LogItemPage({
                             document.getElementById(`cat-select-${tx.id}`).value,
                             document.getElementById(`date-select-${tx.id}`).value
                         )} 
+                        aria-label="Approve Transaction"
                         className="bg-amber-500 hover:bg-amber-600 text-white p-2 rounded-xl transition-colors shadow-sm flex items-center justify-center shrink-0"
                     >
                         <Check className="w-4 h-4" />
@@ -243,8 +202,10 @@ export function LogItemPage({
           <form onSubmit={handleSubmit} className="space-y-4">
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
               <div>
-                <label className="block text-xs font-bold text-slate-500 uppercase mb-1">Date</label>
+                <label htmlFor="tx-date" className="block text-xs font-bold text-slate-500 uppercase mb-1">Date</label>
                 <input 
+                  id="tx-date"
+                  name="tx-date"
                   type="date" 
                   required 
                   value={txDate} 
@@ -253,12 +214,28 @@ export function LogItemPage({
                 />
               </div>
               <div>
-                <label className="block text-xs font-bold text-slate-500 uppercase mb-1">Amount</label>
-                <input type="number" step="0.01" required value={amount} onChange={(e) => setAmount(e.target.value)} className="w-full bg-white/60 border border-white/40 rounded-xl py-2 px-3 outline-none focus:ring-2 focus:ring-blue-500 transition-all text-sm" placeholder="0.00" />
+                <label htmlFor="tx-amount" className="block text-xs font-bold text-slate-500 uppercase mb-1">Amount</label>
+                <input 
+                  id="tx-amount"
+                  name="tx-amount"
+                  type="number" 
+                  step="0.01" 
+                  required 
+                  value={amount} 
+                  onChange={(e) => setAmount(e.target.value)} 
+                  className="w-full bg-white/60 border border-white/40 rounded-xl py-2 px-3 outline-none focus:ring-2 focus:ring-blue-500 transition-all text-sm" 
+                  placeholder="0.00" 
+                />
               </div>
               <div>
-                <label className="block text-xs font-bold text-slate-500 uppercase mb-1">Category</label>
-                <select value={category} onChange={(e) => setCategory(e.target.value)} className="w-full bg-white/60 border border-white/40 rounded-xl py-2 px-3 outline-none focus:ring-2 focus:ring-blue-500 text-sm transition-all">
+                <label htmlFor="tx-category" className="block text-xs font-bold text-slate-500 uppercase mb-1">Category</label>
+                <select 
+                  id="tx-category"
+                  name="tx-category"
+                  value={category} 
+                  onChange={(e) => setCategory(e.target.value)} 
+                  className="w-full bg-white/60 border border-white/40 rounded-xl py-2 px-3 outline-none focus:ring-2 focus:ring-blue-500 text-sm transition-all"
+                >
                   <option value="uncategorized">Select...</option>
                   {mainCategories.map(main => (
                     <optgroup key={main.id} label={main.name}>
@@ -273,28 +250,57 @@ export function LogItemPage({
             </div>
             
             <div>
-              <label className="block text-xs font-bold text-slate-500 uppercase mb-1">Description</label>
-              <input type="text" required value={desc} onChange={(e) => setDesc(e.target.value)} className="w-full bg-white/60 border border-white/40 rounded-xl py-2 px-3 outline-none focus:ring-2 focus:ring-blue-500 transition-all" placeholder="e.g. Salary, Lunch at Nasi Kandar" />
+              <label htmlFor="tx-desc" className="block text-xs font-bold text-slate-500 uppercase mb-1">Description</label>
+              <input 
+                id="tx-desc"
+                name="tx-desc"
+                type="text" 
+                required 
+                value={desc} 
+                onChange={(e) => setDesc(e.target.value)} 
+                className="w-full bg-white/60 border border-white/40 rounded-xl py-2 px-3 outline-none focus:ring-2 focus:ring-blue-500 transition-all" 
+                placeholder="e.g. Salary, Lunch at Nasi Kandar" 
+              />
             </div>
 
             {txType !== 'transfer' ? (
               <div>
-                <label className="block text-xs font-bold text-slate-500 uppercase mb-1">{txType === 'income' ? 'Deposit To' : 'Pay From'}</label>
-                <select value={source} onChange={(e) => setSource(e.target.value)} className="w-full bg-white/60 border border-white/40 rounded-xl py-2 px-3 outline-none focus:ring-2 focus:ring-blue-500 transition-all">
+                <label htmlFor="tx-source" className="block text-xs font-bold text-slate-500 uppercase mb-1">
+                  {txType === 'income' ? 'Deposit To' : 'Pay From'}
+                </label>
+                <select 
+                  id="tx-source"
+                  name="tx-source"
+                  value={source} 
+                  onChange={(e) => setSource(e.target.value)} 
+                  className="w-full bg-white/60 border border-white/40 rounded-xl py-2 px-3 outline-none focus:ring-2 focus:ring-blue-500 transition-all"
+                >
                   {accounts.map(a => <option key={a.id} value={a.id}>{a.account_name}</option>)}
                 </select>
               </div>
             ) : (
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-xs font-bold text-slate-500 uppercase mb-1">From</label>
-                  <select value={source} onChange={(e) => setSource(e.target.value)} className="w-full bg-white/60 border border-white/40 rounded-xl py-2 px-3 outline-none focus:ring-2 focus:ring-blue-500 transition-all">
+                  <label htmlFor="tx-transfer-from" className="block text-xs font-bold text-slate-500 uppercase mb-1">From</label>
+                  <select 
+                    id="tx-transfer-from"
+                    name="tx-transfer-from"
+                    value={source} 
+                    onChange={(e) => setSource(e.target.value)} 
+                    className="w-full bg-white/60 border border-white/40 rounded-xl py-2 px-3 outline-none focus:ring-2 focus:ring-blue-500 transition-all"
+                  >
                     {accounts.map(a => <option key={a.id} value={a.id}>{a.account_name}</option>)}
                   </select>
                 </div>
                 <div>
-                  <label className="block text-xs font-bold text-slate-500 uppercase mb-1">To</label>
-                  <select value={dest} onChange={(e) => setDest(e.target.value)} className="w-full bg-white/60 border border-white/40 rounded-xl py-2 px-3 outline-none focus:ring-2 focus:ring-blue-500 transition-all">
+                  <label htmlFor="tx-transfer-to" className="block text-xs font-bold text-slate-500 uppercase mb-1">To</label>
+                  <select 
+                    id="tx-transfer-to"
+                    name="tx-transfer-to"
+                    value={dest} 
+                    onChange={(e) => setDest(e.target.value)} 
+                    className="w-full bg-white/60 border border-white/40 rounded-xl py-2 px-3 outline-none focus:ring-2 focus:ring-blue-500 transition-all"
+                  >
                     {accounts.map(a => <option key={a.id} value={a.id}>{a.account_name}</option>)}
                   </select>
                 </div>

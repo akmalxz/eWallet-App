@@ -129,7 +129,7 @@ export const AccountCards = ({
           return (
             <div
               key={acc.id}
-              className="transition-all duration-500 cubic-bezier(0.34, 1.56, 0.64, 1) md:!transform-none md:!static"
+              className="transition-all duration-500 ease-[cubic-bezier(0.34,1.56,0.64,1)] md:!transform-none md:!static"
               style={{
                 transform: `translateY(${mobileTranslateY}px)`,
                 zIndex: isExpanded ? 30 : index + 1,
@@ -145,7 +145,7 @@ export const AccountCards = ({
                   }
                 }}
                 className={`
-                  relative rounded-2xl overflow-hidden shadow-xl transition-all duration-500 cubic-bezier(0.34, 1.56, 0.64, 1) h-full flex flex-col justify-between
+                  relative rounded-2xl overflow-hidden shadow-xl transition-all duration-500 ease-[cubic-bezier(0.34,1.56,0.64,1)] h-full flex flex-col justify-between
                   bg-gradient-to-br ${cardStyle.bg}
                   border ${cardStyle.border}
                   ${isExpanded ? 'shadow-2xl md:scale-100' : 'hover:shadow-lg md:hover:scale-[1.02] cursor-pointer md:cursor-default'}

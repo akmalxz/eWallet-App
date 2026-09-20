@@ -86,18 +86,15 @@ export const Header = ({
 
         {/* Mobile: Expanded Omnibar */}
         {isOmnibarExpanded && (
-          <form 
-            onSubmit={(e) => {
-              handleOmnibarSubmit(e)
-              setIsOmnibarExpanded(false)
-            }} 
-            className="mt-2 relative animate-in slide-in-from-top-2 duration-200"
-          >
-            <input 
-              type="text" 
-              value={omnibarText} 
-              onChange={(e) => setOmnibarText(e.target.value)} 
-              placeholder='Type "spent 15 at GX Bank..."' 
+          <form onSubmit={handleOmnibarSubmit} className="relative flex-1 max-w-2xl mx-auto">
+          <label htmlFor="omnibar-input" className="sr-only">Quick log transaction</label>
+          <input 
+            id="omnibar-input"
+            name="omnibar-input"
+            type="text" 
+            value={omnibarText}
+            onChange={(e) => setOmnibarText(e.target.value)}
+            placeholder="e.g. Spent RM 15 on lunch from TNG"
               className="w-full bg-white/80 border border-slate-200 shadow-inner rounded-xl py-3 pl-4 pr-12 text-sm focus:outline-none focus:border-blue-500" 
               disabled={isLoading}
               autoFocus

@@ -156,7 +156,7 @@ export const BurnRateWidget = ({
       ) : (
         /* Refined Empty State Indicator */
         <div className="flex flex-col items-center justify-center p-6 bg-white/50 border-2 border-slate-200 border-dashed rounded-2xl mt-2 animate-fadeIn">
-          <div className="w-12 h-12 bg-slate-100 rounded-full flex items-center justify-center text-slate-400 mb-3">
+          <div className="w-12 h-12 bg-slate-100 rounded-full flex items-center justify-around text-slate-400 mb-3">
             <Coffee className="w-6 h-6" />
           </div>
           <p className="text-sm font-bold text-slate-700">Engine Idle</p>
