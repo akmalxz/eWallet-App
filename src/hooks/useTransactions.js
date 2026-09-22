@@ -39,9 +39,11 @@ export const useTransactions = (user, showToast) => {
 
       // Fetch accounts - NORMALIZE account_id to id
       //console.log('📊 Fetching accounts...')
+      // Fetch accounts - NORMALIZE account_id to id
       const accResult = await supabase
         .from('v_account_balances')
         .select('*')
+        .eq('user_id', user.id)
         .order('balance', { ascending: false })
       
       if (accResult.error) {
@@ -83,6 +85,7 @@ export const useTransactions = (user, showToast) => {
           const { data: newAccounts } = await supabase
             .from('v_account_balances')
             .select('*')
+            .eq('user_id', user.id) // <-- Filter by authenticated user
             .order('balance', { ascending: false })
           
           const normalizedNewAccounts = (newAccounts || []).map(acc => {

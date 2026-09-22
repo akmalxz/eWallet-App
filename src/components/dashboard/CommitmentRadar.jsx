@@ -1,6 +1,7 @@
 // src/components/dashboard/CommitmentRadar.jsx
 import { useState } from 'react'
-import { Target, ShieldCheck, AlertTriangle, Calendar, Plus, Check, CheckCircle, ChevronDown, ChevronUp, Power, Trash2, Building2 } from 'lucide-react'
+import { Target, ShieldCheck, AlertTriangle, Calendar, Plus, Check, CheckCircle, 
+  ChevronDown, ChevronUp, Power, Trash2, Building2, Wallet, Landmark } from 'lucide-react'
 import { formatMYR } from '../../utils/formatters'
 
 export const CommitmentRadar = ({ 
@@ -87,20 +88,57 @@ export const CommitmentRadar = ({
 
       {/* Quick Status Info-Deck */}
       <div className="grid grid-cols-3 gap-3 mb-5">
-        <div className="bg-white p-3 rounded-xl border border-slate-100 shadow-sm text-center">
-          <p className="text-[9px] text-slate-400 uppercase font-bold tracking-wider mb-1">Total Liquidity</p>
-          <p className="text-sm font-black text-slate-800">{formatMYR(currentBalance)}</p>
+        
+        {/* Total Liquidity */}
+        <div className="group relative overflow-hidden rounded-xl border border-slate-200/80 bg-white p-3.5 shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md">
+          <div className="flex items-center justify-between gap-2 mb-2">
+
+            <span className="text-[9px] font-bold uppercase tracking-wider text-slate-400">
+              Total Liquidity
+            </span>
+          </div>
+
+          <p className="text-sm font-black tracking-tight text-slate-800">
+            {formatMYR(currentBalance)}
+          </p>
         </div>
-        <div className="bg-white p-3 rounded-xl border border-slate-100 shadow-sm text-center">
-          <p className="text-[9px] text-slate-400 uppercase font-bold tracking-wider mb-1">Required</p>
-          <p className="text-sm font-black text-slate-800">{formatMYR(totalRequired)}</p>
+
+
+        {/* Required */}
+        <div className="group relative overflow-hidden rounded-xl border border-slate-200/80 bg-white p-3.5 shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md">
+          <div className="flex items-center justify-between gap-2 mb-2">
+
+            <span className="text-[9px] font-bold uppercase tracking-wider text-slate-400">
+              Required
+            </span>
+          </div>
+
+          <p className="text-sm font-black tracking-tight text-slate-800">
+            {formatMYR(totalRequired)}
+          </p>
         </div>
-        <div className="bg-white p-3 rounded-xl border border-slate-100 shadow-sm text-center">
-          <p className="text-[9px] text-slate-400 uppercase font-bold tracking-wider mb-1">Due Items</p>
-          <p className={`text-sm font-black ${unpaidCommitments.length > 0 ? 'text-amber-600' : 'text-slate-800'}`}>
+
+
+        {/* Due Items */}
+        <div className="group relative overflow-hidden rounded-xl border border-slate-200/80 bg-white p-3.5 shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md">
+          <div className="flex items-center justify-between gap-2 mb-2">
+
+            <span className="text-[9px] font-bold uppercase tracking-wider text-slate-400">
+              Due Items
+            </span>
+          </div>
+
+          <p
+            className={`text-sm font-black tracking-tight ${
+              unpaidCommitments.length > 0
+                ? 'text-amber-600'
+                : 'text-slate-800'
+            }`}
+          >
             {unpaidCommitments.length}
           </p>
         </div>
+
       </div>
 
       {/* Unpaid Commitments Section */}
@@ -119,17 +157,19 @@ export const CommitmentRadar = ({
               const isOverdue = getDaysUntil(comm.due_day_of_month) < 0
               
               return (
-                <div key={comm.id} className={`group flex flex-col sm:flex-row sm:items-center justify-between p-3.5 rounded-xl transition-all duration-200 border shadow-sm ${
+                <div key={comm.id} className={`group flex flex-col sm:flex-row sm:items-center justify-between p-4 rounded-xl transition-all duration-200 border shadow-sm gap-4 sm:gap-6 ${
                   isOverdue ? 'bg-red-50/50 border-red-200' : 'bg-white border-slate-100 hover:border-slate-200'
                 }`}>
-                  <div className="flex flex-col gap-1.5 min-w-0 flex-1 mb-2 sm:mb-0">
-                    <div className="flex items-center gap-2">
+                  
+                  {/* Left Column: Details */}
+                  <div className="flex flex-col gap-2 min-w-0 flex-1">
+                    <div className="flex items-center gap-2.5">
                       {isOverdue ? (
-                        <div className="bg-red-100 p-1 rounded-md text-red-600 shrink-0">
-                          <AlertTriangle className="w-3 h-3 animate-pulse" />
+                        <div className="bg-red-100 p-1.5 rounded-lg text-red-600 shrink-0">
+                          <AlertTriangle className="w-3.5 h-3.5 animate-pulse" />
                         </div>
                       ) : (
-                        <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded-md whitespace-nowrap uppercase tracking-wider ${status.color}`}>
+                        <span className={`text-[10px] font-bold px-2 py-1 rounded-lg whitespace-nowrap uppercase tracking-wider ${status.color}`}>
                           {status.label}
                         </span>
                       )}
@@ -137,30 +177,34 @@ export const CommitmentRadar = ({
                         {comm.name}
                       </span>
                     </div>
-                    {/* Account Indicator Badge */}
-                    <div className="flex items-center gap-1.5 text-[10px] font-medium text-slate-500">
+                    
+                    {/* Account Indicator Badge - Properly aligned underneath */}
+                    <div className="flex items-center gap-1.5 text-[10px] font-medium text-slate-500 pl-1">
                       <Building2 className="w-3 h-3 text-slate-400" />
-                      Deducts from: <span className="font-bold text-slate-700">{getAccountName(comm.account_id)}</span>
+                      <span>Deducts from: <strong className="text-slate-700">{getAccountName(comm.account_id)}</strong></span>
                     </div>
                   </div>
                   
-                  <div className="flex items-center justify-between sm:justify-end gap-3 shrink-0 border-t sm:border-t-0 border-slate-100 pt-2 sm:pt-0 mt-1 sm:mt-0">
-                    <span className="text-sm font-black whitespace-nowrap text-slate-800">
+                  {/* Right Column: Actions */}
+                  <div className="flex items-center justify-between sm:justify-end gap-4 shrink-0 border-t sm:border-t-0 border-slate-100 pt-3 sm:pt-0">
+                    <span className="text-sm font-black whitespace-nowrap text-slate-900">
                       {formatMYR(comm.amount)}
                     </span>
+                    
                     {onMarkAsPaid && (
                       <button 
                         onClick={() => {
-                          if (window.confirm(`Mark ${comm.name} as paid? This will automatically log a ${formatMYR(comm.amount)} expense from ${getAccountName(comm.account_id)}.`)) {
+                          if (window.confirm(`Mark ${comm.name} as paid?\n\nThis will automatically log a ${formatMYR(comm.amount)} expense from ${getAccountName(comm.account_id)}.`)) {
                             onMarkAsPaid(comm.id)
                           }
                         }}
-                        className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold text-emerald-700 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 rounded-lg transition-all shadow-sm"
+                        className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold text-emerald-700 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 rounded-lg transition-all shadow-sm shrink-0"
                       >
                         <Check className="w-3.5 h-3.5" /> Pay Now
                       </button>
                     )}
                   </div>
+                  
                 </div>
               )
             })}

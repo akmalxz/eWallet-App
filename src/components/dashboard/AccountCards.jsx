@@ -11,31 +11,21 @@ const ICON_MAP = {
   Database 
 }
 
-const CARD_COLORS = {
-  hub: {
-    bg: 'from-blue-600 to-blue-800',
-    border: 'border-blue-400',
-    text: 'text-blue-100',
-    label: 'Hub'
-  },
-  ewallet: {
-    bg: 'from-purple-600 to-purple-800',
-    border: 'border-purple-400',
-    text: 'text-purple-100',
-    label: 'eWallet'
-  },
-  digital_bank: {
-    bg: 'from-emerald-600 to-emerald-800',
-    border: 'border-emerald-400',
-    text: 'text-emerald-100',
-    label: 'Digital Bank'
-  },
-  savings: {
-    bg: 'from-amber-600 to-amber-800',
-    border: 'border-amber-400',
-    text: 'text-amber-100',
-    label: 'Savings'
+// A dictionary of Tailwind gradient classes based on a base color string
+const getCustomCardStyle = (colorTheme) => {
+  const colors = {
+    blue: { bg: 'from-blue-600 to-blue-800', border: 'border-blue-400', text: 'text-blue-100' },
+    purple: { bg: 'from-purple-600 to-purple-800', border: 'border-purple-400', text: 'text-purple-100' },
+    emerald: { bg: 'from-emerald-600 to-emerald-800', border: 'border-emerald-400', text: 'text-emerald-100' },
+    amber: { bg: 'from-amber-600 to-amber-800', border: 'border-amber-400', text: 'text-amber-100' },
+    rose: { bg: 'from-rose-600 to-rose-800', border: 'border-rose-400', text: 'text-rose-100' },
+    slate: { bg: 'from-slate-600 to-slate-800', border: 'border-slate-400', text: 'text-slate-100' },
+    cyan: { bg: 'from-cyan-600 to-cyan-800', border: 'border-cyan-400', text: 'text-cyan-100' },
+    indigo: { bg: 'from-indigo-600 to-indigo-800', border: 'border-indigo-400', text: 'text-indigo-100' }
   }
+  
+  // Default to slate if the color isn't found
+  return colors[colorTheme] || colors.slate;
 }
 
 const DEFAULT_CARD = {
@@ -113,7 +103,8 @@ export const AccountCards = ({
         {accounts.map((acc, index) => {
           const { Icon } = getAccountIcon(acc.classification, classifications, ICON_MAP)
           const IconComponent = Icon || Wallet
-          const cardStyle = getCardStyle(acc.classification)
+          const cardStyle = getCustomCardStyle(acc.color_theme)
+          const classLabel = classifications.find(c => c.key_name === acc.classification)?.label || 'Account'
           const isExpanded = expandedId === acc.id
 
           // Dynamic Mobile Apple-Wallet Stacking Calculations
@@ -169,7 +160,7 @@ export const AccountCards = ({
                         </div>
                         <div>
                           <p className={`text-xs font-medium ${cardStyle.text} opacity-80`}>
-                            {cardStyle.label}
+                            {classLabel}
                           </p>
                           <p className={`text-sm font-bold ${cardStyle.text}`}>
                             {acc.account_name}

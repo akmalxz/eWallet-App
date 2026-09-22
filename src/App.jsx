@@ -94,6 +94,7 @@ export default function App() {
   // VIEW ROUTER STATE
   // ============================================
   const [currentView, setCurrentView] = useState('dashboard')
+  const [requestedModal, setRequestedModal] = useState(null)
 
   // ============================================
   // UI STATE
@@ -327,6 +328,7 @@ export default function App() {
   // ACCOUNT ROUTING HANDLERS
   // ============================================
   const handleAddAccount = () => {
+    setRequestedModal('banks')
     setCurrentView('profile')
   }
 
@@ -337,6 +339,7 @@ export default function App() {
 
   const handleManageAccount = account => {
     setSelectedAccount(account)
+    setRequestedModal('banks')
     setCurrentView('profile')
   }
 
@@ -1068,22 +1071,13 @@ export default function App() {
             user={user}
             accounts={accounts}
             categories={categories}
-            getSubCategories={
-              getSubCategories
-            }
-            classifications={
-              classifications
-            }
+            getSubCategories={getSubCategories}
+            classifications={classifications}
             commitments={commitments}
-            fetchAllData={
-              fetchAllData
-            }
-            showToast={
-              showToast
-            }
-            selectedAccount={
-              selectedAccount
-            }
+            fetchAllData={fetchAllData}
+            showToast={showToast}
+            selectedAccount={selectedAccount}
+            initialModal={requestedModal}
           />
         )}
 

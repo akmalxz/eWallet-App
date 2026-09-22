@@ -1,7 +1,11 @@
 // src/components/modals/SettingsModal.jsx
 import { useState } from 'react'
 import { supabase } from '../../lib/supabaseClient'
-import { X, Plus, Trash2, CornerDownRight, Hash, Calendar, Target, CheckCircle, PauseCircle } from 'lucide-react'
+import { 
+  User, LogOut, Plus, Trash2, CornerDownRight, CheckCircle, PauseCircle,
+  Target, Building2, TrendingUp, TrendingDown, ChevronRight, X, Zap, Copy, RefreshCw, AlertTriangle,
+  Edit2, Save // <-- Add these two
+} from 'lucide-react'
 import { formatMYR } from '../../utils/formatters'
 
 export const SettingsModal = ({ 
@@ -32,6 +36,11 @@ export const SettingsModal = ({
   const [newCommitmentAccount, setNewCommitmentAccount] = useState('')
   
   const [saving, setSaving] = useState(false)
+
+  // Edit State
+  const [editingItemId, setEditingItemId] = useState(null)
+  const [editValue, setEditValue] = useState('')
+  const [editColor, setEditColor] = useState('blue') // For bank colors
 
   // ============================================
   // BANK ACTIONS
@@ -94,6 +103,47 @@ export const SettingsModal = ({
       fetchAllData()
     } catch (error) { 
       showToast(error.message || 'Error deleting bank', 'error')
+    }
+  }
+
+  // ============================================
+  // UPDATE HANDLERS
+  // ============================================
+  const handleUpdateBank = async (id) => {
+    if (!editValue.trim()) return setEditingItemId(null)
+    setSaving(true)
+    try {
+      const { error } = await supabase
+        .from('accounts')
+        .update({ account_name: editValue.trim(), color_theme: editColor })
+        .eq('id', id)
+      if (error) throw error
+      showToast('Bank updated successfully', 'success')
+      fetchAllData()
+    } catch (error) {
+      showToast(error.message, 'error')
+    } finally {
+      setSaving(false)
+      setEditingItemId(null)
+    }
+  }
+
+  const handleUpdateCategory = async (id) => {
+    if (!editValue.trim()) return setEditingItemId(null)
+    setSaving(true)
+    try {
+      const { error } = await supabase
+        .from('categories')
+        .update({ name: editValue.trim() })
+        .eq('id', id)
+      if (error) throw error
+      showToast('Category updated successfully', 'success')
+      fetchAllData()
+    } catch (error) {
+      showToast(error.message, 'error')
+    } finally {
+      setSaving(false)
+      setEditingItemId(null)
     }
   }
 
@@ -342,58 +392,74 @@ export const SettingsModal = ({
             <div className="space-y-4 mb-6">
               {mainCategories.map(main => (
                 <div key={main.id} className="bg-slate-50 border border-slate-200 rounded-xl overflow-hidden">
-                  <div className="flex justify-between items-center p-3 bg-slate-100/50">
-                    <div>
-                      <p className="text-sm font-bold text-slate-800">{main.name}</p>
-                      {main.keywords && main.keywords.length > 0 && (
-                        <p className="text-xs text-slate-400 mt-0.5">
-                          <Hash className="w-3 h-3 inline mr-1" />
-                          {main.keywords.join(', ')}
-                        </p>
-                      )}
-                    </div>
-                    <div className="flex gap-1">
-                      <button 
-                        onClick={() => { 
-                          setAddingSubToId(main.id); 
-                          setNewSubCategoryName('')
-                          setNewSubCategoryKeywords('')
-                        }} 
-                        className="text-blue-500 hover:text-blue-700 p-1.5 transition-colors"
-                        title="Add subcategory"
-                      >
-                        <Plus className="w-4 h-4"/>
-                      </button>
-                      <button 
-                        onClick={() => handleDeleteCategory(main.id, main.name)} 
-                        className="text-red-400 hover:text-red-600 p-1.5 transition-colors"
-                        title="Delete category"
-                      >
-                        <Trash2 className="w-4 h-4"/>
-                      </button>
-                    </div>
+                  <div className="flex justify-between items-center p-3 bg-slate-100/50 min-h-[50px]">
+                    {editingItemId === main.id ? (
+                      <div className="flex gap-2 w-full">
+                        <input 
+                          aria-label="Edit Master Category Name"
+                          autoFocus 
+                          type="text" 
+                          value={editValue} 
+                          onChange={(e) => setEditValue(e.target.value)} 
+                          className="flex-1 bg-white border border-slate-200 rounded-lg px-2 text-sm outline-none focus:border-blue-500" 
+                        />
+                        <button onClick={() => handleUpdateCategory(main.id)} className="p-1.5 bg-emerald-100 text-emerald-700 rounded-lg hover:bg-emerald-200"><Save className="w-4 h-4"/></button>
+                        <button onClick={() => setEditingItemId(null)} className="p-1.5 bg-slate-200 text-slate-600 rounded-lg hover:bg-slate-300"><X className="w-4 h-4"/></button>
+                      </div>
+                    ) : (
+                      <>
+                        <div>
+                          <p className="text-sm font-bold text-slate-800">{main.name}</p>
+                          {main.keywords && main.keywords.length > 0 && (
+                            <p className="text-xs text-slate-400 mt-0.5">
+                              <Hash className="w-3 h-3 inline mr-1" />
+                              {main.keywords.join(', ')}
+                            </p>
+                          )}
+                        </div>
+                        <div className="flex gap-1 shrink-0">
+                          <button onClick={() => { setAddingSubToId(main.id); setNewSubCategoryName(''); setNewSubCategoryKeywords(''); setEditingItemId(null); }} className="text-blue-500 hover:text-blue-700 p-1.5 transition-colors"><Plus className="w-4 h-4"/></button>
+                          <button onClick={() => { setEditingItemId(main.id); setEditValue(main.name); }} className="text-slate-400 hover:text-blue-600 p-1.5 transition-colors"><Edit2 className="w-4 h-4"/></button>
+                          <button onClick={() => handleDeleteCategory(main.id, main.name)} className="text-red-400 hover:text-red-600 p-1.5 transition-colors"><Trash2 className="w-4 h-4"/></button>
+                        </div>
+                      </>
+                    )}
                   </div>
                   
                   <div className="p-2 space-y-1">
                     {getSubCategories(main.id).map(sub => (
-                      <div key={sub.id} className="flex justify-between items-center pl-6 pr-2 py-1.5 hover:bg-white rounded-lg transition-colors">
-                        <div>
-                          <p className="text-xs text-slate-600 flex items-center gap-2">
-                            <CornerDownRight className="w-3 h-3 text-slate-300"/> {sub.name}
-                          </p>
-                          {sub.keywords && sub.keywords.length > 0 && (
-                            <p className="text-[10px] text-slate-400 pl-5">
-                              {sub.keywords.join(', ')}
-                            </p>
-                          )}
-                        </div>
-                        <button 
-                          onClick={() => handleDeleteCategory(sub.id, sub.name)} 
-                          className="text-red-300 hover:text-red-500 transition-colors"
-                          title="Delete subcategory"
-                        >
-                          <Trash2 className="w-3 h-3"/>
-                        </button>
+                      <div key={sub.id} className="pl-6 pr-2 py-1.5 hover:bg-white rounded-lg transition-colors min-h-[40px]">
+                        {editingItemId === sub.id ? (
+                          <div className="flex gap-2">
+                            <input 
+                              aria-label="Edit Subcategory Name"
+                              autoFocus 
+                              type="text" 
+                              value={editValue} 
+                              onChange={(e) => setEditValue(e.target.value)} 
+                              className="flex-1 bg-white border border-slate-200 rounded-md px-2 py-1 text-xs outline-none focus:border-blue-500" 
+                            />
+                            <button onClick={() => handleUpdateCategory(sub.id)} className="p-1 text-emerald-600 hover:bg-emerald-50 rounded"><Save className="w-3 h-3"/></button>
+                            <button onClick={() => setEditingItemId(null)} className="p-1 text-slate-400 hover:bg-slate-100 rounded"><X className="w-3 h-3"/></button>
+                          </div>
+                        ) : (
+                          <div className="flex justify-between items-center">
+                            <div>
+                              <p className="text-xs text-slate-600 flex items-center gap-2">
+                                <CornerDownRight className="w-3 h-3 text-slate-300"/> {sub.name}
+                              </p>
+                              {sub.keywords && sub.keywords.length > 0 && (
+                                <p className="text-[10px] text-slate-400 pl-5">
+                                  {sub.keywords.join(', ')}
+                                </p>
+                              )}
+                            </div>
+                            <div className="flex gap-1">
+                              <button onClick={() => { setEditingItemId(sub.id); setEditValue(sub.name); }} className="text-slate-300 hover:text-blue-500 transition-colors p-1"><Edit2 className="w-3 h-3"/></button>
+                              <button onClick={() => handleDeleteCategory(sub.id, sub.name)} className="text-red-300 hover:text-red-500 transition-colors p-1"><Trash2 className="w-3 h-3"/></button>
+                            </div>
+                          </div>
+                        )}
                       </div>
                     ))}
                     
@@ -474,18 +540,59 @@ export const SettingsModal = ({
               {accounts.map(acc => {
                 const classData = classifications.find(c => c.key_name === acc.classification)
                 return (
-                  <div key={acc.id} className="flex justify-between items-center bg-slate-50 p-3 rounded-xl border border-slate-100">
-                    <div>
-                      <p className="text-sm font-bold text-slate-800">{acc.account_name}</p>
-                      <p className="text-xs text-slate-400 capitalize">{classData?.label || acc.classification}</p>
-                    </div>
-                    <button 
-                      onClick={() => handleDeleteBank(acc.id, acc.account_name)} 
-                      className="text-red-400 hover:text-red-600 p-2 transition-colors"
-                      title="Delete bank"
-                    >
-                      <Trash2 className="w-4 h-4"/>
-                    </button>
+                  <div key={acc.id} className="bg-slate-50 p-3 rounded-xl border border-slate-100">
+                    {editingItemId === acc.id ? (
+                      <div className="flex gap-2">
+                        <div className="flex-1 space-y-2">
+                          <input 
+                            aria-label="Edit Bank Name"
+                            autoFocus
+                            type="text" 
+                            value={editValue} 
+                            onChange={(e) => setEditValue(e.target.value)} 
+                            className="w-full bg-white border border-slate-200 rounded-lg py-1 px-2 text-sm outline-none focus:border-blue-500" 
+                          />
+                          <select 
+                            aria-label="Edit Bank Color" 
+                            value={editColor} 
+                            onChange={(e) => setEditColor(e.target.value)} 
+                            className="w-full bg-white border border-slate-200 rounded-lg py-1 px-2 text-xs outline-none focus:border-blue-500"
+                          >
+                            <option value="blue">Blue</option>
+                            <option value="emerald">Green</option>
+                            <option value="purple">Purple</option>
+                            <option value="rose">Red</option>
+                            <option value="amber">Yellow</option>
+                            <option value="slate">Dark Grey</option>
+                          </select>
+                        </div>
+                        <div className="flex flex-col gap-1 shrink-0">
+                          <button onClick={() => handleUpdateBank(acc.id)} className="p-1.5 bg-emerald-100 text-emerald-700 rounded-lg hover:bg-emerald-200"><Save className="w-4 h-4"/></button>
+                          <button onClick={() => setEditingItemId(null)} className="p-1.5 bg-slate-200 text-slate-600 rounded-lg hover:bg-slate-300"><X className="w-4 h-4"/></button>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="flex justify-between items-center">
+                        <div>
+                          <p className="text-sm font-bold text-slate-800">{acc.account_name}</p>
+                          <p className="text-xs text-slate-400 capitalize">{classData?.label || acc.classification}</p>
+                        </div>
+                        <div className="flex gap-1">
+                          <button 
+                            onClick={() => { setEditingItemId(acc.id); setEditValue(acc.account_name); setEditColor(acc.color_theme || 'slate'); }} 
+                            className="text-slate-400 hover:text-blue-600 p-2 transition-colors"
+                          >
+                            <Edit2 className="w-4 h-4"/>
+                          </button>
+                          <button 
+                            onClick={() => handleDeleteBank(acc.id, acc.account_name)} 
+                            className="text-red-400 hover:text-red-600 p-2 transition-colors"
+                          >
+                            <Trash2 className="w-4 h-4"/>
+                          </button>
+                        </div>
+                      </div>
+                    )}
                   </div>
                 )
               })}
