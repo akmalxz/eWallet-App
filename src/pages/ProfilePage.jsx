@@ -248,14 +248,12 @@ export function ProfilePage({
 
 
   const copyToClipboard = () => {
-    navigator.clipboard.writeText(webhookKey)
-    showToast('Copied to clipboard!', 'success')
+    navigator.clipboard.writeText(user.id)
+    showToast('User ID copied to clipboard!', 'success')
   }
-
 
   const handleOpenApiModal = () => {
     openModal('api')
-    fetchWebhookKey()
   }
 
 
@@ -1664,108 +1662,40 @@ export function ProfilePage({
       ====================================================== */}
 
       {activeModal === 'api' && (
-        <ModalWrapper
-          title="Automation & Shortcuts"
-          closeModal={closeModal}
-        >
-
+        <ModalWrapper title="Automation & Shortcuts" closeModal={closeModal}>
           <div className="space-y-5">
-
             <p className="text-sm text-slate-500 leading-relaxed">
-              Use this secret key to securely authenticate
-              your iOS Shortcuts.{' '}
-              <strong className="text-slate-700">
-                Never share this key with anyone.
-              </strong>
+              Use your FlowState User ID to authenticate your iOS Shortcuts. <strong className="text-slate-700">Keep this ID secure.</strong>
             </p>
 
-
-            {/* Secret Key */}
-
             <div className="bg-slate-50 p-4 rounded-xl border border-slate-200 space-y-3">
-
-              <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">
-                Secret Webhook Key
-              </label>
-
-              {webhookKey ? (
-
-                <div className="flex items-center gap-2">
-
-                  <input
-                    type="text"
-                    readOnly
-                    value={webhookKey}
-                    aria-label="Webhook Key"
-                    className="flex-1 bg-white border border-slate-200 rounded-lg px-3 py-2.5 text-sm font-mono text-slate-700 outline-none"
-                  />
-
-                  <button
-                    onClick={copyToClipboard}
-                    className="inline-flex h-10 w-10 items-center justify-center rounded-lg border border-blue-100 bg-blue-50 text-blue-600 transition-colors hover:bg-blue-100"
-                    title="Copy Key"
-                    aria-label="Copy webhook key"
-                  >
-                    <Copy className="h-4 w-4" />
-                  </button>
-
-                </div>
-
-              ) : (
-
-                <p className="text-sm text-slate-500 italic py-1">
-                  No key generated yet.
-                </p>
-
-              )}
-
-            </div>
-
-
-            {/* Generate / Regenerate */}
-
-            <button
-              onClick={generateWebhookKey}
-              disabled={saving}
-              className="w-full bg-slate-900 hover:bg-slate-800 text-white font-medium py-3.5 rounded-xl text-sm transition-colors flex items-center justify-center gap-2 shadow-sm disabled:opacity-50"
-            >
-
-              <RefreshCw
-                className={`h-4 w-4 ${
-                  saving ? 'animate-spin' : ''
-                }`}
-              />
-
-              {webhookKey
-                ? 'Regenerate Key'
-                : 'Generate Secret Key'}
-
-            </button>
-
-
-            {/* Warning */}
-
-            {webhookKey && (
-
-              <div className="bg-amber-50/80 p-3.5 rounded-xl border border-amber-200 flex gap-2.5">
-
-                <AlertTriangle className="h-4 w-4 text-amber-600 shrink-0 mt-0.5" />
-
-                <p className="text-xs text-amber-800 leading-relaxed">
-
-                  <strong>Warning:</strong> Regenerating this
-                  key will immediately break any existing Apple
-                  Shortcuts using the old key. You will need to
-                  paste the new key into them.
-
-                </p>
-
+              <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Your User ID</label>
+              
+              <div className="flex items-center gap-2">
+                <input 
+                  type="text" 
+                  readOnly 
+                  value={user?.id || ''} 
+                  aria-label="User ID"
+                  className="flex-1 bg-white border border-slate-200 rounded-lg px-3 py-2.5 text-sm font-mono text-slate-700 outline-none"
+                />
+                <button 
+                  onClick={copyToClipboard}
+                  className="bg-blue-50 text-blue-600 hover:bg-blue-100 p-2.5 rounded-lg transition-colors border border-blue-100"
+                  title="Copy User ID"
+                >
+                  <Copy className="w-4 h-4" />
+                </button>
               </div>
-
-            )}
-
+            </div>
+            
+            <div className="bg-blue-50/80 p-3.5 rounded-xl border border-blue-200 flex gap-2.5">
+              <Zap className="w-4 h-4 text-blue-600 shrink-0 mt-0.5" />
+              <p className="text-xs text-blue-800 leading-relaxed">
+                Paste this ID into the Import Question when installing the Apple Shortcut. All OCR receipts will automatically route to your personal vault.
+              </p>
+            </div>
           </div>
-
         </ModalWrapper>
       )}
 
