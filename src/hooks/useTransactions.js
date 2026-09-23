@@ -14,58 +14,40 @@ export const useTransactions = (user, showToast) => {
 
   const fetchAllData = useCallback(async () => {
     if (!user) {
-      //console.log('⏳ No user yet, skipping fetch')
       setIsLoading(false)
       return
     }
 
-    //console.log('🔄 Fetching data for user:', user.id)
     setIsLoading(true)
     setError(null)
     
     try {
-      // Test connection first
-      //console.log('📡 Testing database connection...')
       const { error: testError } = await supabase
         .from('accounts')
         .select('id')
         .limit(1)
       
       if (testError) {
-        console.error('❌ Database connection test failed:', testError)
         throw new Error(`Database connection failed: ${testError.message}`)
       }
-      //console.log(' Database connection successful')
 
-      // Fetch accounts - NORMALIZE account_id to id
-      //console.log('📊 Fetching accounts...')
-      // Fetch accounts - NORMALIZE account_id to id
+      // Fetch Accounts
       const accResult = await supabase
         .from('v_account_balances')
         .select('*')
-        .eq('user_id', user.id)
+        .eq('user_id', user.id) // Scoped
         .order('balance', { ascending: false })
       
-      if (accResult.error) {
-        console.error('❌ Accounts fetch error:', accResult.error)
-        throw accResult.error
-      }
+      if (accResult.error) throw accResult.error
       
-      //  NORMALIZE: Rename account_id to id for consistent usage
       const normalizedAccounts = (accResult.data || []).map(acc => {
         const { account_id, ...rest } = acc
-        return {
-          id: account_id,
-          ...rest
-        }
+        return { id: account_id, ...rest }
       })
       
-      //console.log(` Accounts loaded: ${normalizedAccounts.length} found`)
       setAccounts(normalizedAccounts)
 
-      // Create default accounts if none exist
       if (normalizedAccounts.length === 0) {
-        //console.log('📝 No accounts found, creating defaults...')
         const defaultAccounts = [
           { user_id: user.id, account_name: 'Maybank', classification: 'hub' },
           { user_id: user.id, account_name: 'TNG eWallet', classification: 'ewallet' },
@@ -73,19 +55,13 @@ export const useTransactions = (user, showToast) => {
           { user_id: user.id, account_name: 'Bank Rakyat', classification: 'savings' }
         ]
         
-        const { error: insertError } = await supabase
-          .from('accounts')
-          .insert(defaultAccounts)
+        const { error: insertError } = await supabase.from('accounts').insert(defaultAccounts)
         
-        if (insertError) {
-          console.error('❌ Failed to create default accounts:', insertError)
-        } else {
-          //console.log(' Default accounts created')
-          // Re-fetch with normalization
+        if (!insertError) {
           const { data: newAccounts } = await supabase
             .from('v_account_balances')
             .select('*')
-            .eq('user_id', user.id) // <-- Filter by authenticated user
+            .eq('user_id', user.id) // Scoped
             .order('balance', { ascending: false })
           
           const normalizedNewAccounts = (newAccounts || []).map(acc => {
@@ -96,21 +72,16 @@ export const useTransactions = (user, showToast) => {
         }
       }
 
-      // Fetch categories
-      //console.log('📊 Fetching categories...')
+      // Fetch Categories
       const catResult = await supabase
         .from('categories')
         .select('*')
+        .eq('user_id', user.id) // Scoped
         .order('name')
       
-      if (catResult.error) {
-        console.error('❌ Categories fetch error:', catResult.error)
-        throw catResult.error
-      }
-      //console.log(` Categories loaded: ${catResult.data?.length || 0} found`)
+      if (catResult.error) throw catResult.error
 
       if (!catResult.data || catResult.data.length === 0) {
-        //console.log('📝 No categories found, creating defaults...')
         const { data: mainCats, error: mainError } = await supabase
           .from('categories')
           .insert([
@@ -122,10 +93,7 @@ export const useTransactions = (user, showToast) => {
           ])
           .select()
         
-        if (mainError) {
-          console.error('❌ Failed to create default categories:', mainError)
-        } else if (mainCats) {
-          //console.log(' Default categories created')
+        if (mainCats) {
           const foodId = mainCats.find(c => c.name === 'Food & Beverages')?.id
           if (foodId) {
             await supabase.from('categories').insert([
@@ -138,6 +106,7 @@ export const useTransactions = (user, showToast) => {
           const { data: newCats } = await supabase
             .from('categories')
             .select('*')
+            .eq('user_id', user.id) // Scoped
             .order('name')
           setCategories(newCats || [])
         }
@@ -145,118 +114,78 @@ export const useTransactions = (user, showToast) => {
         setCategories(catResult.data)
       }
 
-      // Fetch classifications - HANDLE 403 GRACEFULLY
-      //console.log('📊 Fetching classifications...')
+      // Fetch Classifications
       const classResult = await supabase
         .from('classifications')
         .select('*')
+        .eq('user_id', user.id) // Scoped
 
-      if (classResult.error) {
-        console.warn('⚠️ Classifications fetch warning:', classResult.error.message)
-        const fallbackClass = [
-          { id: 'temp-hub', key_name: 'hub', label: 'Main Hub', icon_name: 'Landmark', color_class: 'text-blue-500', bg_class: 'bg-blue-50' },
-          { id: 'temp-ewallet', key_name: 'ewallet', label: 'Daily eWallet', icon_name: 'Wallet', color_class: 'text-purple-500', bg_class: 'bg-purple-50' },
-          { id: 'temp-digital', key_name: 'digital_bank', label: 'Digital Bank', icon_name: 'Activity', color_class: 'text-emerald-500', bg_class: 'bg-emerald-50' },
-          { id: 'temp-savings', key_name: 'savings', label: 'Savings', icon_name: 'PiggyBank', color_class: 'text-amber-500', bg_class: 'bg-amber-50' }
-        ]
-        setClassifications(fallbackClass)
-      } else {
-        //console.log(` Classifications loaded: ${classResult.data?.length || 0} found`)
-        
-        if (!classResult.data || classResult.data.length === 0) {
-          //console.log('📝 No classifications found, creating defaults...')
-          try {
-            const defaultClass = [
-              { user_id: user.id, key_name: 'hub', label: 'Main Hub', icon_name: 'Landmark', color_class: 'text-blue-500', bg_class: 'bg-blue-50' },
-              { user_id: user.id, key_name: 'ewallet', label: 'Daily eWallet', icon_name: 'Wallet', color_class: 'text-purple-500', bg_class: 'bg-purple-50' },
-              { user_id: user.id, key_name: 'digital_bank', label: 'Digital Bank', icon_name: 'Activity', color_class: 'text-emerald-500', bg_class: 'bg-emerald-50' },
-              { user_id: user.id, key_name: 'savings', label: 'Savings', icon_name: 'PiggyBank', color_class: 'text-amber-500', bg_class: 'bg-amber-50' }
-            ]
-            
-            const { error: insertError } = await supabase
+      if (classResult.error || !classResult.data || classResult.data.length === 0) {
+        try {
+          const defaultClass = [
+            { user_id: user.id, key_name: 'hub', label: 'Main Hub', icon_name: 'Landmark', color_class: 'text-blue-500', bg_class: 'bg-blue-50' },
+            { user_id: user.id, key_name: 'ewallet', label: 'Daily eWallet', icon_name: 'Wallet', color_class: 'text-purple-500', bg_class: 'bg-purple-50' },
+            { user_id: user.id, key_name: 'digital_bank', label: 'Digital Bank', icon_name: 'Activity', color_class: 'text-emerald-500', bg_class: 'bg-emerald-50' },
+            { user_id: user.id, key_name: 'savings', label: 'Savings', icon_name: 'PiggyBank', color_class: 'text-amber-500', bg_class: 'bg-amber-50' }
+          ]
+          const { error: insertError } = await supabase.from('classifications').insert(defaultClass)
+          
+          if (!insertError) {
+            const { data: refreshedClass } = await supabase
               .from('classifications')
-              .insert(defaultClass)
-            
-            if (insertError) {
-              console.warn('⚠️ Could not create default classifications (RLS may be disabled):', insertError.message)
-              const fallbackClass = [
-                { id: 'temp-hub', key_name: 'hub', label: 'Main Hub', icon_name: 'Landmark', color_class: 'text-blue-500', bg_class: 'bg-blue-50' },
-                { id: 'temp-ewallet', key_name: 'ewallet', label: 'Daily eWallet', icon_name: 'Wallet', color_class: 'text-purple-500', bg_class: 'bg-purple-50' },
-                { id: 'temp-digital', key_name: 'digital_bank', label: 'Digital Bank', icon_name: 'Activity', color_class: 'text-emerald-500', bg_class: 'bg-emerald-50' },
-                { id: 'temp-savings', key_name: 'savings', label: 'Savings', icon_name: 'PiggyBank', color_class: 'text-amber-500', bg_class: 'bg-amber-50' }
-              ]
-              setClassifications(fallbackClass)
-            } else {
-              //console.log(' Default classifications created')
-              const { data: refreshedClass } = await supabase
-                .from('classifications')
-                .select('*')
-              setClassifications(refreshedClass || [])
-            }
-          } catch (err) {
-            console.warn('⚠️ Error creating classifications:', err.message)
-            const fallbackClass = [
-              { id: 'temp-hub', key_name: 'hub', label: 'Main Hub', icon_name: 'Landmark', color_class: 'text-blue-500', bg_class: 'bg-blue-50' },
-              { id: 'temp-ewallet', key_name: 'ewallet', label: 'Daily eWallet', icon_name: 'Wallet', color_class: 'text-purple-500', bg_class: 'bg-purple-50' },
-              { id: 'temp-digital', key_name: 'digital_bank', label: 'Digital Bank', icon_name: 'Activity', color_class: 'text-emerald-500', bg_class: 'bg-emerald-50' },
-              { id: 'temp-savings', key_name: 'savings', label: 'Savings', icon_name: 'PiggyBank', color_class: 'text-amber-500', bg_class: 'bg-amber-50' }
-            ]
-            setClassifications(fallbackClass)
+              .select('*')
+              .eq('user_id', user.id) // Scoped
+            setClassifications(refreshedClass || [])
+          } else {
+            throw new Error("Fallback execution")
           }
-        } else {
-          setClassifications(classResult.data)
+        } catch {
+          setClassifications([
+            { id: 'temp-hub', key_name: 'hub', label: 'Main Hub', icon_name: 'Landmark', color_class: 'text-blue-500', bg_class: 'bg-blue-50' },
+            { id: 'temp-ewallet', key_name: 'ewallet', label: 'Daily eWallet', icon_name: 'Wallet', color_class: 'text-purple-500', bg_class: 'bg-purple-50' },
+            { id: 'temp-digital', key_name: 'digital_bank', label: 'Digital Bank', icon_name: 'Activity', color_class: 'text-emerald-500', bg_class: 'bg-emerald-50' },
+            { id: 'temp-savings', key_name: 'savings', label: 'Savings', icon_name: 'PiggyBank', color_class: 'text-amber-500', bg_class: 'bg-amber-50' }
+          ])
         }
+      } else {
+        setClassifications(classResult.data)
       }
 
-      // Fetch transactions
-      //console.log('📊 Fetching transactions...')
+      // Fetch Transactions
       const txResult = await supabase
         .from('transactions')
         .select('*')
+        .eq('user_id', user.id) // Scoped
         .order('needs_review', { ascending: false })
         .order('transaction_date', { ascending: false })
         .limit(30)
       
-      if (txResult.error) {
-        console.error('❌ Transactions fetch error:', txResult.error)
-        throw txResult.error
-      }
-      //console.log(` Transactions loaded: ${txResult.data?.length || 0} found`)
+      if (txResult.error) throw txResult.error
       setRecentTransactions(txResult.data || [])
 
-      // Fetch commitments
-      //console.log('📊 Fetching commitments...')
+      // Fetch Commitments
       const commResult = await supabase
         .from('commitments')
         .select('*')
+        .eq('user_id', user.id) // Scoped
       
-      if (commResult.error) {
-        console.error('❌ Commitments fetch error:', commResult.error)
-        throw commResult.error
-      }
-      //console.log(` Commitments loaded: ${commResult.data?.length || 0} found`)
+      if (commResult.error) throw commResult.error
       setCommitments(commResult.data || [])
 
-      // Fetch ALL expenses for the current month
-      //console.log('📊 Fetching monthly expenses...')
+      // Fetch Monthly Expenses
       const startOfMonth = new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString()
       const { data: monthData, error: monthError } = await supabase
         .from('transactions')
         .select('*')
-        .is('destination_account_id', null) // Only expenses, not transfers/income
+        .eq('user_id', user.id) // Scoped
+        .is('destination_account_id', null)
         .gte('transaction_date', startOfMonth)
       
-      if (monthError) {
-        console.error('❌ Monthly expenses fetch error:', monthError)
-      } else {
+      if (!monthError) {
         setMonthlyExpenses(monthData || [])
-        //console.log(` Monthly expenses loaded: ${monthData?.length || 0} found`)
       }
-
-      //console.log(' All data loaded successfully!')
       
     } catch (error) {
-      console.error('❌ Error fetching data:', error)
       setError(error.message)
       showToast(`Failed to load data: ${error.message}`, 'error')
     } finally {
@@ -265,7 +194,6 @@ export const useTransactions = (user, showToast) => {
   }, [user, showToast])
 
   return {
-    // State
     accounts,
     recentTransactions,
     commitments,
@@ -274,7 +202,6 @@ export const useTransactions = (user, showToast) => {
     classifications,
     isLoading,
     error,
-    // Setters
     setAccounts,
     setRecentTransactions,
     setCommitments,
@@ -283,7 +210,6 @@ export const useTransactions = (user, showToast) => {
     setClassifications,
     setIsLoading,
     setError,
-    // Actions
     fetchAllData
   }
 }
