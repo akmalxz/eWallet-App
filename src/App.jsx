@@ -13,7 +13,7 @@ import {
   User,
   CheckCircle,
   List,
-  Target
+  Layers
 } from 'lucide-react'
 
 // Components
@@ -912,11 +912,10 @@ export default function App() {
           HEADER / OMNIBAR
       ============================================ */}
       <Header
+        user={user}
         omnibarText={omnibarText}
         setOmnibarText={setOmnibarText}
-        handleOmnibarSubmit={
-          handleOmnibarSubmit
-        }
+        handleOmnibarSubmit={handleOmnibarSubmit}
         omnibarStatus={omnibarStatus}
         isLoading={isLoading}
         currentView={currentView}
@@ -1075,7 +1074,7 @@ export default function App() {
       {/* ============================================
           MOBILE BOTTOM NAVIGATION
       ============================================ */}
-      <nav className="md:hidden fixed bottom-6 left-4 right-4 z-50 bg-white/70 backdrop-blur-xl border border-white/40 rounded-3xl shadow-[0_8px_30px_rgba(0,0,0,0.08)]">
+      <nav className="md:hidden fixed bottom-6 left-4 right-4 z-50 bg-white/10 backdrop-blur-md border border-white/30 rounded-3xl shadow-[0_8px_30px_rgba(0,0,0,0.1)]">
 
         <div className="flex justify-around items-center h-14 relative px-1">
 
@@ -1139,7 +1138,7 @@ export default function App() {
             }`}
             aria-label="Commitments"
           >
-            <Target className="w-6 h-6" />
+            <Layers className="w-6 h-6" />
           </button>
 
           {/* User */}

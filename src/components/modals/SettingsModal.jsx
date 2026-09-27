@@ -4,7 +4,7 @@ import { supabase } from '../../lib/supabaseClient'
 import { 
   User, LogOut, Plus, Trash2, CornerDownRight, CheckCircle, PauseCircle,
   Target, Building2, TrendingUp, TrendingDown, ChevronRight, X, Zap, Copy, RefreshCw, AlertTriangle,
-  Edit2, Save // <-- Add these two
+  Edit2, Save, Layers
 } from 'lucide-react'
 import { formatMYR } from '../../utils/formatters'
 
@@ -382,7 +382,7 @@ export const SettingsModal = ({
                 : 'text-slate-400 hover:text-slate-600'
             }`}
           >
-            <Target className="w-3 h-3 inline mr-1" /> Commitments
+            <Layers className="w-3 h-3 inline mr-1" /> Commitments
           </button>
         </div>
 
@@ -633,7 +633,7 @@ export const SettingsModal = ({
             <div className="space-y-3 mb-6">
               {commitments.length === 0 ? (
                 <div className="bg-slate-50 border border-slate-200 rounded-xl p-6 text-center">
-                  <Target className="w-8 h-8 text-slate-300 mx-auto mb-2" />
+                  <Layers className="w-8 h-8 text-slate-300 mx-auto mb-2" />
                   <p className="text-sm text-slate-500">No commitments yet</p>
                   <p className="text-xs text-slate-400">Add your subscriptions and bills below</p>
                 </div>
@@ -681,7 +681,7 @@ export const SettingsModal = ({
 
             <form onSubmit={handleAddCommitment} className="border-t pt-4 space-y-4">
               <h3 className="text-xs font-bold text-slate-500 uppercase flex items-center gap-2">
-                <Target className="w-3 h-3" /> Add New Commitment
+                <Layers className="w-3 h-3" /> Add New Commitment
               </h3>
               <input 
                 type="text" 

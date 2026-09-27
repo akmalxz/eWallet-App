@@ -1,6 +1,6 @@
 // src/components/dashboard/CashFlowHeatmap.jsx
 import { useState, useMemo } from 'react'
-import { Target, TrendingUp, Plus, ChevronDown } from 'lucide-react'
+import { Layers, TrendingUp, Plus, ChevronDown } from 'lucide-react'
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip as RechartsTooltip } from 'recharts'
 import { formatMYR } from '../../utils/formatters'
 

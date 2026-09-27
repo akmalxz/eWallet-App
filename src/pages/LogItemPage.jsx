@@ -47,7 +47,7 @@ export function LogItemPage({
     <div className="max-w-2xl mx-auto animate-in fade-in slide-in-from-bottom-4 duration-500 pb-12">
 
       {/* Page Header */}
-      <div className="mb-5 px-1">
+      <div className="hidden md:block mb-5 px-1">
         <h1 className="text-xl font-bold text-slate-800 tracking-tight">Manual Entry</h1>
         <p className="text-xs text-slate-400 mt-1">Record a new income, expense, or transfer</p>
       </div>

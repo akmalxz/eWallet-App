@@ -2,7 +2,7 @@
 import { useState, useEffect } from 'react'
 import { supabase } from '../lib/supabaseClient'
 import {
-  User, LogOut, Plus, Trash2, CornerDownRight, CheckCircle, PauseCircle, Target,
+  User, LogOut, Plus, Trash2, CornerDownRight, CheckCircle, PauseCircle, Layers,
   Building2, TrendingUp, TrendingDown, ChevronRight, X, Zap,
   Copy, RefreshCw, AlertTriangle, Edit2,Save
 } from 'lucide-react'
@@ -671,7 +671,7 @@ export function ProfilePage({
         <SetupButton
           id="commitments"
           title="Monthly Commitments"
-          icon={Target}
+          icon={Layers}
           activeModal={activeModal}
           openModal={openModal}
         />

@@ -1,18 +1,43 @@
 // src/components/layouts/Header.jsx
 import { useState } from 'react'
-import { Activity, Plus, Settings, LogOut, Send, Menu, X, LayoutDashboard } from 'lucide-react'
+import { Activity, Plus, Settings, LogOut, Menu, X, LayoutDashboard } from 'lucide-react'
 
 export const Header = ({ 
-  omnibarText, 
-  setOmnibarText, 
-  handleOmnibarSubmit, 
-  isLoading, 
+  user,
   currentView,
   setCurrentView,
   supabase 
 }) => {
-  const [isOmnibarExpanded, setIsOmnibarExpanded] = useState(false)
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
+
+  // ============================================
+  // TIME-BASED GREETING
+  // ============================================
+  const getGreeting = () => {
+    const hour = new Date().getHours()
+    if (hour < 12) return 'Good morning'
+    if (hour < 18) return 'Good afternoon'
+    return 'Good evening'
+  }
+
+  const firstName =
+    user?.user_metadata?.full_name?.split(' ')[0] ||
+    user?.user_metadata?.name?.split(' ')[0] ||
+    user?.email?.split('@')[0] ||
+    'there'
+
+  // ============================================
+  // VIEW TITLE DICTIONARY
+  // ============================================
+  const viewTitles = {
+    dashboard: `${getGreeting()}, ${firstName}`,
+    log: 'Manual Entry',
+    transactions: 'Ledger & Verification',
+    commitments: 'Subscriptions',
+    profile: 'Profile & Settings'
+  }
+
+  const mobileTitle = viewTitles[currentView] || 'FlowState'
 
   return (
     <header className="bg-white/60 backdrop-blur-xl border-b border-white/40 sticky top-0 z-20 shadow-[0_4px_30px_rgba(0,0,0,0.03)]">
@@ -22,31 +47,23 @@ export const Header = ({
           {/* Logo */}
           <button 
             onClick={() => setCurrentView('dashboard')}
-            className="flex items-center gap-2 hover:opacity-80 transition-opacity"
+            className="flex items-center gap-2 hover:opacity-80 transition-opacity min-w-0"
           >
-            <div className="bg-slate-900 p-1.5 md:p-2 rounded-lg shadow-sm">
+            <div className="bg-slate-900 p-1.5 md:p-2 rounded-lg shadow-sm shrink-0">
               <Activity className="text-white w-4 h-4 md:w-5 md:h-5" />
             </div>
-            <h1 className="text-base md:text-xl font-bold tracking-tight">FlowState</h1>
+            <h1 className="text-base md:text-xl font-bold tracking-tight truncate">
+              <span className="md:hidden">{mobileTitle}</span>
+              <span className="hidden md:inline">FlowState</span>
+            </h1>
           </button>
 
-          {/* Mobile: Quick Actions + Menu Toggle */}
-          <div className="flex items-center gap-1 md:hidden">
-            <button 
-              onClick={() => setIsOmnibarExpanded(!isOmnibarExpanded)}
-              className="p-2 text-slate-500 hover:text-slate-700 rounded-lg transition-colors"
-            >
-              <Send className="w-4 h-4" />
-            </button>
-            <button 
-              onClick={() => setCurrentView('log')} 
-              className="flex items-center justify-center p-2 bg-blue-500 text-white rounded-lg shadow-sm"
-            >
-              <Plus className="w-4 h-4" />
-            </button>
+          {/* Mobile: Menu Toggle */}
+          <div className="flex items-center gap-1 md:hidden shrink-0">
             <button 
               onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
               className="p-2 text-slate-500 hover:text-slate-700 rounded-lg transition-colors"
+              aria-label="Toggle menu"
             >
               {isMobileMenuOpen ? <X className="w-4 h-4" /> : <Menu className="w-4 h-4" />}
             </button>
@@ -83,31 +100,6 @@ export const Header = ({
             </button>
           </div>
         </div>
-
-        {/* Mobile: Expanded Omnibar */}
-        {isOmnibarExpanded && (
-          <form onSubmit={handleOmnibarSubmit} className="relative flex-1 max-w-2xl mx-auto">
-          <label htmlFor="omnibar-input" className="sr-only">Quick log transaction</label>
-          <input 
-            id="omnibar-input"
-            name="omnibar-input"
-            type="text" 
-            value={omnibarText}
-            onChange={(e) => setOmnibarText(e.target.value)}
-            placeholder="e.g. Spent RM 15 on lunch from TNG"
-              className="w-full bg-white/80 border border-slate-200 shadow-inner rounded-xl py-3 pl-4 pr-12 text-sm focus:outline-none focus:border-blue-500" 
-              disabled={isLoading}
-              autoFocus
-            />
-            <button 
-              type="submit" 
-              disabled={isLoading || !omnibarText.trim()} 
-              className="absolute right-2 top-1/2 -translate-y-1/2 p-2 bg-blue-500 hover:bg-blue-600 text-white rounded-lg transition-colors disabled:opacity-50 shadow-sm"
-            >
-              <Send className="w-4 h-4" />
-            </button>
-          </form>
-        )}
 
         {/* Mobile: Menu Dropdown */}
         {isMobileMenuOpen && (

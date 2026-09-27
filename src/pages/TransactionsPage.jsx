@@ -26,10 +26,10 @@ export function TransactionsPage({
     <div className="max-w-2xl mx-auto animate-in fade-in slide-in-from-bottom-4 duration-500 pb-12 space-y-4">
 
       {/* Page Header */}
-      <div className="mb-5 px-1">
-        <h1 className="text-xl font-bold text-slate-800 tracking-tight">Ledger & Verification</h1>
-        <p className="text-xs text-slate-400 mt-1">Review OCR scans and manage your transaction history</p>
-      </div>
+        <div className="hidden md:block mb-5 px-1">
+            <h1 className="text-xl font-bold text-slate-800 tracking-tight">Ledger & Verification</h1>
+            <p className="text-xs text-slate-400 mt-1">Review OCR scans and manage your transaction history</p>
+        </div>
 
       {/* SECTION 1: OCR VERIFICATION */}
       <section className="bg-white/60 backdrop-blur-xl border border-white/40 rounded-3xl p-5 shadow-sm">
