@@ -22,6 +22,7 @@ export const Header = ({
   }
 
   const firstName =
+    profile?.username?.trim() ||
     profile?.first_name?.trim() ||
     user?.email?.split('@')[0] ||
     'there'
