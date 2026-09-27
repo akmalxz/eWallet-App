@@ -1,5 +1,5 @@
 // src/components/dashboard/ActionLedger.jsx
-import { useState, useRef, useMemo } from 'react'
+import { useState, useMemo } from 'react'
 import { 
   Clock, ArrowDownRight, ArrowUpRight, RefreshCw, AlertTriangle, List,
   Check, Trash2, Edit2, X, Save, Plus, Inbox, Calendar, ChevronDown, ChevronUp 
@@ -28,9 +28,7 @@ export const ActionLedger = ({
     destination_account_id: ''
   })
   const [editErrors, setEditErrors] = useState({})
-  const [swipeIndex, setSwipeIndex] = useState(null)
   const [expandedGroups, setExpandedGroups] = useState({})
-  const touchStartX = useRef(0)
 
   // Group transactions by date
   const groupedTransactions = useMemo(() => {
@@ -196,33 +194,6 @@ export const ActionLedger = ({
   const getAccountName = (id) => {
     const account = accounts.find(a => a.id === id)
     return account?.account_name || 'Unknown'
-  }
-
-  const handleTouchStart = (e, index) => {
-    touchStartX.current = e.touches[0].clientX
-    setSwipeIndex(index)
-  }
-
-  const handleTouchMove = (e, index) => {
-    if (swipeIndex !== index) return
-    const diff = e.touches[0].clientX - touchStartX.current
-    const element = document.getElementById(`tx-${index}`)
-    if (element) {
-      if (diff < -30) {
-        element.style.transform = 'translateX(-80px)'
-      } else {
-        element.style.transform = 'translateX(0)'
-      }
-    }
-  }
-
-  const handleTouchEnd = (e, index) => {
-    if (swipeIndex !== index) return
-    const element = document.getElementById(`tx-${index}`)
-    if (element) {
-      element.style.transform = 'translateX(0)'
-    }
-    setSwipeIndex(null)
   }
 
   // Calculate total for each day group
@@ -625,9 +596,6 @@ export const ActionLedger = ({
                         <div 
                           id={`tx-${globalIndex}`}
                           className={`flex items-center justify-between p-3.5 hover:bg-slate-50/60 transition-all duration-200 border-b border-slate-50 group last:border-none ${isEditingThis ? 'hidden' : ''}`}
-                          onTouchStart={(e) => handleTouchStart(e, globalIndex)}
-                          onTouchMove={(e) => handleTouchMove(e, globalIndex)}
-                          onTouchEnd={(e) => handleTouchEnd(e, globalIndex)}
                         >
                           <div className="flex items-center gap-3.5 min-w-0 flex-1">
                             <div className={`w-8 h-8 flex items-center justify-center rounded-xl shrink-0 ${

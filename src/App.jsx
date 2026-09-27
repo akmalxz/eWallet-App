@@ -11,7 +11,9 @@ import {
   LayoutDashboard,
   Plus,
   User,
-  CheckCircle
+  CheckCircle,
+  List,
+  Target
 } from 'lucide-react'
 
 // Components
@@ -20,14 +22,14 @@ import { ToastNotification } from './components/shared/Toast'
 import { LoadingSpinner } from './components/shared/LoadingSpinner'
 import { Header } from './components/layouts/Header'
 import { AccountCards } from './components/dashboard/AccountCards'
-import { CommitmentRadar } from './components/dashboard/CommitmentRadar'
 import { BurnRateWidget } from './components/dashboard/BurnRateWidget'
 import { CashFlowHeatmap } from './components/dashboard/CashFlowHeatmap'
-import { ActionLedger } from './components/dashboard/ActionLedger'
 
 // Pages
 import { LogItemPage } from './pages/LogItemPage'
 import { ProfilePage } from './pages/ProfilePage'
+import { TransactionsPage } from './pages/TransactionsPage'
+import { CommitmentsPage } from './pages/CommitmentsPage'
 
 // Hooks
 import { useAuth } from './hooks/useAuth'
@@ -1005,61 +1007,48 @@ export default function App() {
           <LogItemPage
             user={user}
             accounts={accounts}
-            mainCategories={
-              mainCategories
-            }
-            getSubCategories={
-              getSubCategories
-            }
-            fetchAllData={
-              fetchAllData
-            }
-            showToast={
-              showToast
-            }
-            recentTransactions={
-              recentTransactions
-            }
-            handleApproveTransaction={
-              handleApproveTransaction
-            }
-            handleDeleteTransaction={
-              handleDeleteTransaction
-            }
-            handleEditTransaction={
-              handleEditTransaction
-            }
-            onRefresh={() =>
-              handleRefreshLedger(true)
-            }
-            isRefreshing={
-              isRefreshingLedger
-            }
+            mainCategories={mainCategories}
+            getSubCategories={getSubCategories}
+            fetchAllData={fetchAllData}
+            showToast={showToast}
+          />
+        )}
+
+        {/* ============================================
+            TRANSACTIONS PAGE
+        ============================================ */}
+        {currentView === 'transactions' && (
+          <TransactionsPage
+            user={user}
+            accounts={accounts}
+            mainCategories={mainCategories}
+            getSubCategories={getSubCategories}
+            fetchAllData={fetchAllData}
+            showToast={showToast}
+            recentTransactions={recentTransactions}
+            handleApproveTransaction={handleApproveTransaction}
+            handleDeleteTransaction={handleDeleteTransaction}
+            handleEditTransaction={handleEditTransaction}
+            onRefresh={() => handleRefreshLedger(true)}
+            isRefreshing={isRefreshingLedger}
+            onAddTransaction={() => setCurrentView('log')}
+          />
+        )}
+
+        {/* ============================================
+            COMMITMENTS PAGE
+        ============================================ */}
+        {currentView === 'commitments' && (
+          <CommitmentsPage
             radarStats={radarStats}
-            radarCommitments={
-              radarCommitments
-            }
-            activeRadarId={
-              activeRadarId
-            }
-            setRadarAccountId={
-              setRadarAccountId
-            }
-            onAddCommitment={() =>
-              setCurrentView('profile')
-            }
-            handleDeleteCommitment={
-              handleDeleteCommitment
-            }
-            handleToggleCommitment={
-              handleToggleCommitment
-            }
-            handleMarkAsPaid={
-              handleMarkAsPaid
-            }
-            onClose={() =>
-              setCurrentView('dashboard')
-            }
+            radarCommitments={radarCommitments}
+            accounts={accounts}
+            activeRadarId={activeRadarId}
+            setRadarAccountId={setRadarAccountId}
+            onAddCommitment={() => setCurrentView('profile')}
+            handleDeleteCommitment={handleDeleteCommitment}
+            handleToggleCommitment={handleToggleCommitment}
+            handleMarkAsPaid={handleMarkAsPaid}
           />
         )}
 
@@ -1088,62 +1077,85 @@ export default function App() {
       ============================================ */}
       <nav className="md:hidden fixed bottom-6 left-4 right-4 z-50 bg-white/70 backdrop-blur-xl border border-white/40 rounded-3xl shadow-[0_8px_30px_rgba(0,0,0,0.08)]">
 
-        <div className="flex justify-around items-center h-14 relative px-2">
+        <div className="flex justify-around items-center h-14 relative px-1">
 
           {/* Dashboard */}
           <button
             onClick={() => {
-              window.scrollTo({
-                top: 0,
-                behavior: 'smooth'
-              })
-
-              setCurrentView(
-                'dashboard'
-              )
+              window.scrollTo({ top: 0, behavior: 'smooth' })
+              setCurrentView('dashboard')
             }}
-            className={`flex items-center justify-center w-16 h-14 transition-colors ${
-              currentView ===
-              'dashboard'
+            className={`flex items-center justify-center w-14 h-14 transition-colors ${
+              currentView === 'dashboard'
                 ? 'text-blue-600'
                 : 'text-slate-400 hover:text-slate-600'
             }`}
+            aria-label="Dashboard"
           >
-            <LayoutDashboard className="w-7 h-7" />
+            <LayoutDashboard className="w-6 h-6" />
+          </button>
+
+          {/* Transactions */}
+          <button
+            onClick={() => {
+              window.scrollTo({ top: 0, behavior: 'smooth' })
+              setCurrentView('transactions')
+            }}
+            className={`flex items-center justify-center w-14 h-14 transition-colors ${
+              currentView === 'transactions'
+                ? 'text-blue-600'
+                : 'text-slate-400 hover:text-slate-600'
+            }`}
+            aria-label="Transactions"
+          >
+            <List className="w-6 h-6" />
           </button>
 
           {/* Center Plus Button */}
-          <div className="relative w-16 h-14 flex items-center justify-center">
-
+          <div className="relative w-14 h-14 flex items-center justify-center">
             <button
-              onClick={() =>
-                setCurrentView('log')
-              }
+              onClick={() => setCurrentView('log')}
               className={`absolute -top-5 text-white p-4 rounded-full shadow-[0_8px_30px_rgba(59,130,246,0.4)] hover:scale-105 active:scale-95 transition-all ${
-                currentView ===
-                'log'
+                currentView === 'log'
                   ? 'bg-gradient-to-tr from-slate-900 to-slate-800'
                   : 'bg-gradient-to-tr from-blue-600 to-blue-500'
               }`}
+              aria-label="Log transaction"
             >
               <Plus className="w-7 h-7" />
             </button>
-
           </div>
 
-          {/* User */}
+          {/* Commitments */}
           <button
-            onClick={() =>
-              setCurrentView('profile')
-            }
-            className={`flex items-center justify-center w-16 h-14 transition-colors ${
-              currentView ===
-              'profile'
+            onClick={() => {
+              window.scrollTo({ top: 0, behavior: 'smooth' })
+              setCurrentView('commitments')
+            }}
+            className={`flex items-center justify-center w-14 h-14 transition-colors ${
+              currentView === 'commitments'
                 ? 'text-blue-600'
                 : 'text-slate-400 hover:text-slate-600'
             }`}
+            aria-label="Commitments"
           >
-            <User className="w-7 h-7" />
+            <Target className="w-6 h-6" />
+          </button>
+
+          {/* User */}
+          <button
+            onClick={() => {
+              window.scrollTo({ top: 0, behavior: 'smooth' })
+              setCurrentView('profile')
+            }}
+            className={`flex items-center justify-center w-14 h-14 transition-colors ${
+              currentView === 'profile'
+                ? 'text-blue-600'
+                : 'text-slate-400 hover:text-slate-600'
+            }`}
+            aria-label="Profile"
+          >
+            <User className="w-6 h-6" />
           </button>
 
         </div>
