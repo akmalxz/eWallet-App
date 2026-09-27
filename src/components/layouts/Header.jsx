@@ -35,6 +35,8 @@ export const Header = ({
     log: 'Manual Entry',
     transactions: 'Ledger & Verification',
     commitments: 'Subscriptions',
+    network: 'My Network',
+    split: 'Split Bill',
     profile: 'Profile & Settings'
   }
 

@@ -24,9 +24,35 @@ export const PersonalDetailsModal = ({
   // ----------------------------------------------------------
   const handleSave = async (e) => {
     e.preventDefault()
+
+    // Client-side required check (HTML `required` also enforces this)
+    if (!username.trim()) {
+      showToast('Please choose a username', 'warning')
+      return
+    }
+
     setSaving(true)
 
     try {
+      // 1. Pre-check username uniqueness (excluding self)
+      const { data: existing, error: checkError } = await supabase
+        .from('profiles')
+        .select('id')
+        .eq('username', username.trim())
+        .neq('id', user.id)
+        .maybeSingle()
+
+      if (checkError) throw checkError
+
+      if (existing) {
+        showToast(
+          'That username is already taken. Please choose another.',
+          'warning'
+        )
+        return
+      }
+
+      // 2. Update profile
       const { error } = await supabase
         .from('profiles')
         .update({
@@ -37,7 +63,7 @@ export const PersonalDetailsModal = ({
         .eq('id', user.id)
 
       if (error) {
-        // Handle UNIQUE constraint on username
+        // Handle UNIQUE constraint race condition (someone claimed it in between)
         const isDuplicate =
           error.code === '23505' ||
           error.message?.toLowerCase().includes('duplicate') ||
@@ -89,7 +115,7 @@ export const PersonalDetailsModal = ({
             value={firstName}
             onChange={(e) => setFirstName(e.target.value)}
             className="w-full bg-white/60 border border-white/40 rounded-xl py-2 px-3 text-sm outline-none focus:ring-2 focus:ring-blue-500"
-            placeholder="e.g. ali bin abu"
+            placeholder="e.g. Muhammad Akmal Hakim"
           />
         </div>
 
@@ -107,7 +133,7 @@ export const PersonalDetailsModal = ({
             value={lastName}
             onChange={(e) => setLastName(e.target.value)}
             className="w-full bg-white/60 border border-white/40 rounded-xl py-2 px-3 text-sm outline-none focus:ring-2 focus:ring-blue-500"
-            placeholder="e.g. ali"
+            placeholder="e.g. Hakim"
           />
         </div>
 
@@ -116,17 +142,21 @@ export const PersonalDetailsModal = ({
             htmlFor="pd-username"
             className="block text-xs font-bold text-slate-500 uppercase mb-1.5"
           >
-            Username
+            Username <span className="text-red-500">*</span>
           </label>
           <input
             id="pd-username"
             name="pd-username"
             type="text"
+            required
             value={username}
             onChange={(e) => setUsername(e.target.value)}
             className="w-full bg-white/60 border border-white/40 rounded-xl py-2 px-3 text-sm outline-none focus:ring-2 focus:ring-blue-500"
-            placeholder="e.g. ali27"
+            placeholder="e.g. akmalhakim"
           />
+          <p className="text-[10px] text-slate-400 mt-1.5">
+            This is how others will find you in the network.
+          </p>
         </div>
 
         <div>
@@ -148,7 +178,7 @@ export const PersonalDetailsModal = ({
 
         <button
           type="submit"
-          disabled={saving}
+          disabled={saving || !username.trim()}
           className="w-full bg-slate-900 hover:bg-slate-800 text-white font-medium py-3 rounded-xl text-sm transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
         >
           <Save className="w-4 h-4" />

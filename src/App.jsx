@@ -13,7 +13,9 @@ import {
   User,
   CheckCircle,
   List,
-  Layers
+  Layers,
+  Users,
+  Receipt
 } from 'lucide-react'
 
 // Components
@@ -30,6 +32,8 @@ import { LogItemPage } from './pages/LogItemPage'
 import { ProfilePage } from './pages/ProfilePage'
 import { TransactionsPage } from './pages/TransactionsPage'
 import { CommitmentsPage } from './pages/CommitmentsPage'
+import { NetworkPage } from './pages/NetworkPage'
+import { SplitBillPage } from './pages/SplitBillPage'
 
 // Hooks
 import { useAuth } from './hooks/useAuth'
@@ -445,7 +449,6 @@ export default function App() {
 
       if (error) throw error
 
-      // Success status - no emoji
       setOmnibarStatus({
         type: 'success',
         message: `Logged: ${parsed.description}`
@@ -460,7 +463,6 @@ export default function App() {
 
       fetchAllData()
     } catch (error) {
-      // Error status - no emoji
       setOmnibarStatus({
         type: 'error',
         message: error.message
@@ -914,13 +916,6 @@ export default function App() {
       <Header
         user={user}
         profile={profile}
-        omnibarText={omnibarText}
-        setOmnibarText={setOmnibarText}
-        handleOmnibarSubmit={
-          handleOmnibarSubmit
-        }
-        omnibarStatus={omnibarStatus}
-        isLoading={isLoading}
         currentView={currentView}
         setCurrentView={setCurrentView}
         supabase={supabase}
@@ -966,7 +961,35 @@ export default function App() {
               )}
             </section>
 
-            {/* Dashboard Analytics */}
+            {/* Social Finance Quick Menu */}
+            <section className="grid grid-cols-2 gap-4 md:gap-6">
+              <button
+                onClick={() => {
+                  window.scrollTo({ top: 0 });
+                  setCurrentView('network');
+                }}
+                className="bg-white/60 backdrop-blur-xl border border-white/40 p-4 rounded-2xl shadow-sm flex flex-col items-center justify-center gap-2 hover:bg-white/80 transition-all group"
+              >
+                <div className="w-10 h-10 bg-emerald-50 text-emerald-600 rounded-full flex items-center justify-center group-hover:scale-110 transition-transform">
+                  <Users className="w-5 h-5" />
+                </div>
+                <span className="text-sm font-bold text-slate-700">My Network</span>
+              </button>
+
+              <button
+                onClick={() => {
+                  window.scrollTo({ top: 0 });
+                  setCurrentView('split');
+                }}
+                className="bg-white/60 backdrop-blur-xl border border-white/40 p-4 rounded-2xl shadow-sm flex flex-col items-center justify-center gap-2 hover:bg-white/80 transition-all group"
+              >
+                <div className="w-10 h-10 bg-blue-50 text-blue-600 rounded-full flex items-center justify-center group-hover:scale-110 transition-transform">
+                  <Receipt className="w-5 h-5" />
+                </div>
+                <span className="text-sm font-bold text-slate-700">Split Bill</span>
+              </button>
+            </section>
+
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 md:gap-6">
 
               <BurnRateWidget
@@ -1055,6 +1078,32 @@ export default function App() {
         )}
 
         {/* ============================================
+            NETWORK PAGE
+        ============================================ */}
+        {currentView === 'network' && (
+          <NetworkPage
+            user={user}
+            profile={profile}
+            showToast={showToast}
+            onGoToProfile={() => setCurrentView('profile')}
+            onGoToSplitBill={() => setCurrentView('split')}
+            onBack={() => setCurrentView('dashboard')}
+          />
+        )}
+
+        {/* ============================================
+            SPLIT BILL PAGE
+        ============================================ */}
+        {currentView === 'split' && (
+          <SplitBillPage
+            user={user}
+            profile={profile}
+            showToast={showToast}
+            onBack={() => setCurrentView('dashboard')}
+          />
+        )}
+
+        {/* ============================================
             PROFILE PAGE
         ============================================ */}
         {currentView === 'profile' && (
@@ -1096,7 +1145,7 @@ export default function App() {
             }`}
             aria-label="Dashboard"
           >
-            <LayoutDashboard className="w-6 h-6" />
+            <LayoutDashboard className="w-5 h-5" />
           </button>
 
           {/* Transactions */}
@@ -1112,7 +1161,7 @@ export default function App() {
             }`}
             aria-label="Transactions"
           >
-            <List className="w-6 h-6" />
+            <List className="w-5 h-5" />
           </button>
 
           {/* Center Plus Button */}
@@ -1143,7 +1192,7 @@ export default function App() {
             }`}
             aria-label="Commitments"
           >
-            <Layers className="w-6 h-6" />
+            <Layers className="w-5 h-5" />
           </button>
 
           {/* User */}
@@ -1159,7 +1208,7 @@ export default function App() {
             }`}
             aria-label="Profile"
           >
-            <User className="w-6 h-6" />
+            <User className="w-5 h-5" />
           </button>
 
         </div>
