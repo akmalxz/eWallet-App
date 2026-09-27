@@ -40,7 +40,7 @@ export const Header = ({
   const mobileTitle = viewTitles[currentView] || 'FlowState'
 
   return (
-    <header className="bg-white/60 backdrop-blur-xl border-b border-white/40 sticky top-0 z-20 shadow-[0_4px_30px_rgba(0,0,0,0.03)]">
+    <header className="bg-slate-50/60 backdrop-blur-xl border-none sticky top-0 z-20">
       <div className="max-w-6xl mx-auto px-3 py-2 md:py-3">
         {/* Top Row: Logo + Actions */}
         <div className="flex items-center justify-between gap-2">
