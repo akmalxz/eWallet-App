@@ -2,8 +2,8 @@
 import { useState, useEffect } from 'react'
 import { supabase } from '../lib/supabaseClient'
 import {
-  User, LogOut, Target, Building2, TrendingUp, TrendingDown,
-  ChevronRight, Zap
+  User, LogOut, Layers, Building2, TrendingUp, TrendingDown,
+  ChevronRight, Zap, Info
 } from 'lucide-react'
 
 // Modals
@@ -12,6 +12,7 @@ import { IncomeCategoriesModal } from '../components/modals/IncomeCategoriesModa
 import { ExpenseCategoriesModal } from '../components/modals/ExpenseCategoriesModal'
 import { CommitmentsModal } from '../components/modals/CommitmentsModal'
 import { AutomationModal } from '../components/modals/AutomationModal'
+import { PersonalDetailsModal } from '../components/modals/PersonalDetailsModal'
 
 
 // ============================================================
@@ -75,6 +76,8 @@ const SetupButton = ({
 
 export function ProfilePage({
   user,
+  profile,
+  refreshProfile,
   accounts,
   categories,
   getSubCategories,
@@ -115,6 +118,16 @@ export function ProfilePage({
   }
 
 
+  // ----------------------------------------------------------
+  // Display name fallback
+  // ----------------------------------------------------------
+
+  const displayName =
+    profile?.username?.trim() ||
+    user?.email?.split('@')[0] ||
+    'Your Vault'
+
+
   // ============================================================
   // RENDER
   // ============================================================
@@ -132,19 +145,19 @@ export function ProfilePage({
           <User className="w-8 h-8" />
         </div>
 
-        <div className="flex-1">
-          <h2 className="text-lg font-bold text-slate-900">
-            Your Vault
+        <div className="flex-1 min-w-0">
+          <h2 className="text-lg font-bold text-slate-900 truncate">
+            {displayName}
           </h2>
 
-          <p className="text-xs text-slate-500">
+          <p className="text-xs text-slate-500 truncate">
             {user?.email}
           </p>
         </div>
 
         <button
           onClick={() => supabase.auth.signOut()}
-          className="inline-flex h-10 w-10 items-center justify-center rounded-xl bg-red-50/80 text-red-500 transition-colors hover:bg-red-100 hover:text-red-600"
+          className="inline-flex h-10 w-10 items-center justify-center rounded-xl bg-red-50/80 text-red-500 transition-colors hover:bg-red-100 hover:text-red-600 shrink-0"
           aria-label="Sign out"
         >
           <LogOut className="h-5 w-5" />
@@ -158,6 +171,14 @@ export function ProfilePage({
       ====================================================== */}
 
       <div className="space-y-4">
+
+        <SetupButton
+          id="personal_details"
+          title="Personal Information"
+          icon={Info}
+          activeModal={activeModal}
+          openModal={openModal}
+        />
 
         <SetupButton
           id="banks"
@@ -186,7 +207,7 @@ export function ProfilePage({
         <SetupButton
           id="commitments"
           title="Monthly Commitments"
-          icon={Target}
+          icon={Layers}
           activeModal={activeModal}
           openModal={openModal}
         />
@@ -205,6 +226,16 @@ export function ProfilePage({
       {/* ======================================================
           MODALS
       ====================================================== */}
+
+      {activeModal === 'personal_details' && (
+        <PersonalDetailsModal
+          user={user}
+          profile={profile}
+          closeModal={closeModal}
+          showToast={showToast}
+          refreshProfile={refreshProfile}
+        />
+      )}
 
       {activeModal === 'banks' && (
         <BankAccountsModal

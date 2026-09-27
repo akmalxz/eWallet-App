@@ -4,6 +4,7 @@ import { Activity, Plus, Settings, LogOut, Menu, X, LayoutDashboard } from 'luci
 
 export const Header = ({ 
   user,
+  profile,
   currentView,
   setCurrentView,
   supabase 
@@ -21,8 +22,7 @@ export const Header = ({
   }
 
   const firstName =
-    user?.user_metadata?.full_name?.split(' ')[0] ||
-    user?.user_metadata?.name?.split(' ')[0] ||
+    profile?.first_name?.trim() ||
     user?.email?.split('@')[0] ||
     'there'
 

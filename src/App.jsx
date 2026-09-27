@@ -51,7 +51,7 @@ export default function App() {
   // ============================================
   // AUTH
   // ============================================
-  const { user, isAuthenticated, isAuthLoading } = useAuth()
+  const { user, profile, refreshProfile, isAuthenticated, isAuthLoading } = useAuth()
 
   // ============================================
   // TOAST STATE
@@ -913,9 +913,12 @@ export default function App() {
       ============================================ */}
       <Header
         user={user}
+        profile={profile}
         omnibarText={omnibarText}
         setOmnibarText={setOmnibarText}
-        handleOmnibarSubmit={handleOmnibarSubmit}
+        handleOmnibarSubmit={
+          handleOmnibarSubmit
+        }
         omnibarStatus={omnibarStatus}
         isLoading={isLoading}
         currentView={currentView}
@@ -1057,6 +1060,8 @@ export default function App() {
         {currentView === 'profile' && (
           <ProfilePage
             user={user}
+            profile={profile}
+            refreshProfile={refreshProfile}
             accounts={accounts}
             categories={categories}
             getSubCategories={getSubCategories}
@@ -1074,7 +1079,7 @@ export default function App() {
       {/* ============================================
           MOBILE BOTTOM NAVIGATION
       ============================================ */}
-      <nav className="md:hidden fixed bottom-6 left-4 right-4 z-50 bg-white/10 backdrop-blur-md border border-white/30 rounded-3xl shadow-[0_8px_30px_rgba(0,0,0,0.1)]">
+      <nav className="md:hidden fixed bottom-6 left-4 right-4 z-50 bg-white/70 backdrop-blur-xl border border-white/40 rounded-3xl shadow-[0_8px_30px_rgba(0,0,0,0.08)]">
 
         <div className="flex justify-around items-center h-14 relative px-1">
 
