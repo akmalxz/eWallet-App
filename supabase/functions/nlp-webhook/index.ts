@@ -13,16 +13,10 @@ const corsHeaders = {
 // ============================================
 // 2. COMMON BANK ALIASES (Malaysian-focused)
 // ============================================
-// Each key is a canonical identifier. The array contains variations
-// that should all resolve to the same account. When the user has an
-// account whose name contains ANY of these strings, all variations
-// become valid lookup keys for that account.
-//
-// To add a new bank: just add a new entry here.
 const COMMON_BANK_ALIASES: Record<string, string[]> = {
   maybank: [
     'maybank', 'mbb', 'malayan banking', 'maybank2u', 'mae',
-    'maybank islamic', 'maybank investment'
+    'maybank islamic', 'maybank investment', ') maybank'
   ],
   cimb: [
     'cimb', 'cimb bank', 'cimb clicks', 'cimb octo', 'cimb niaga'
@@ -33,6 +27,13 @@ const COMMON_BANK_ALIASES: Record<string, string[]> = {
   ],
   gx: [
     'gx', 'gxbank', 'gx bank', 'gxbank berhad'
+  ],
+  aeon_bank: [
+    'aeon bank', 'aeonbank', 'aeon',
+    // OCR fallbacks (before normalization):
+    '/on bank', '/onbank', '/on',
+    'eon bank', 'eonbank',
+    '2aeon bank', '2aeonbank'
   ],
   bank_rakyat: [
     'bank rakyat', 'br', 'bank kerjasama rakyat',
@@ -82,16 +83,35 @@ const COMMON_BANK_ALIASES: Record<string, string[]> = {
   alliance: [
     'alliance', 'alliance bank'
   ],
-  bnp: [
-    'bnp', 'bnp paribas'
-  ],
-  aeon_bank: [
-    'aeon bank', 'aeonbank', 'aeon', '/ON BANK', '/on bank', '/onbank'
-  ],
 }
 
 // ============================================
-// 3. BUILD ACCOUNT DICTIONARY WITH ALIASES
+// 3. OCR TEXT NORMALIZER
+// ============================================
+// iOS Vision OCR mangles stylized bank logos in various ways. This
+// function collapses the known misreads into clean canonical names
+// before the parser runs.
+function normalizeOCRText(text: string): string {
+  let out = text
+    // Replace Æ ligature and its lowercase form
+    .replace(/Æ/g, 'AE')
+    .replace(/æ/g, 'ae')
+    // Strip stray quote marks that OCR picks up
+    .replace(/[`´'’‘“”]/g, '')
+
+  // AEON Bank logo variants at start of text.
+  // Catches: "/ON Bank", "2ÆON Bank", "2&/EONBank", "AEONBank", etc.
+  // Pattern: start-of-line + up to 8 junk chars + "ON" + optional space + "Bank"
+  out = out.replace(/^[^\n]{0,8}ON\s*Bank\b/i, 'AEON Bank')
+
+  // Additional safety: any line matching the same shape mid-document
+  out = out.replace(/\n[^\n]{0,8}ON\s*Bank\b/gi, '\nAEON Bank')
+
+  return out.trim()
+}
+
+// ============================================
+// 4. BUILD ACCOUNT DICTIONARY WITH ALIASES
 // ============================================
 function buildAccountDictionary(accounts: any[]): Record<string, string> {
   const dict: Record<string, string> = {}
@@ -100,7 +120,6 @@ function buildAccountDictionary(accounts: any[]): Record<string, string> {
     const name = acc.account_name.toLowerCase().trim()
     dict[name] = acc.id
 
-    // Add classification as a lookup key (e.g., "ewallet", "digital_bank")
     if (acc.classification) {
       dict[acc.classification] = acc.id
     }
@@ -109,16 +128,14 @@ function buildAccountDictionary(accounts: any[]): Record<string, string> {
     for (const [canonical, aliases] of Object.entries(COMMON_BANK_ALIASES)) {
       const matches = aliases.some(alias => name.includes(alias))
       if (matches) {
-        // Register ALL aliases for this account (not just the matched one)
         for (const alias of aliases) {
           if (!dict[alias]) dict[alias] = acc.id
         }
-        // Also register the canonical key itself
         if (!dict[canonical]) dict[canonical] = acc.id
       }
     }
 
-    // Add user-specified aliases if the column exists
+    // User-defined aliases (if the column exists)
     if (Array.isArray(acc.aliases)) {
       for (const alias of acc.aliases) {
         const key = String(alias).toLowerCase().trim()
@@ -131,7 +148,7 @@ function buildAccountDictionary(accounts: any[]): Record<string, string> {
 }
 
 // ============================================
-// 4. HIERARCHICAL NLP & OCR PARSER
+// 5. HIERARCHICAL NLP & OCR PARSER
 // ============================================
 class TransactionParser {
   accountDict: Record<string, string>;
@@ -176,15 +193,13 @@ class TransactionParser {
     if (this.categories.length === 0) return 'uncategorized';
     const lowerText = text.toLowerCase();
 
-    // Look for subcategories first — check name AND keywords
+    // Subcategories first — match by name OR keywords
     const subCategories = this.categories.filter(c => c.parent_id);
     for (const sub of subCategories) {
-      // Match by subcategory name
       if (lowerText.includes(sub.name.toLowerCase())) {
         const parent = this.categories.find(c => c.id === sub.parent_id);
         return parent ? `${parent.name} > ${sub.name}` : sub.name;
       }
-      // Match by keyword
       if (sub.keywords && Array.isArray(sub.keywords)) {
         for (const keyword of sub.keywords) {
           if (keyword && lowerText.includes(String(keyword).toLowerCase())) {
@@ -195,7 +210,7 @@ class TransactionParser {
       }
     }
 
-    // Fallback to main categories — check name AND keywords
+    // Main categories — match by name OR keywords
     const mainCategories = this.categories.filter(c => !c.parent_id);
     for (const main of mainCategories) {
       if (lowerText.includes(main.name.toLowerCase())) {
@@ -238,29 +253,23 @@ class TransactionParser {
     return { valid: false, normalizedCategory: 'uncategorized' };
   }
 
-  // Detect whether the input looks like OCR'd receipt text
-  private detectOCRSource(text: string): boolean {
+  detectOCRSource(text: string): boolean {
     const lower = text.toLowerCase();
-    // Strong signals: receipt-specific keywords
     const ocrKeywords = [
       'biller', 'recipient', 'recipient reference', 'reference',
       'receipt', 'invoice', 'total amount', 'payment details',
-      'ref-1', 'ref no', 'transaction id', 'merchant'
+      'ref-1', 'ref no', 'transaction id', 'merchant',
+      'transfer to', 'duitnow', 'successful'
     ];
     if (ocrKeywords.some(kw => lower.includes(kw))) return true;
 
-    // Medium signal: multi-line + length
     const lines = text.split('\n').filter(l => l.trim().length > 0);
     return lines.length >= 4 && text.length > 80;
   }
 
-    parse(text: string) {
-    // Normalize common OCR misreads before parsing
-    const normalizedText = text
-      .replace(/Æ/g, 'AE')
-      .replace(/æ/g, 'ae')
-      .replace(/[`´'’‘“”]/g, '')
-      .trim();
+  parse(rawText: string) {
+    // Normalize OCR misreads before parsing
+    const normalizedText = normalizeOCRText(rawText);
 
     const result = {
       amount: null as number | null,
@@ -288,12 +297,12 @@ class TransactionParser {
       }
     }
 
-    // Category
+    // Category extraction
     const extractedCategory = this.extractCategory(normalizedText);
     const validation = this.validateCategory(extractedCategory);
     result.category = validation.valid ? validation.normalizedCategory : 'uncategorized';
 
-    // Description
+    // Description extraction
     const isOCR = this.detectOCRSource(normalizedText);
 
     if (isOCR) {
@@ -362,7 +371,7 @@ class TransactionParser {
 }
 
 // ============================================
-// 5. VALIDATION
+// 6. VALIDATION
 // ============================================
 function validateTransaction(payload: any): { valid: boolean; errors: string[] } {
   const errors: string[] = [];
@@ -387,7 +396,7 @@ function validateTransaction(payload: any): { valid: boolean; errors: string[] }
 }
 
 // ============================================
-// 6. RATE LIMITING
+// 7. RATE LIMITING (simple in-memory)
 // ============================================
 const rateLimit = new Map<string, { count: number; resetTime: number }>();
 
@@ -412,7 +421,7 @@ function checkRateLimit(userId: string): { allowed: boolean; message?: string } 
 }
 
 // ============================================
-// 7. EDGE FUNCTION HANDLER
+// 8. EDGE FUNCTION HANDLER
 // ============================================
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
@@ -486,7 +495,7 @@ serve(async (req) => {
 
     const supabaseClient = createClient(supabaseUrl, supabaseServiceKey);
 
-    // Verify user exists via profiles (more reliable than accounts)
+    // Verify user exists via profiles
     const { data: profileData, error: profileError } = await supabaseClient
       .from('profiles')
       .select('id')
@@ -500,13 +509,12 @@ serve(async (req) => {
       });
     }
 
-    // Fetch Accounts (include aliases if the column exists)
+    // Fetch accounts (with graceful fallback if aliases column doesn't exist yet)
     const { data: accounts, error: fetchError } = await supabaseClient
       .from('accounts')
       .select('id, account_name, classification, aliases')
       .eq('user_id', userId);
 
-    // Graceful fallback if 'aliases' column doesn't exist yet
     let safeAccounts = accounts;
     if (fetchError) {
       const fallback = await supabaseClient
@@ -529,22 +537,16 @@ serve(async (req) => {
       });
     }
 
-    // Fetch Custom Categories (include keywords!)
+    // Fetch categories with keywords
     const { data: categories } = await supabaseClient
       .from('categories')
       .select('id, name, parent_id, keywords')
       .eq('user_id', userId);
 
-    // Build Alias-Expanded Account Dictionary
+    // Build alias-expanded account dictionary
     const dynamicDictionary = buildAccountDictionary(safeAccounts);
-    console.log('[DEBUG] userId received:', userId);
-    console.log('[DEBUG] Accounts for this user:', safeAccounts.map(a => a.account_name));
-    console.log('[DEBUG] Dict keys:', Object.keys(dynamicDictionary).filter(k => 
-      k.includes('aeon') || k.includes('/on')
-    ));
-    console.log('[DEBUG] Text preview:', text.substring(0, 100));
 
-    // Parse transaction
+    // Parse
     const parser = new TransactionParser(dynamicDictionary, categories || []);
     let parsedData;
     try {
@@ -557,7 +559,8 @@ serve(async (req) => {
     }
 
     // Determine confidence
-    const isHighConfidence = !parser['detectOCRSource'].call(parser, text)
+    const isOCR = parser.detectOCRSource(normalizeOCRText(text));
+    const isHighConfidence = !isOCR
       && parsedData.category !== 'uncategorized'
       && (parsedData.sourceAccountId || parsedData.destinationAccountId);
 
@@ -572,8 +575,9 @@ serve(async (req) => {
       metadata: {
         source: source,
         raw_text: text,
+        normalized_text: normalizeOCRText(text),
         parsed_at: new Date().toISOString(),
-        parser_version: '1.1.0'
+        parser_version: '1.2.0'
       }
     };
 
@@ -588,8 +592,7 @@ serve(async (req) => {
       });
     }
 
-    // Duplicate check — only for OCR-sourced inputs, and include account in the check
-    const isOCR = parser['detectOCRSource'].call(parser, text);
+    // Duplicate check for OCR inputs
     if (isOCR) {
       const { data: existingTx } = await supabaseClient
         .from('transactions')
@@ -612,6 +615,7 @@ serve(async (req) => {
       }
     }
 
+    // Insert
     const { error: insertError, data: insertedData } = await supabaseClient
       .from('transactions')
       .insert([payload])
