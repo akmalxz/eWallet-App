@@ -86,7 +86,7 @@ const COMMON_BANK_ALIASES: Record<string, string[]> = {
     'bnp', 'bnp paribas'
   ],
   aeon_bank: [
-    'aeon bank', 'aeonbank', 'aeon'
+    'aeon bank', 'aeonbank', 'aeon', '/ON BANK', '/on bank', '/onbank'
   ],
 }
 
@@ -295,17 +295,44 @@ class TransactionParser {
       let extractedName = '';
       let extractedRef = '';
 
-      for (let i = 0; i < lines.length; i++) {
-        const line = lines[i].toLowerCase();
+    const NAME_LABELS = ['biller', 'recipient', 'merchant name', 'transfer to']
+    const REF_LABELS  = ['recipient reference', 'ref-1', 'reference']
 
-        if ((line === 'biller' || line === 'recipient' || line === 'merchant name' || line === 'transfer to') && !extractedName) {
-          if (i + 1 < lines.length) extractedName = lines[i + 1];
-        }
+    for (let i = 0; i < lines.length; i++) {
+      const raw = lines[i]
+      const line = raw.toLowerCase()
 
-        if ((line === 'recipient reference' || line.includes('ref-1')) && !extractedRef) {
-          if (i + 1 < lines.length) extractedRef = lines[i + 1];
+      // Name extraction — handles BOTH styles:
+      //   1. "Transfer to ajp enterprise"  (same line)
+      //   2. "Recipient" / "ajp enterprise" (next line)
+      if (!extractedName) {
+        for (const label of NAME_LABELS) {
+          if (line.startsWith(label + ' ')) {
+            // Same-line style: extract the rest of the line
+            const rest = raw.substring(label.length).trim()
+            if (rest) { extractedName = rest; break }
+          } else if (line === label && i + 1 < lines.length) {
+            // Multi-line style: grab the next line
+            extractedName = lines[i + 1]
+            break
+          }
         }
       }
+
+      // Reference extraction (unchanged behavior)
+      if (!extractedRef) {
+        for (const label of REF_LABELS) {
+          if (line === label && i + 1 < lines.length) {
+            extractedRef = lines[i + 1]
+            break
+          }
+          if (line.startsWith(label + ' ')) {
+            const rest = raw.substring(label.length).trim()
+            if (rest) { extractedRef = rest; break }
+          }
+        }
+      }
+    }
 
       if (extractedName) {
         // Preserve original casing if it's not all-lowercase
@@ -509,6 +536,12 @@ serve(async (req) => {
 
     // Build Alias-Expanded Account Dictionary
     const dynamicDictionary = buildAccountDictionary(safeAccounts);
+    console.log('[DEBUG] userId received:', userId);
+    console.log('[DEBUG] Accounts for this user:', safeAccounts.map(a => a.account_name));
+    console.log('[DEBUG] Dict keys:', Object.keys(dynamicDictionary).filter(k => 
+      k.includes('aeon') || k.includes('/on')
+    ));
+    console.log('[DEBUG] Text preview:', text.substring(0, 100));
 
     // Parse transaction
     const parser = new TransactionParser(dynamicDictionary, categories || []);
