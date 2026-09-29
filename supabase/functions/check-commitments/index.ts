@@ -7,21 +7,58 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 }
 
+// Malaysia time offset (UTC+8) in milliseconds
+const MY_TZ_OFFSET_MS = 8 * 60 * 60 * 1000
+
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response('ok', { headers: corsHeaders })
   }
 
   try {
+    // ============================================
+    // AUTH: Require CRON_SECRET Bearer token
+    // ============================================
+    const CRON_SECRET = Deno.env.get('CRON_SECRET') ?? ''
+
+    if (!CRON_SECRET) {
+      console.error('CRON_SECRET environment variable is not set')
+      return new Response(JSON.stringify({ error: 'Server configuration error' }), {
+        status: 500,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+      })
+    }
+
+    const authHeader = req.headers.get('Authorization')
+    if (!authHeader || authHeader !== `Bearer ${CRON_SECRET}`) {
+      return new Response(JSON.stringify({ error: 'Unauthorized' }), {
+        status: 401,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+      })
+    }
+
     const supabaseClient = createClient(
       Deno.env.get('SUPABASE_URL') ?? '',
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
     )
 
-    const today = new Date()
-    const currentDay = today.getDate()
+    // ============================================
+    // TIMEZONE-AWARE "TODAY"
+    // ============================================
+    const nowUTC = new Date()
+    const nowMY = new Date(nowUTC.getTime() + MY_TZ_OFFSET_MS)
+    const currentDay = nowMY.getUTCDate()
+    const currentMonth = nowMY.getUTCMonth()
 
-    // Find all active commitments due today
+    // Start of "today" in MYT expressed as UTC ISO string
+    const startOfDayMY = new Date(
+      Date.UTC(nowMY.getUTCFullYear(), nowMY.getUTCMonth(), nowMY.getUTCDate(), 0, 0, 0)
+    )
+    const startOfDayUTC = new Date(startOfDayMY.getTime() - MY_TZ_OFFSET_MS)
+
+    // ============================================
+    // FETCH DUE COMMITMENTS
+    // ============================================
     const { data: commitments, error } = await supabaseClient
       .from('commitments')
       .select('*, accounts(user_id)')
@@ -30,95 +67,132 @@ serve(async (req) => {
 
     if (error) throw error
 
-    //console.log(`📋 Found ${commitments?.length || 0} commitments due today`)
-
-    const results = []
+    const results: any[] = []
 
     for (const commitment of commitments || []) {
-      // Check if already processed today
-      const startOfDay = new Date(today)
-      startOfDay.setHours(0, 0, 0, 0)
-      
+      // ============================================
+      // GUARD: Skip commitments with no linked account
+      // ============================================
+      const ownerId = commitment.accounts?.user_id
+      if (!ownerId || !commitment.account_id) {
+        results.push({
+          commitment: commitment.name,
+          status: 'skipped_no_account'
+        })
+        continue
+      }
+
+      // ============================================
+      // IDEMPOTENCY: Skip if already processed today
+      // ============================================
       const { data: existing, error: checkError } = await supabaseClient
         .from('transactions')
         .select('id')
         .eq('description', `[Auto] ${commitment.name}`)
-        .gte('transaction_date', startOfDay.toISOString())
+        .gte('transaction_date', startOfDayUTC.toISOString())
         .limit(1)
 
       if (checkError) {
         console.error('Error checking existing:', checkError)
+        results.push({
+          commitment: commitment.name,
+          status: 'error',
+          error: checkError.message
+        })
         continue
       }
 
       if (existing && existing.length > 0) {
-        results.push({ 
-          commitment: commitment.name, 
+        results.push({
+          commitment: commitment.name,
           status: 'already_processed',
           transaction_id: existing[0].id
         })
         continue
       }
 
-      // Check if there's enough balance
+      // ============================================
+      // BALANCE CHECK (safe with maybeSingle)
+      // ============================================
       const { data: accountData } = await supabaseClient
         .from('v_account_balances')
         .select('balance')
         .eq('account_id', commitment.account_id)
-        .single()
+        .maybeSingle()
 
-      const currentBalance = accountData?.balance || 0
+      const currentBalance = accountData?.balance ?? 0
       const isOverdraft = currentBalance < commitment.amount
 
-      // Create transaction for the commitment
+      // ============================================
+      // INSERT TRANSACTION
+      // ============================================
       const { data: inserted, error: insertError } = await supabaseClient
         .from('transactions')
         .insert({
-          user_id: commitment.accounts.user_id,
+          user_id: ownerId,
           description: `[Auto] ${commitment.name}`,
           amount: commitment.amount,
           source_account_id: commitment.account_id,
           destination_account_id: null,
           category: 'Commitments',
           transaction_date: new Date().toISOString(),
-          needs_review: isOverdraft, // Flag for review if overdraft
-          metadata: { 
+          needs_review: isOverdraft,
+          metadata: {
             commitment_id: commitment.id,
             auto_generated: true,
             due_day: commitment.due_day_of_month,
-            is_overdraft: isOverdraft
+            is_overdraft: isOverdraft,
+            balance_before: currentBalance
           }
         })
         .select()
 
       if (insertError) {
-        results.push({ 
-          commitment: commitment.name, 
-          status: 'error', 
-          error: insertError.message 
+        results.push({
+          commitment: commitment.name,
+          status: 'error',
+          error: insertError.message
         })
         console.error('Error inserting:', insertError)
-      } else {
-        results.push({ 
-          commitment: commitment.name, 
-          status: isOverdraft ? 'processed_with_warning' : 'processed',
-          transaction_id: inserted?.[0]?.id,
-          is_overdraft: isOverdraft
-        })
-        //console.log(` Processed: ${commitment.name} (${isOverdraft ? '⚠️ overdraft' : ''})`)
+        continue
       }
+
+      // ============================================
+      // UPDATE COMMITMENT last_paid + last_paid_month
+      // ============================================
+      const { error: updateError } = await supabaseClient
+        .from('commitments')
+        .update({
+          last_paid: new Date().toISOString(),
+          last_paid_month: currentMonth
+        })
+        .eq('id', commitment.id)
+
+      if (updateError) {
+        console.error('Failed to update commitment:', updateError)
+      }
+
+      results.push({
+        commitment: commitment.name,
+        status: isOverdraft ? 'processed_with_warning' : 'processed',
+        transaction_id: inserted?.[0]?.id,
+        is_overdraft: isOverdraft
+      })
     }
 
-    return new Response(JSON.stringify({ 
-      success: true, 
+    return new Response(JSON.stringify({
+      success: true,
       processed: results,
       date: new Date().toISOString(),
+      timezone: 'Asia/Kuala_Lumpur',
+      current_day: currentDay,
       summary: {
         total: results.length,
         processed: results.filter(r => r.status === 'processed').length,
         warnings: results.filter(r => r.status === 'processed_with_warning').length,
         errors: results.filter(r => r.status === 'error').length,
-        skipped: results.filter(r => r.status === 'already_processed').length
+        skipped: results.filter(r => r.status === 'already_processed').length,
+        skipped_no_account: results.filter(r => r.status === 'skipped_no_account').length
       }
     }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
