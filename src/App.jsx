@@ -100,7 +100,7 @@ export default function App() {
     setRecentTransactions,
     commitments,
     setCommitments,
-    gxExpenses,
+    monthlyExpenses,
     categories,
     classifications,
     isLoading,
@@ -809,7 +809,7 @@ export default function App() {
       account?.balance || 0
 
     const accountExpenses =
-      gxExpenses?.filter(
+      monthlyExpenses?.filter(
         tx =>
           tx.source_account_id ===
           activeBurnId
@@ -870,7 +870,7 @@ export default function App() {
     }
   }, [
     accounts,
-    gxExpenses,
+    monthlyExpenses,
     activeBurnId
   ])
 
@@ -881,7 +881,7 @@ export default function App() {
     const breakdown = {}
 
     const accountExpenses =
-      gxExpenses?.filter(
+      monthlyExpenses?.filter(
         tx =>
           tx.source_account_id ===
             activeHeatmapId &&
@@ -913,7 +913,7 @@ export default function App() {
         (a, b) => b.value - a.value
       )
   }, [
-    gxExpenses,
+    monthlyExpenses,
     activeHeatmapId
   ])
 
