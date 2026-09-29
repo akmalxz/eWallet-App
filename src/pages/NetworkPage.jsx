@@ -51,13 +51,13 @@ export function NetworkPage({
         if (f.addressee_id !== user.id) otherIds.add(f.addressee_id)
       })
 
-      // 3. Fetch their profiles
+      // 3. Fetch their profiles via RPC (bypasses RLS safely)
       let profileMap = {}
       if (otherIds.size > 0) {
-        const { data: profileData, error: pError } = await supabase
-          .from('profiles')
-          .select('id, first_name, last_name, username')
-          .in('id', [...otherIds])
+        const { data: profileData, error: pError } = await supabase.rpc(
+          'get_profiles_by_ids',
+          { user_ids: [...otherIds] }
+        )
 
         if (pError) throw pError
         profileMap = Object.fromEntries(
@@ -67,11 +67,12 @@ export function NetworkPage({
 
       // 4. Enrich
       const enriched = list.map(f => {
-        const otherId =
-          f.requester_id === user.id ? f.addressee_id : f.requester_id
+        const otherId = f.requester_id === user.id ? f.addressee_id : f.requester_id
+        const friendProfile = profileMap[otherId] || null
+
         return {
           ...f,
-          other_user: profileMap[otherId] || null
+          other_user: friendProfile
         }
       })
 
@@ -216,8 +217,16 @@ export function NetworkPage({
   // ----------------------------------------------------------
   const displayName = (p) => {
     if (!p) return 'Unknown user'
-    const full = [p.first_name, p.last_name].filter(Boolean).join(' ')
-    return full || p.username || 'Unknown user'
+
+    const first = p.first_name?.trim() || ''
+    const last = p.last_name?.trim() || ''
+    const full = `${first} ${last}`.trim()
+
+    if (full) return full
+    if (p.username) return `@${p.username}`
+    if (p.email) return p.email
+
+    return 'Unknown user'
   }
 
   const getFriendshipFor = (targetId) =>
