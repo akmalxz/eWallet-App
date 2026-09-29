@@ -76,3 +76,14 @@ export const myWeekdayIndex = (input) => {
   const js = d.getUTCDay() // 0=Sun..6=Sat
   return js === 0 ? 6 : js - 1
 }
+
+// MY-local number of days in the current month
+export const getDaysInMonthMY = (input = new Date()) => {
+  const d = toMYDate(input)
+  return new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth() + 1, 0)).getUTCDate()
+}
+
+// MY-local day of month (1-31)
+export const getDayOfMonthMY = (input = new Date()) => {
+  return toMYDate(input).getUTCDate()
+}

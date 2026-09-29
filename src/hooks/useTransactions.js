@@ -172,15 +172,21 @@ export const useTransactions = (user, showToast) => {
       if (commResult.error) throw commResult.error
       setCommitments(commResult.data || [])
 
-      // Fetch Monthly Expenses
-      const startOfMonth = new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString()
+      // Fetch recent expenses — last 2 months so we can compute
+      // month-over-month comparisons. Callers filter to their window.
+      const startOfLastMonth = new Date(
+        new Date().getFullYear(),
+        new Date().getMonth() - 1,
+        1
+      ).toISOString()
+
       const { data: monthData, error: monthError } = await supabase
         .from('transactions')
         .select('*')
-        .eq('user_id', user.id) // Scoped
+        .eq('user_id', user.id)
         .is('destination_account_id', null)
-        .gte('transaction_date', startOfMonth)
-      
+        .gte('transaction_date', startOfLastMonth)
+
       if (!monthError) {
         setMonthlyExpenses(monthData || [])
       }

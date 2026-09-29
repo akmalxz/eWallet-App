@@ -2,26 +2,17 @@
 import { useState, useCallback, useMemo, useRef, useEffect } from 'react'
 import { supabase } from './lib/supabaseClient'
 import {
-  Wallet,
-  Landmark,
-  Activity,
-  PiggyBank,
-  Database,
-  AlertTriangle,
-  LayoutDashboard,
-  Plus,
-  User,
-  CheckCircle,
-  List,
-  Layers,
-  Users,
-  Receipt
+  Wallet, Landmark, Activity, PiggyBank, Database,
+  AlertTriangle, LayoutDashboard, Plus, User, CheckCircle,
+  List, Layers, Users, Receipt
 } from 'lucide-react'
 
 // Components
 import Auth from './components/Auth'
 import { ToastNotification } from './components/shared/Toast'
 import { LoadingSpinner } from './components/shared/LoadingSpinner'
+import { AccountSelector } from './components/shared/AccountSelector'
+import { AccountChipRow } from './components/shared/AccountChipRow'
 import { Header } from './components/layouts/Header'
 import { AccountCards } from './components/dashboard/AccountCards'
 import { BurnRateWidget } from './components/dashboard/BurnRateWidget'
@@ -42,17 +33,11 @@ import { useTransactions } from './hooks/useTransactions'
 
 // Utils
 import { TransactionParser } from './utils/nlpParser'
+import { getDaysInMonthMY, getDayOfMonthMY, monthKey, toMYDate } from './utils/dateHelpers'
+import { rollUpToMain, getCategoryColor, OTHER_COLOR } from './utils/categoryColors'
 
-// Constants
-const ICON_MAP = {
-  Landmark,
-  Wallet,
-  Activity,
-  PiggyBank,
-  Database
-}
+const ICON_MAP = { Landmark, Wallet, Activity, PiggyBank, Database }
 
-// Navigation items shared between mobile + desktop navs
 const NAV_ITEMS = [
   { id: 'dashboard',    icon: LayoutDashboard, label: 'Home' },
   { id: 'transactions', icon: List,            label: 'Ledger' },
@@ -61,70 +46,29 @@ const NAV_ITEMS = [
   { id: 'profile',      icon: User,            label: 'Profile' }
 ]
 
-// Views that conceptually live "inside" the dashboard tab
-const DASHBOARD_SUBVIEWS = ['network', 'split']
+const DASHBOARD_SUBVIEWS = ['network', 'split', 'analytics']
 
 export default function App() {
-  // ============================================
-  // AUTH
-  // ============================================
   const { user, profile, refreshProfile, isAuthenticated, isAuthLoading } = useAuth()
 
-  // ============================================
-  // TOAST STATE
-  // ============================================
   const [toasts, setToasts] = useState([])
-
   const showToast = useCallback((message, type = 'info') => {
     const id = Date.now()
-
-    setToasts(prev => [
-      ...prev,
-      {
-        id,
-        message,
-        type
-      }
-    ])
-
-    setTimeout(() => {
-      setToasts(prev => prev.filter(t => t.id !== id))
-    }, 5000)
+    setToasts(prev => [...prev, { id, message, type }])
+    setTimeout(() => setToasts(prev => prev.filter(t => t.id !== id)), 5000)
   }, [])
 
-  // ============================================
-  // TRANSACTIONS DATA
-  // ============================================
   const {
-    accounts,
-    recentTransactions,
-    setRecentTransactions,
-    commitments,
-    setCommitments,
-    monthlyExpenses,
-    categories,
-    classifications,
-    isLoading,
-    error,
-    fetchAllData
+    accounts, recentTransactions, setRecentTransactions,
+    commitments, setCommitments, monthlyExpenses,
+    categories, classifications, isLoading, error, fetchAllData
   } = useTransactions(user, showToast)
 
-  // ============================================
-  // VIEW ROUTER STATE
-  // ============================================
   const [currentView, setCurrentView] = useState('dashboard')
   const [requestedModal, setRequestedModal] = useState(null)
 
-  // ============================================
-  // UI STATE
-  // ============================================
   const [omnibarText, setOmnibarText] = useState('')
-
-  const [omnibarStatus, setOmnibarStatus] = useState({
-    type: '',
-    message: ''
-  })
-
+  const [omnibarStatus, setOmnibarStatus] = useState({ type: '', message: '' })
   const [isRefreshingLedger, setIsRefreshingLedger] = useState(false)
   const [selectedAccount, setSelectedAccount] = useState(null)
 
@@ -132,23 +76,13 @@ export default function App() {
   const hasFetchedRef = useRef(false)
   const autoRefreshIntervalRef = useRef(null)
 
-  // ============================================
-  // NAV STATE
-  // ============================================
-  const navKey = DASHBOARD_SUBVIEWS.includes(currentView)
-    ? 'dashboard'
-    : currentView
-
+  const navKey = DASHBOARD_SUBVIEWS.includes(currentView) ? 'dashboard' : currentView
   const activeIndex = NAV_ITEMS.findIndex(item => item.id === navKey)
-
   const handleNavClick = useCallback((id) => {
     window.scrollTo({ top: 0, behavior: 'smooth' })
     setCurrentView(id)
   }, [])
 
-  // ============================================
-  // INITIAL DATA FETCH
-  // ============================================
   useEffect(() => {
     if (isAuthenticated && user && !hasFetchedRef.current) {
       hasFetchedRef.current = true
@@ -156,72 +90,33 @@ export default function App() {
     }
   }, [isAuthenticated, user, fetchAllData])
 
-  // ============================================
-  // REFRESH LEDGER
-  // ============================================
-  const handleRefreshLedger = useCallback(
-    async (showToastMessage = true) => {
-      if (isRefreshingLedger || !user) return
+  const handleRefreshLedger = useCallback(async (showToastMessage = true) => {
+    if (isRefreshingLedger || !user) return
+    setIsRefreshingLedger(true)
+    try {
+      const [txResult, commResult] = await Promise.all([
+        supabase.from('transactions').select('*')
+          .order('needs_review', { ascending: false })
+          .order('transaction_date', { ascending: false })
+          .limit(30),
+        supabase.from('commitments').select('*')
+      ])
+      if (txResult.error) throw txResult.error
+      if (commResult.error) throw commResult.error
+      setRecentTransactions(txResult.data || [])
+      setCommitments(commResult.data || [])
+      if (showToastMessage) showToast('Ledger refreshed successfully!', 'success')
+    } catch (error) {
+      if (showToastMessage) showToast('Failed to refresh ledger: ' + error.message, 'error')
+    } finally {
+      setIsRefreshingLedger(false)
+    }
+  }, [user, isRefreshingLedger, showToast, setRecentTransactions, setCommitments])
 
-      setIsRefreshingLedger(true)
-
-      try {
-        const [txResult, commResult] = await Promise.all([
-          supabase
-            .from('transactions')
-            .select('*')
-            .order('needs_review', { ascending: false })
-            .order('transaction_date', { ascending: false })
-            .limit(30),
-
-          supabase
-            .from('commitments')
-            .select('*')
-        ])
-
-        if (txResult.error) throw txResult.error
-        if (commResult.error) throw commResult.error
-
-        setRecentTransactions(txResult.data || [])
-        setCommitments(commResult.data || [])
-
-        if (showToastMessage) {
-          showToast('Ledger refreshed successfully!', 'success')
-        }
-      } catch (error) {
-        if (showToastMessage) {
-          showToast(
-            'Failed to refresh ledger: ' + error.message,
-            'error'
-          )
-        }
-      } finally {
-        setIsRefreshingLedger(false)
-      }
-    },
-    [
-      user,
-      isRefreshingLedger,
-      showToast,
-      setRecentTransactions,
-      setCommitments
-    ]
-  )
-
-  // ============================================
-  // AUTO REFRESH
-  // ============================================
   useEffect(() => {
     if (!user) return
-
-    if (autoRefreshIntervalRef.current) {
-      clearInterval(autoRefreshIntervalRef.current)
-    }
-
-    autoRefreshIntervalRef.current = setInterval(() => {
-      handleRefreshLedger(false)
-    }, 30000)
-
+    if (autoRefreshIntervalRef.current) clearInterval(autoRefreshIntervalRef.current)
+    autoRefreshIntervalRef.current = setInterval(() => handleRefreshLedger(false), 30000)
     return () => {
       if (autoRefreshIntervalRef.current) {
         clearInterval(autoRefreshIntervalRef.current)
@@ -235,150 +130,72 @@ export default function App() {
   // ============================================
   const handleMarkAsPaid = async commitmentId => {
     try {
-      const commitment = commitments.find(
-        c => c.id === commitmentId
-      )
-
-      if (!commitment) {
-        return showToast(
-          'Commitment not found',
-          'error'
-        )
-      }
-
+      const commitment = commitments.find(c => c.id === commitmentId)
+      if (!commitment) return showToast('Commitment not found', 'error')
       const currentMonth = new Date().getMonth()
       const currentYear = new Date().getFullYear()
-
-      const { error: txError } = await supabase
-        .from('transactions')
-        .insert({
-          user_id: user.id,
-          description: `[Paid] ${commitment.name}`,
-          amount: commitment.amount,
-          source_account_id: commitment.account_id,
-          destination_account_id: null,
-          category: 'Commitments',
-          transaction_date: new Date().toISOString(),
-          needs_review: false,
-          metadata: {
-            commitment_id: commitment.id,
-            payment_type: 'manual',
-            paid_month: currentMonth + 1,
-            paid_year: currentYear
-          }
-        })
-
+      const { error: txError } = await supabase.from('transactions').insert({
+        user_id: user.id,
+        description: `[Paid] ${commitment.name}`,
+        amount: commitment.amount,
+        source_account_id: commitment.account_id,
+        destination_account_id: null,
+        category: 'Commitments',
+        transaction_date: new Date().toISOString(),
+        needs_review: false,
+        metadata: {
+          commitment_id: commitment.id, payment_type: 'manual',
+          paid_month: currentMonth + 1, paid_year: currentYear
+        }
+      })
       if (txError) throw txError
-
-      const { error: updateError } = await supabase
-        .from('commitments')
-        .update({
-          last_paid: new Date().toISOString(),
-          last_paid_month: currentMonth
-        })
-        .eq('id', commitmentId)
-
+      const { error: updateError } = await supabase.from('commitments').update({
+        last_paid: new Date().toISOString(),
+        last_paid_month: currentMonth
+      }).eq('id', commitmentId)
       if (updateError) throw updateError
-
       showToast(
         <div className="flex items-center gap-2">
           <CheckCircle className="w-4 h-4 shrink-0" />
-          <span>
-            {commitment.name} marked as paid!
-          </span>
-        </div>,
-        'success'
+          <span>{commitment.name} marked as paid!</span>
+        </div>, 'success'
       )
-
       await fetchAllData()
     } catch (error) {
-      showToast(
-        'Error marking as paid: ' + error.message,
-        'error'
-      )
+      showToast('Error marking as paid: ' + error.message, 'error')
     }
   }
 
   const handleToggleCommitment = async (id, isActive) => {
     try {
-      const { error } = await supabase
-        .from('commitments')
-        .update({
-          is_active: !isActive
-        })
-        .eq('id', id)
-
+      const { error } = await supabase.from('commitments').update({ is_active: !isActive }).eq('id', id)
       if (error) throw error
-
-      showToast(
-        `Commitment ${
-          isActive ? 'deactivated' : 'activated'
-        }`,
-        'success'
-      )
-
+      showToast(`Commitment ${isActive ? 'deactivated' : 'activated'}`, 'success')
       fetchAllData()
     } catch (error) {
-      showToast(
-        'Error toggling commitment: ' + error.message,
-        'error'
-      )
+      showToast('Error toggling commitment: ' + error.message, 'error')
     }
   }
 
   const handleDeleteCommitment = async (id, name) => {
-    if (
-      !window.confirm(
-        `Delete commitment "${name}"?`
-      )
-    ) {
-      return
-    }
-
+    if (!window.confirm(`Delete commitment "${name}"?`)) return
     try {
-      const { error } = await supabase
-        .from('commitments')
-        .delete()
-        .eq('id', id)
-
+      const { error } = await supabase.from('commitments').delete().eq('id', id)
       if (error) throw error
-
-      showToast(
-        'Commitment deleted',
-        'success'
-      )
-
+      showToast('Commitment deleted', 'success')
       fetchAllData()
     } catch (error) {
-      showToast(
-        'Error deleting commitment: ' + error.message,
-        'error'
-      )
+      showToast('Error deleting commitment: ' + error.message, 'error')
     }
   }
 
   // ============================================
-  // ACCOUNT ROUTING HANDLERS
+  // ACCOUNT ROUTING
   // ============================================
-  const handleAddAccount = () => {
-    setRequestedModal('banks')
-    setCurrentView('profile')
-  }
+  const handleAddAccount = () => { setRequestedModal('banks'); setCurrentView('profile') }
+  const handleLogTransactionFromAccount = account => { setSelectedAccount(account); setCurrentView('log') }
+  const handleManageAccount = account => { setSelectedAccount(account); setRequestedModal('banks'); setCurrentView('profile') }
 
-  const handleLogTransactionFromAccount = account => {
-    setSelectedAccount(account)
-    setCurrentView('log')
-  }
-
-  const handleManageAccount = account => {
-    setSelectedAccount(account)
-    setRequestedModal('banks')
-    setCurrentView('profile')
-  }
-
-  // ============================================
-  // TOGGLE PIN ACCOUNT
-  // ============================================
   const handleTogglePin = async (account) => {
     try {
       const { data, error } = await supabase
@@ -386,20 +203,11 @@ export default function App() {
         .update({ is_pinned: !account.is_pinned })
         .eq('id', account.id)
         .select()
-
       if (error) throw error
-
       if (!data || data.length === 0) {
-        throw new Error(
-          'Pin failed — no rows affected. Check your RLS policy on accounts.'
-        )
+        throw new Error('Pin failed — no rows affected. Check RLS on accounts.')
       }
-
-      showToast(
-        account.is_pinned ? 'Account unpinned' : 'Account pinned to top',
-        'success'
-      )
-
+      showToast(account.is_pinned ? 'Account unpinned' : 'Account pinned to top', 'success')
       fetchAllData()
     } catch (error) {
       showToast('Error toggling pin: ' + error.message, 'error')
@@ -407,655 +215,406 @@ export default function App() {
   }
 
   // ============================================
-  // COMPUTED VALUES
+  // COMPUTED
   // ============================================
   const dynamicAccountDict = useMemo(() => {
     const dict = {}
-
     accounts.forEach(acc => {
       const name = acc.account_name.toLowerCase()
-
       dict[name] = acc.id
-
-      if (
-        acc.classification === 'ewallet' &&
-        name.includes('tng')
-      ) {
-        dict['tng'] = acc.id
-      }
-
-      if (
-        acc.classification === 'digital_bank' &&
-        name.includes('gx')
-      ) {
-        dict['gx'] = acc.id
-      }
-
-      if (
-        acc.classification === 'hub' &&
-        name.includes('maybank')
-      ) {
-        dict['mbb'] = acc.id
-      }
-
+      if (acc.classification === 'ewallet' && name.includes('tng')) dict['tng'] = acc.id
+      if (acc.classification === 'digital_bank' && name.includes('gx')) dict['gx'] = acc.id
+      if (acc.classification === 'hub' && name.includes('maybank')) dict['mbb'] = acc.id
       dict[acc.classification] = acc.id
     })
-
     return dict
   }, [accounts])
 
   const parser = useMemo(
-    () =>
-      new TransactionParser(
-        dynamicAccountDict,
-        categories
-      ),
+    () => new TransactionParser(dynamicAccountDict, categories),
     [dynamicAccountDict, categories]
   )
 
-  const mainCategories = useMemo(
-    () => categories.filter(c => !c.parent_id),
-    [categories]
-  )
-
+  const mainCategories = useMemo(() => categories.filter(c => !c.parent_id), [categories])
   const getSubCategories = useCallback(
-    parentId =>
-      categories.filter(
-        c => c.parent_id === parentId
-      ),
+    parentId => categories.filter(c => c.parent_id === parentId),
     [categories]
   )
 
-  // ============================================
-  // SORTED ACCOUNTS (pinned first, then display_order, then balance)
-  // ============================================
   const sortedAccounts = useMemo(() => {
     return [...accounts].sort((a, b) => {
-      // 1. Pinned accounts first
-      if (a.is_pinned !== b.is_pinned) {
-        return a.is_pinned ? -1 : 1
-      }
-      // 2. Then by display_order
+      if (a.is_pinned !== b.is_pinned) return a.is_pinned ? -1 : 1
       const aOrder = a.display_order ?? 0
       const bOrder = b.display_order ?? 0
-      if (aOrder !== bOrder) {
-        return aOrder - bOrder
-      }
-      // 3. Fallback: balance descending
+      if (aOrder !== bOrder) return aOrder - bOrder
       return (b.balance || 0) - (a.balance || 0)
     })
   }, [accounts])
 
   // ============================================
-  // OMNIBAR & TRANSACTION HANDLERS
+  // OMNIBAR
   // ============================================
   const handleOmnibarSubmit = async e => {
     e.preventDefault()
-
     if (!omnibarText.trim() || !user) return
-
-    setOmnibarStatus({
-      type: 'loading',
-      message: 'Processing...'
-    })
-
+    setOmnibarStatus({ type: 'loading', message: 'Processing...' })
     try {
       const parsed = parser.parse(omnibarText)
-
-      if (parsed.amount <= 0) {
-        throw new Error(
-          'Amount must be greater than 0'
-        )
-      }
-
+      if (parsed.amount <= 0) throw new Error('Amount must be greater than 0')
       const payload = {
         user_id: user.id,
         description: parsed.description,
         amount: Math.abs(parsed.amount),
         source_account_id: parsed.sourceAccountId,
-        destination_account_id:
-          parsed.destinationAccountId,
+        destination_account_id: parsed.destinationAccountId,
         category: parsed.category,
-        needs_review:
-          parsed.needsReview || false
+        needs_review: parsed.needsReview || false
       }
-
-      const { error } = await supabase
-        .from('transactions')
-        .insert([payload])
-
+      const { error } = await supabase.from('transactions').insert([payload])
       if (error) throw error
-
-      setOmnibarStatus({
-        type: 'success',
-        message: `Logged: ${parsed.description}`
-      })
-
-      showToast(
-        `Transaction logged: ${parsed.description}`,
-        'success'
-      )
-
+      setOmnibarStatus({ type: 'success', message: `Logged: ${parsed.description}` })
+      showToast(`Transaction logged: ${parsed.description}`, 'success')
       setOmnibarText('')
-
       fetchAllData()
     } catch (error) {
-      setOmnibarStatus({
-        type: 'error',
-        message: error.message
-      })
-
-      showToast(
-        error.message,
-        'error'
-      )
+      setOmnibarStatus({ type: 'error', message: error.message })
+      showToast(error.message, 'error')
     }
-
-    if (statusTimeoutRef.current) {
-      clearTimeout(statusTimeoutRef.current)
-    }
-
+    if (statusTimeoutRef.current) clearTimeout(statusTimeoutRef.current)
     statusTimeoutRef.current = setTimeout(
-      () =>
-        setOmnibarStatus({
-          type: '',
-          message: ''
-        }),
-      4000
+      () => setOmnibarStatus({ type: '', message: '' }), 4000
     )
   }
 
-  // ============================================
-  // APPROVE TRANSACTION
-  // ============================================
-  const handleApproveTransaction = async (
-    id,
-    updatedCategory,
-    updatedDate = null
-  ) => {
-    if (
-      !updatedCategory ||
-      updatedCategory === 'uncategorized'
-    ) {
-      return showToast(
-        'Please select a category before approving',
-        'warning'
-      )
+  const handleApproveTransaction = async (id, updatedCategory, updatedDate = null) => {
+    if (!updatedCategory || updatedCategory === 'uncategorized') {
+      return showToast('Please select a category before approving', 'warning')
     }
-
     try {
-      const updatePayload = {
-        needs_review: false,
-        category: updatedCategory
-      }
-
+      const updatePayload = { needs_review: false, category: updatedCategory }
       if (updatedDate) {
-        updatePayload.transaction_date =
-          new Date(
-            `${updatedDate}T12:00:00`
-          ).toISOString()
+        updatePayload.transaction_date = new Date(`${updatedDate}T12:00:00`).toISOString()
       }
-
-      const { error } = await supabase
-        .from('transactions')
-        .update(updatePayload)
-        .eq('id', id)
-
+      const { error } = await supabase.from('transactions').update(updatePayload).eq('id', id)
       if (error) throw error
-
-      showToast(
-        'Transaction approved successfully!',
-        'success'
-      )
-
+      showToast('Transaction approved successfully!', 'success')
       fetchAllData()
     } catch (error) {
-      showToast(
-        'Error approving transaction: ' +
-          error.message,
-        'error'
-      )
+      showToast('Error approving transaction: ' + error.message, 'error')
     }
   }
 
-  // ============================================
-  // DELETE TRANSACTION
-  // ============================================
-  const handleDeleteTransaction = async (
-    id,
-    description
-  ) => {
-    if (
-      !window.confirm(
-        `Delete transaction "${description}"?`
-      )
-    ) {
-      return
-    }
-
+  const handleDeleteTransaction = async (id, description) => {
+    if (!window.confirm(`Delete transaction "${description}"?`)) return
     try {
-      const { error } = await supabase
-        .from('transactions')
-        .delete()
-        .eq('id', id)
-
+      const { error } = await supabase.from('transactions').delete().eq('id', id)
       if (error) throw error
-
-      showToast(
-        'Transaction deleted successfully',
-        'success'
-      )
-
+      showToast('Transaction deleted successfully', 'success')
       fetchAllData()
     } catch (error) {
-      showToast(
-        'Error deleting transaction: ' +
-          error.message,
-        'error'
-      )
+      showToast('Error deleting transaction: ' + error.message, 'error')
     }
   }
 
-  // ============================================
-  // EDIT TRANSACTION
-  // ============================================
-  const handleEditTransaction = async (
-    id,
-    updatedData
-  ) => {
+  const handleEditTransaction = async (id, updatedData) => {
     try {
-      if (updatedData.amount <= 0) {
-        return showToast(
-          'Amount must be greater than 0',
-          'error'
-        )
+      if (updatedData.amount <= 0) return showToast('Amount must be greater than 0', 'error')
+      if (!updatedData.description || updatedData.description.trim().length < 2) {
+        return showToast('Description must be at least 2 characters', 'error')
       }
-
-      if (
-        !updatedData.description ||
-        updatedData.description.trim().length < 2
-      ) {
-        return showToast(
-          'Description must be at least 2 characters',
-          'error'
-        )
+      if (!updatedData.category || updatedData.category === 'uncategorized') {
+        return showToast('Please select a valid category', 'error')
       }
-
-      if (
-        !updatedData.category ||
-        updatedData.category === 'uncategorized'
-      ) {
-        return showToast(
-          'Please select a valid category',
-          'error'
-        )
-      }
-
       const updatePayload = {
-        description:
-          updatedData.description.trim(),
+        description: updatedData.description.trim(),
         category: updatedData.category,
         amount: updatedData.amount,
-        source_account_id:
-          updatedData.source_account_id || null,
-        destination_account_id:
-          updatedData.destination_account_id || null,
+        source_account_id: updatedData.source_account_id || null,
+        destination_account_id: updatedData.destination_account_id || null,
         needs_review: false
       }
-
       if (updatedData.transaction_date) {
-        updatePayload.transaction_date =
-          new Date(
-            `${updatedData.transaction_date}T12:00:00`
-          ).toISOString()
+        updatePayload.transaction_date = new Date(`${updatedData.transaction_date}T12:00:00`).toISOString()
       }
-
-      const { error } = await supabase
-        .from('transactions')
-        .update(updatePayload)
-        .eq('id', id)
-        .select()
-
+      const { error } = await supabase.from('transactions').update(updatePayload).eq('id', id).select()
       if (error) throw error
-
-      showToast(
-        'Transaction updated successfully!',
-        'success'
-      )
-
+      showToast('Transaction updated successfully!', 'success')
       await fetchAllData()
     } catch (error) {
-      showToast(
-        `Error updating transaction: ${
-          error.message || 'Unknown error'
-        }`,
-        'error'
-      )
+      showToast(`Error updating transaction: ${error.message || 'Unknown error'}`, 'error')
     }
   }
 
   // ============================================
-  // WIDGET ACCOUNT STATES
+  // WIDGET ACCOUNT STATE
   // ============================================
-  const [radarAccountId, setRadarAccountId] =
-    useState('')
+  const [radarAccountId, setRadarAccountId] = useState('')
+  const [homeAccountId, setHomeAccountId] = useState('all')  // shared between BurnRate + CashFlow
 
-  const [burnAccountId, setBurnAccountId] =
-    useState('')
-
-  const [heatmapAccountId, setHeatmapAccountId] =
-    useState('')
+  const activeRadarId = radarAccountId || accounts[0]?.id
 
   // ============================================
-  // ACTIVE ACCOUNT IDS
-  // ============================================
-  const activeRadarId =
-    radarAccountId || accounts[0]?.id
-
-  const activeBurnId =
-    burnAccountId || accounts[0]?.id
-
-  const activeHeatmapId =
-    heatmapAccountId || accounts[0]?.id
-
-  // ============================================
-  // RADAR ENGINE
+  // RADAR
   // ============================================
   const radarCommitments = commitments
-
   const radarStats = useMemo(() => {
-    const currentBalance = accounts.reduce(
-      (sum, a) => sum + (a.balance || 0),
-      0
-    )
-
-    const currentMonth =
-      new Date().getMonth()
-
+    const currentBalance = accounts.reduce((sum, a) => sum + (a.balance || 0), 0)
+    const currentMonth = new Date().getMonth()
     const totalRequired = commitments
-      .filter(
-        c =>
-          c.is_active &&
-          c.last_paid_month !== currentMonth
-      )
-      .reduce(
-        (sum, c) =>
-          sum + Number(c.amount),
-        0
-      )
-
-    const isSafe =
-      currentBalance >= totalRequired
-
+      .filter(c => c.is_active && c.last_paid_month !== currentMonth)
+      .reduce((sum, c) => sum + Number(c.amount), 0)
+    const isSafe = currentBalance >= totalRequired
     return {
-      currentBalance,
-      totalRequired,
-      isSafe,
-      shortfall: isSafe
-        ? 0
-        : totalRequired - currentBalance,
+      currentBalance, totalRequired, isSafe,
+      shortfall: isSafe ? 0 : totalRequired - currentBalance,
       name: 'Total Vault'
     }
   }, [accounts, commitments])
 
   // ============================================
-  // BURN RATE ENGINE
+  // BURN RATE ENGINE (Parts 2.1, 1.3, 2.5)
   // ============================================
   const velocityStats = useMemo(() => {
-    const account = accounts.find(
-      a => a.id === activeBurnId
+    const now = new Date()
+    const monthDays = getDaysInMonthMY(now)
+    const dayOfMonth = getDayOfMonthMY(now)
+
+    // Today counts as passed
+    const daysPassed = dayOfMonth
+    const daysRemaining = monthDays - dayOfMonth
+
+    // Account scope
+    const isAll = homeAccountId === 'all'
+    const scopedAccounts = isAll
+      ? accounts
+      : accounts.filter(a => a.id === homeAccountId)
+    const accountIds = new Set(scopedAccounts.map(a => a.id))
+
+    const currentBalance = scopedAccounts.reduce((s, a) => s + (a.balance || 0), 0)
+
+    // Scope expenses to those accounts
+    const scopedExpenses = (monthlyExpenses || []).filter(
+      tx => accountIds.has(tx.source_account_id)
     )
 
-    const currentBalance =
-      account?.balance || 0
+    // This month's total + last month's total
+    const thisKey = monthKey(now)
+    const lastDate = new Date(now.getFullYear(), now.getMonth() - 1, 1)
+    const lastKey = monthKey(lastDate)
+    const lastMonthDays = getDaysInMonthMY(lastDate)
 
-    const accountExpenses =
-      monthlyExpenses?.filter(
-        tx =>
-          tx.source_account_id ===
-          activeBurnId
-      ) || []
+    let thisMonthTotal = 0
+    let lastMonthSamePeriod = 0   // day 1..today last month
+    let lastMonthFullTotal = 0
 
-    const totalSpentThisMonth =
-      accountExpenses.reduce(
-        (sum, t) =>
-          sum + Number(t.amount),
-        0
-      )
+    scopedExpenses.forEach(tx => {
+      const k = monthKey(tx.transaction_date)
+      const d = toMYDate(tx.transaction_date)
+      const amt = Number(tx.amount) || 0
+      if (k === thisKey) thisMonthTotal += amt
+      if (k === lastKey) {
+        lastMonthFullTotal += amt
+        if (d.getUTCDate() <= dayOfMonth) lastMonthSamePeriod += amt
+      }
+    })
 
-    const today = new Date()
+    // Average daily spend = total this month / days passed
+    const rawDailyAvg = daysPassed > 0 ? thisMonthTotal / daysPassed : 0
 
-    const daysInMonth = new Date(
-      today.getFullYear(),
-      today.getMonth() + 1,
-      0
-    ).getDate()
+    // Spending trend: compare daily avg so far this month vs last month's same period
+    const lastDailyAvg = daysPassed > 0 ? lastMonthSamePeriod / daysPassed : 0
+    const spendingTrend = lastDailyAvg > 0
+      ? ((rawDailyAvg - lastDailyAvg) / lastDailyAvg) * 100
+      : 0
 
-    const daysPassed = today.getDate()
+    // Early-month blend: on day 1-3, blend in last month's daily avg
+    const isEarlyMonth = dayOfMonth <= 3
+    const lastMonthDailyAvg = lastMonthDays > 0 ? lastMonthFullTotal / lastMonthDays : 0
+    const averageDailySpend = isEarlyMonth && lastMonthDailyAvg > 0
+      ? (rawDailyAvg * dayOfMonth + lastMonthDailyAvg * (3 - dayOfMonth)) / 3
+      : rawDailyAvg
 
-    const daysRemaining =
-      daysInMonth - daysPassed
+    // Safe daily spend: what the balance supports for the rest of the month
+    const dailyBudget = daysRemaining > 0 ? currentBalance / daysRemaining : 0
 
-    const averageDailySpend =
-      daysPassed > 0
-        ? totalSpentThisMonth / daysPassed
-        : 0
+    // Runway
+    const projectedRunwayDays = averageDailySpend > 0
+      ? Math.floor(currentBalance / averageDailySpend)
+      : 999
 
-    const dailyBudget =
-      daysRemaining > 0
-        ? currentBalance / daysRemaining
-        : 0
+    const runoutDayOfMonth = dayOfMonth + projectedRunwayDays
+    const runoutBeforeMonthEnd = projectedRunwayDays < 999 && runoutDayOfMonth <= monthDays
+    const projectedRunoutDate = runoutBeforeMonthEnd
+      ? new Date(now.getFullYear(), now.getMonth(), runoutDayOfMonth)
+      : null
 
-    const projectedRunwayDays =
-      averageDailySpend > 0
-        ? currentBalance /
-          averageDailySpend
-        : 999
+    // isSafe: balance lasts past month end
+    const isSafe = projectedRunwayDays >= daysRemaining || averageDailySpend === 0
 
     return {
       currentBalance,
-      totalSpentThisMonth,
+      totalSpentThisMonth: thisMonthTotal,
       averageDailySpend,
-      projectedRunwayDays:
-        Math.floor(projectedRunwayDays),
+      projectedRunwayDays,
       daysRemaining,
-      isSafe:
-        projectedRunwayDays >=
-          daysRemaining ||
-        averageDailySpend === 0,
-      name:
-        account?.account_name ||
-        'Select Account',
+      daysPassed,
+      monthLength: monthDays,
+      isSafe,
       dailyBudget,
-      daysPassed
+      spendingTrend,
+      isEarlyMonth,
+      projectedRunoutDate,
+      runoutBeforeMonthEnd,
+      accountLabel: isAll ? 'All accounts' : (scopedAccounts[0]?.account_name || 'Account')
     }
-  }, [
-    accounts,
-    monthlyExpenses,
-    activeBurnId
-  ])
+  }, [accounts, monthlyExpenses, homeAccountId])
 
   // ============================================
-  // HEATMAP ENGINE
+  // CASH FLOW ENGINE (Parts 3.2, 3.3, 3.6)
   // ============================================
   const cashFlowData = useMemo(() => {
-    const breakdown = {}
+    const now = new Date()
+    const dayOfMonth = getDayOfMonthMY(now)
 
-    const accountExpenses =
-      monthlyExpenses?.filter(
-        tx =>
-          tx.source_account_id ===
-            activeHeatmapId &&
-          !tx.needs_review
-      ) || []
+    const isAll = homeAccountId === 'all'
+    const scopedAccounts = isAll ? accounts : accounts.filter(a => a.id === homeAccountId)
+    const accountIds = new Set(scopedAccounts.map(a => a.id))
 
-    accountExpenses.forEach(tx => {
-      let mainCat =
-        tx.category || 'uncategorized'
+    const thisKey = monthKey(now)
+    const lastDate = new Date(now.getFullYear(), now.getMonth() - 1, 1)
+    const lastKey = monthKey(lastDate)
 
-      if (mainCat.includes(' > ')) {
-        mainCat =
-          mainCat.split(' > ')[0]
+    const thisByCat = {}
+    const lastByCat = {}   // day 1..today last month
+
+    ;(monthlyExpenses || []).forEach(tx => {
+      if (!accountIds.has(tx.source_account_id)) return
+      if (tx.needs_review) return
+      const amt = Number(tx.amount) || 0
+      if (amt <= 0) return   // skip refunds/zeros for donut
+      const k = monthKey(tx.transaction_date)
+      const cat = rollUpToMain(tx.category)
+      if (k === thisKey) {
+        thisByCat[cat] = (thisByCat[cat] || 0) + amt
+      } else if (k === lastKey) {
+        const d = toMYDate(tx.transaction_date)
+        if (d.getUTCDate() <= dayOfMonth) {
+          lastByCat[cat] = (lastByCat[cat] || 0) + amt
+        }
       }
-
-      breakdown[mainCat] =
-        (breakdown[mainCat] || 0) +
-        Number(tx.amount)
     })
 
-    return Object.entries(breakdown)
-      .map(([name, value]) => ({
-        name:
-          name.charAt(0).toUpperCase() +
-          name.slice(1),
-        value
-      }))
-      .sort(
-        (a, b) => b.value - a.value
-      )
-  }, [
-    monthlyExpenses,
-    activeHeatmapId
-  ])
+    const grandTotal = Object.values(thisByCat).reduce((s, v) => s + v, 0)
+    if (grandTotal === 0) return []
+
+    // Build sorted rows
+    const rows = Object.entries(thisByCat)
+      .map(([name, value]) => {
+        const last = lastByCat[name] || 0
+        let comparison = null
+        if (last > 0) {
+          const diff = value - last
+          comparison = { diff, pct: (diff / last) * 100, isNew: false }
+        } else if (last === 0 && value > 0) {
+          comparison = { diff: value, pct: null, isNew: true }
+        }
+        return { name, value, comparison }
+      })
+      .sort((a, b) => b.value - a.value)
+
+    // Keep top 5, merge the rest into "Other"; also merge any < 3%
+    const top5 = rows.slice(0, 5).filter(r => (r.value / grandTotal) * 100 >= 3)
+    const rest = rows.filter(r => !top5.includes(r))
+
+    if (rest.length > 0) {
+      const otherTotal = rest.reduce((s, r) => s + r.value, 0)
+      const otherLast = rest.reduce((s, r) => s + (lastByCat[r.name] || 0), 0)
+      let comparison = null
+      if (otherLast > 0) {
+        const diff = otherTotal - otherLast
+        comparison = { diff, pct: (diff / otherLast) * 100, isNew: false }
+      }
+      top5.push({ name: 'Other', value: otherTotal, comparison, isOther: true })
+    }
+
+    // Attach colors
+    return top5.map(r => ({
+      ...r,
+      color: r.isOther ? OTHER_COLOR : getCategoryColor(r.name)
+    }))
+  }, [accounts, monthlyExpenses, homeAccountId])
+
+  // ============================================
+  // SEE TRENDS
+  // ============================================
+  const handleSeeTrends = useCallback((tab) => {
+    const url = new URL(window.location.href)
+    url.searchParams.set('at', tab || 'overview')
+    window.history.replaceState({}, '', url.toString())
+    window.scrollTo({ top: 0, behavior: 'smooth' })
+    setCurrentView('analytics')
+  }, [])
 
   // ============================================
   // RENDER
   // ============================================
-  if (isAuthLoading) {
-    return (
-      <LoadingSpinner
-        message="Loading secure vault..."
-      />
-    )
-  }
-
-  if (!isAuthenticated) {
-    return <Auth />
-  }
-
-  if (error) {
-    return (
-      <div className="min-h-screen bg-slate-50 flex items-center justify-center p-4">
-        <div className="bg-white rounded-2xl shadow-sm border border-red-200 p-8 max-w-md w-full text-center">
-          <AlertTriangle className="w-12 h-12 text-red-500 mx-auto mb-4" />
-
-          <h2 className="text-xl font-bold text-slate-900 mb-2">
-            Connection Error
-          </h2>
-
-          <p className="text-sm text-slate-600 mb-4">
-            {error}
-          </p>
-
-          <button
-            onClick={() =>
-              window.location.reload()
-            }
-            className="bg-slate-900 hover:bg-slate-800 text-white px-6 py-2 rounded-xl text-sm font-medium transition-colors"
-          >
-            Retry
-          </button>
-        </div>
+  if (isAuthLoading) return <LoadingSpinner message="Loading secure vault..." />
+  if (!isAuthenticated) return <Auth />
+  if (error) return (
+    <div className="min-h-screen bg-slate-50 flex items-center justify-center p-4">
+      <div className="bg-white rounded-2xl shadow-sm border border-red-200 p-8 max-w-md w-full text-center">
+        <AlertTriangle className="w-12 h-12 text-red-500 mx-auto mb-4" />
+        <h2 className="text-xl font-bold text-slate-900 mb-2">Connection Error</h2>
+        <p className="text-sm text-slate-600 mb-4">{error}</p>
+        <button onClick={() => window.location.reload()} className="bg-slate-900 hover:bg-slate-800 text-white px-6 py-2 rounded-xl text-sm font-medium transition-colors">
+          Retry
+        </button>
       </div>
-    )
-  }
+    </div>
+  )
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-slate-50 to-slate-100 font-sans text-slate-900 pb-28 md:pb-12">
 
-      {/* ============================================
-          TOAST NOTIFICATIONS
-      ============================================ */}
       <div className="fixed top-4 right-4 z-50 space-y-2">
         {toasts.map(toast => (
-          <ToastNotification
-            key={toast.id}
-            message={toast.message}
-            type={toast.type}
-            onClose={() =>
-              setToasts(prev =>
-                prev.filter(
-                  t => t.id !== toast.id
-                )
-              )
-            }
-          />
+          <ToastNotification key={toast.id} message={toast.message} type={toast.type}
+            onClose={() => setToasts(prev => prev.filter(t => t.id !== toast.id))} />
         ))}
       </div>
 
-      {/* ============================================
-          HEADER / OMNIBAR
-      ============================================ */}
-      <Header
-        user={user}
-        profile={profile}
-        currentView={currentView}
-        setCurrentView={setCurrentView}
-        supabase={supabase}
-      />
+      <Header user={user} profile={profile} currentView={currentView} setCurrentView={setCurrentView} supabase={supabase} />
 
-      {/* ============================================
-          DESKTOP NAVIGATION — Liquid Glass Pill
-      ============================================ */}
+      {/* DESKTOP NAV */}
       <div className="hidden md:flex justify-center sticky top-[64px] z-10 py-3 px-4">
         <nav className="relative w-[560px] rounded-3xl bg-white/10 backdrop-blur-2xl border border-white/25 shadow-[0_8px_30px_rgba(0,0,0,0.08)]">
           <div className="relative flex items-center h-16">
-
-            {/* Sliding glass indicator */}
             {activeIndex >= 0 && (
-              <div
-                className="absolute inset-y-0 left-0 pointer-events-none transition-transform duration-500 ease-[cubic-bezier(0.34,1.56,0.64,1)]"
-                style={{
-                  width: `${100 / NAV_ITEMS.length}%`,
-                  transform: `translateX(${activeIndex * 100}%)`
-                }}
-              >
+              <div className="absolute inset-y-0 left-0 pointer-events-none transition-transform duration-500 ease-[cubic-bezier(0.34,1.56,0.64,1)]"
+                style={{ width: `${100 / NAV_ITEMS.length}%`, transform: `translateX(${activeIndex * 100}%)` }}>
                 <div className="absolute inset-1.5 rounded-2xl bg-gradient-to-b from-white/35 via-white/25 to-white/15 backdrop-blur-xl border border-white/40 shadow-[0_4px_16px_rgba(0,0,0,0.05),inset_0_1px_0_rgba(255,255,255,0.5)]" />
               </div>
             )}
-
-            {/* Buttons */}
             {NAV_ITEMS.map((item) => {
               const Icon = item.icon
               const isActive = item.id === navKey
-
               return (
-                <button
-                  key={item.id}
-                  onClick={() => handleNavClick(item.id)}
-                  aria-label={item.label}
-                  title={item.label}
-                  className="relative z-10 flex-1 h-full min-w-0 p-0 m-0 flex items-center justify-center gap-2"
-                >
-                  <Icon
-                    className={`w-5 h-5 shrink-0 transition-colors duration-300 ${
-                      isActive
-                        ? 'text-blue-600'
-                        : 'text-slate-500 hover:text-slate-700'
-                    }`}
-                  />
-                  <span
-                    className={`text-sm font-semibold transition-colors duration-300 ${
-                      isActive
-                        ? 'text-blue-600'
-                        : 'text-slate-500 hover:text-slate-700'
-                    }`}
-                  >
+                <button key={item.id} onClick={() => handleNavClick(item.id)}
+                  aria-label={item.label} title={item.label}
+                  className="relative z-10 flex-1 h-full min-w-0 p-0 m-0 flex items-center justify-center gap-2">
+                  <Icon className={`w-5 h-5 shrink-0 transition-colors duration-300 ${isActive ? 'text-blue-600' : 'text-slate-500 hover:text-slate-700'}`} />
+                  <span className={`text-sm font-semibold transition-colors duration-300 ${isActive ? 'text-blue-600' : 'text-slate-500 hover:text-slate-700'}`}>
                     {item.label}
                   </span>
                 </button>
               )
             })}
-
           </div>
         </nav>
       </div>
 
       <main className="max-w-6xl mx-auto px-3 md:px-4 py-4 md:py-8">
 
-        {/* ============================================
-            DASHBOARD
-        ============================================ */}
         {currentView === 'dashboard' && (
           <div className="space-y-4 md:space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
 
@@ -1063,256 +622,166 @@ export default function App() {
               {isLoading ? (
                 <div className="flex items-center justify-center h-32 md:h-48">
                   <div className="flex flex-col items-center gap-3">
-
                     <div className="animate-spin rounded-full h-6 w-6 md:h-8 md:w-8 border-b-2 border-blue-500" />
-
-                    <p className="text-xs md:text-sm text-slate-400">
-                      Loading balances...
-                    </p>
-
+                    <p className="text-xs md:text-sm text-slate-400">Loading balances...</p>
                   </div>
                 </div>
               ) : (
-                <AccountCards
-                  accounts={sortedAccounts}
-                  classifications={classifications}
-                  onAddAccount={handleAddAccount}
-                  onLogTransaction={handleLogTransactionFromAccount}
-                  onManageAccount={handleManageAccount}
-                  onTogglePin={handleTogglePin}
-                />
+                <AccountCards accounts={sortedAccounts} classifications={classifications}
+                  onAddAccount={handleAddAccount} onLogTransaction={handleLogTransactionFromAccount}
+                  onManageAccount={handleManageAccount} onTogglePin={handleTogglePin} />
               )}
             </section>
 
-            {/* Social Finance Quick Menu */}
             <section className="grid grid-cols-3 gap-3 md:gap-4">
-              <button
-                onClick={() => handleNavClick('network')}
-                className="bg-white/60 backdrop-blur-xl border border-white/40 p-4 rounded-2xl shadow-sm flex flex-col items-center justify-center gap-2 hover:bg-white/80 transition-all group"
-              >
-                <div className="w-10 h-10 bg-emerald-50 text-emerald-600 rounded-full flex items-center justify-center group-hover:scale-110 transition-transform">
+              <button onClick={() => handleNavClick('network')}
+                className="bg-white/60 backdrop-blur-xl border border-white/40 p-4 rounded-2xl shadow-sm flex flex-col items-center justify-center gap-2 hover:bg-white/80 transition-all group">
+                <div className="w-10 h-10 bg-slate-100 text-slate-900 rounded-full flex items-center justify-center group-hover:scale-110 transition-transform">
                   <Users className="w-5 h-5" />
                 </div>
                 <span className="text-xs font-bold text-slate-700">My Network</span>
               </button>
 
-              <button
-                onClick={() => handleNavClick('split')}
-                className="bg-white/60 backdrop-blur-xl border border-white/40 p-4 rounded-2xl shadow-sm flex flex-col items-center justify-center gap-2 hover:bg-white/80 transition-all group"
-              >
-                <div className="w-10 h-10 bg-blue-50 text-blue-600 rounded-full flex items-center justify-center group-hover:scale-110 transition-transform">
+              <button onClick={() => handleNavClick('split')}
+                className="bg-white/60 backdrop-blur-xl border border-white/40 p-4 rounded-2xl shadow-sm flex flex-col items-center justify-center gap-2 hover:bg-white/80 transition-all group">
+                <div className="w-10 h-10 bg-slate-100 text-slate-900 rounded-full flex items-center justify-center group-hover:scale-110 transition-transform">
                   <Receipt className="w-5 h-5" />
                 </div>
                 <span className="text-xs font-bold text-slate-700">Split Bill</span>
               </button>
 
-              {/* NEW ANALYTICS BUTTON */}
-              <button
-                onClick={() => handleNavClick('analytics')}
-                className="bg-white/60 backdrop-blur-xl border border-white/40 p-4 rounded-2xl shadow-sm flex flex-col items-center justify-center gap-2 hover:bg-white/80 transition-all group"
-              >
-                <div className="w-10 h-10 bg-purple-50 text-purple-600 rounded-full flex items-center justify-center group-hover:scale-110 transition-transform">
+              <button onClick={() => handleNavClick('analytics')}
+                className="bg-white/60 backdrop-blur-xl border border-white/40 p-4 rounded-2xl shadow-sm flex flex-col items-center justify-center gap-2 hover:bg-white/80 transition-all group">
+                <div className="w-10 h-10 bg-slate-100 text-slate-900 rounded-full flex items-center justify-center group-hover:scale-110 transition-transform">
                   <Activity className="w-5 h-5" />
                 </div>
                 <span className="text-xs font-bold text-slate-700">Analytics</span>
               </button>
             </section>
 
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 md:gap-6">
+            {/* Combined scope card — one account selector, two panels */}
+            <section className="bg-white/70 backdrop-blur-xl border border-white/50 rounded-3xl shadow-sm overflow-hidden">
 
-              <BurnRateWidget
-                velocityStats={
-                  velocityStats
-                }
-                accounts={accounts}
-                selectedAccountId={
-                  activeBurnId
-                }
-                onSelectAccount={
-                  setBurnAccountId
-                }
-              />
+              {/* Header — scope selector (chips on desktop, dropdown on mobile) */}
+              <div className="px-4 pt-4 pb-3 md:px-5 md:pt-5 md:pb-4 border-b border-slate-100">
+                <div className="flex items-center justify-between gap-3 mb-3">
+                  <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">
+                    This month
+                  </span>
+                </div>
 
-              <CashFlowHeatmap
-                cashFlowData={
-                  cashFlowData
-                }
-                accounts={accounts}
-                selectedAccountId={
-                  activeHeatmapId
-                }
-                onSelectAccount={
-                  setHeatmapAccountId
-                }
-                onAddTransaction={() =>
-                  setCurrentView('log')
-                }
-              />
+                {/* Desktop — chip row with sliding pill */}
+                <div className="hidden md:block">
+                  <AccountChipRow
+                    accounts={accounts}
+                    value={homeAccountId}
+                    onChange={setHomeAccountId}
+                  />
+                </div>
 
-            </div>
+                {/* Mobile — native dropdown with balance context */}
+                <div className="md:hidden">
+                  <AccountSelector
+                    accounts={accounts}
+                    value={homeAccountId}
+                    onChange={setHomeAccountId}
+                  />
+                </div>
+              </div>
+
+              {/* Two panels side by side on desktop, stacked on mobile */}
+              <div className="grid grid-cols-1 lg:grid-cols-2 divide-y lg:divide-y-0 lg:divide-x divide-slate-100">
+                <div className="p-4 md:p-5">
+                  <BurnRateWidget
+                    velocityStats={velocityStats}
+                    onSeeTrends={() => handleSeeTrends('overview')}
+                  />
+                </div>
+                <div className="p-4 md:p-5">
+                  <CashFlowHeatmap
+                    cashFlowData={cashFlowData}
+                    accounts={accounts}
+                    onAddTransaction={() => setCurrentView('log')}
+                    onSeeTrends={() => handleSeeTrends('categories')}
+                  />
+                </div>
+              </div>
+
+            </section>
           </div>
         )}
 
-        {/* ============================================
-            LOG PAGE
-        ============================================ */}
         {currentView === 'log' && (
-          <LogItemPage
-            user={user}
-            accounts={accounts}
-            mainCategories={mainCategories}
-            getSubCategories={getSubCategories}
-            fetchAllData={fetchAllData}
-            showToast={showToast}
-          />
+          <LogItemPage user={user} accounts={accounts} mainCategories={mainCategories}
+            getSubCategories={getSubCategories} fetchAllData={fetchAllData} showToast={showToast} />
         )}
 
-        {/* ============================================
-            TRANSACTIONS PAGE
-        ============================================ */}
         {currentView === 'transactions' && (
-          <TransactionsPage
-            user={user}
-            accounts={accounts}
-            mainCategories={mainCategories}
-            getSubCategories={getSubCategories}
-            fetchAllData={fetchAllData}
-            showToast={showToast}
-            recentTransactions={recentTransactions}
-            handleApproveTransaction={handleApproveTransaction}
-            handleDeleteTransaction={handleDeleteTransaction}
-            handleEditTransaction={handleEditTransaction}
-            onRefresh={() => handleRefreshLedger(true)}
-            isRefreshing={isRefreshingLedger}
-            onAddTransaction={() => setCurrentView('log')}
-          />
+          <TransactionsPage user={user} accounts={accounts} mainCategories={mainCategories}
+            getSubCategories={getSubCategories} fetchAllData={fetchAllData} showToast={showToast}
+            recentTransactions={recentTransactions} handleApproveTransaction={handleApproveTransaction}
+            handleDeleteTransaction={handleDeleteTransaction} handleEditTransaction={handleEditTransaction}
+            onRefresh={() => handleRefreshLedger(true)} isRefreshing={isRefreshingLedger}
+            onAddTransaction={() => setCurrentView('log')} />
         )}
 
-        {/* ============================================
-            COMMITMENTS PAGE
-        ============================================ */}
         {currentView === 'commitments' && (
-          <CommitmentsPage
-            radarStats={radarStats}
-            radarCommitments={radarCommitments}
-            accounts={accounts}
-            activeRadarId={activeRadarId}
-            setRadarAccountId={setRadarAccountId}
+          <CommitmentsPage radarStats={radarStats} radarCommitments={radarCommitments}
+            accounts={accounts} activeRadarId={activeRadarId} setRadarAccountId={setRadarAccountId}
             onAddCommitment={() => setCurrentView('profile')}
             handleDeleteCommitment={handleDeleteCommitment}
             handleToggleCommitment={handleToggleCommitment}
-            handleMarkAsPaid={handleMarkAsPaid}
-          />
+            handleMarkAsPaid={handleMarkAsPaid} />
         )}
 
-        {/* ============================================
-            NETWORK PAGE
-        ============================================ */}
         {currentView === 'network' && (
-          <NetworkPage
-            user={user}
-            profile={profile}
-            showToast={showToast}
+          <NetworkPage user={user} profile={profile} showToast={showToast}
             onGoToProfile={() => setCurrentView('profile')}
             onGoToSplitBill={() => setCurrentView('split')}
-            onBack={() => setCurrentView('dashboard')}
-          />
+            onBack={() => setCurrentView('dashboard')} />
         )}
 
-        {/* ============================================
-            SPLIT BILL PAGE
-        ============================================ */}
         {currentView === 'split' && (
-          <SplitBillPage
-            user={user}
-            profile={profile}
-            showToast={showToast}
-            onBack={() => setCurrentView('dashboard')}
-          />
+          <SplitBillPage user={user} profile={profile} showToast={showToast}
+            onBack={() => setCurrentView('dashboard')} />
         )}
 
-        {/* ============================================
-            PROFILE PAGE
-        ============================================ */}
         {currentView === 'profile' && (
-          <ProfilePage
-            user={user}
-            profile={profile}
-            refreshProfile={refreshProfile}
-            accounts={accounts}
-            categories={categories}
-            getSubCategories={getSubCategories}
-            classifications={classifications}
-            commitments={commitments}
-            fetchAllData={fetchAllData}
-            showToast={showToast}
-            selectedAccount={selectedAccount}
-            initialModal={requestedModal}
-          />
+          <ProfilePage user={user} profile={profile} refreshProfile={refreshProfile}
+            accounts={accounts} categories={categories} getSubCategories={getSubCategories}
+            classifications={classifications} commitments={commitments}
+            fetchAllData={fetchAllData} showToast={showToast}
+            selectedAccount={selectedAccount} initialModal={requestedModal} />
         )}
 
-        {/* ============================================
-            ANALYTICS PAGE
-        ============================================ */}
         {currentView === 'analytics' && (
-          <AnalyticsPage
-            user={user}
-            profile={profile}
-            accounts={accounts}
-            categories={categories}
-            onBack={() => setCurrentView('dashboard')}
-            showToast={showToast}
-          />
+          <AnalyticsPage user={user} profile={profile} accounts={accounts}
+            categories={categories} onBack={() => setCurrentView('dashboard')} showToast={showToast} />
         )}
 
       </main>
 
-
-      {/* ============================================
-          MOBILE BOTTOM NAVIGATION — Liquid Glass Pill
-      ============================================ */}
+      {/* MOBILE NAV */}
       <nav className="md:hidden fixed bottom-6 left-4 right-4 z-50 rounded-3xl bg-white/5 backdrop-blur-2xl border border-white/25 shadow-[0_8px_30px_rgba(0,0,0,0.08)]">
-
         <div className="relative flex items-center h-16">
-
-          {/* Sliding glass indicator */}
           {activeIndex >= 0 && (
-            <div
-              className="absolute inset-y-0 left-0 pointer-events-none transition-transform duration-500 ease-[cubic-bezier(0.34,1.56,0.64,1)]"
-              style={{
-                width: `${100 / NAV_ITEMS.length}%`,
-                transform: `translateX(${activeIndex * 100}%)`
-              }}
-            >
+            <div className="absolute inset-y-0 left-0 pointer-events-none transition-transform duration-500 ease-[cubic-bezier(0.34,1.56,0.64,1)]"
+              style={{ width: `${100 / NAV_ITEMS.length}%`, transform: `translateX(${activeIndex * 100}%)` }}>
               <div className="absolute inset-1.5 rounded-2xl bg-gradient-to-b from-white/35 via-white/25 to-white/15 backdrop-blur-xl border border-white/40 shadow-[0_4px_16px_rgba(0,0,0,0.05),inset_0_1px_0_rgba(255,255,255,0.5)]" />
             </div>
           )}
-
-          {/* Buttons */}
           {NAV_ITEMS.map((item) => {
             const Icon = item.icon
             const isActive = item.id === navKey
-
             return (
-              <button
-                key={item.id}
-                onClick={() => handleNavClick(item.id)}
-                aria-label={item.label}
-                className="relative z-10 flex-1 h-full min-w-0 p-0 m-0 flex items-center justify-center"
-              >
+              <button key={item.id} onClick={() => handleNavClick(item.id)} aria-label={item.label}
+                className="relative z-10 flex-1 h-full min-w-0 p-0 m-0 flex items-center justify-center">
                 <span className="flex items-center justify-center w-10 h-10 leading-none">
-                  <Icon
-                    className={`block w-5 h-5 shrink-0 transition-colors duration-300 ${
-                      isActive
-                        ? 'text-blue-600'
-                        : 'text-slate-400'
-                    }`}
-                  />
+                  <Icon className={`block w-5 h-5 shrink-0 transition-colors duration-300 ${isActive ? 'text-blue-600' : 'text-slate-400'}`} />
                 </span>
               </button>
             )
           })}
-
         </div>
       </nav>
 

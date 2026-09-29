@@ -109,24 +109,7 @@ export const TransactionDrilldown = ({
 // ============================================================
 // ONE SHARED ACCOUNT SELECT
 // ============================================================
-export const AccountSelect = ({ accounts = [], value, onChange, label = 'Account' }) => (
-  <div className="relative">
-    <select
-      value={value}
-      onChange={(e) => onChange(e.target.value)}
-      aria-label={label}
-      className="appearance-none bg-white border border-slate-200 rounded-xl py-2.5 pl-3 pr-9 text-sm font-semibold text-slate-700 outline-none cursor-pointer focus:border-blue-500 focus:ring-2 focus:ring-blue-100 transition-all w-full"
-    >
-      <option value="all">All Accounts</option>
-      {accounts.map(a => (
-        <option key={a.id} value={a.id}>{a.account_name}</option>
-      ))}
-    </select>
-    <span className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-slate-400">
-      ▾
-    </span>
-  </div>
-)
+export { AccountSelector as AccountSelect } from '../shared/AccountSelector'
 
 // ============================================================
 // ONE SHARED EMPTY STATE
