@@ -167,15 +167,22 @@ export const ExpenseCategoriesModal = ({
     setSaving(true)
 
     try {
-      const { error } = await supabase
+      const { data, error } = await supabase
         .from('categories')
         .update({ name: editValue.trim() })
         .eq('id', id)
+        .select()
 
       if (error) throw error
 
+      if (!data || data.length === 0) {
+        throw new Error(
+          'Update failed — no rows affected. Your RLS policy may not allow UPDATE on categories.'
+        )
+      }
+
       showToast('Category updated successfully', 'success')
-      fetchAllData()
+      await fetchAllData()
     } catch (error) {
       showToast(error.message, 'error')
     } finally {

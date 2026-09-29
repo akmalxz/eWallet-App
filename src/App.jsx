@@ -376,6 +376,36 @@ export default function App() {
   }
 
   // ============================================
+  // TOGGLE PIN ACCOUNT
+  // ============================================
+  const handleTogglePin = async (account) => {
+    try {
+      const { data, error } = await supabase
+        .from('accounts')
+        .update({ is_pinned: !account.is_pinned })
+        .eq('id', account.id)
+        .select()
+
+      if (error) throw error
+
+      if (!data || data.length === 0) {
+        throw new Error(
+          'Pin failed — no rows affected. Check your RLS policy on accounts.'
+        )
+      }
+
+      showToast(
+        account.is_pinned ? 'Account unpinned' : 'Account pinned to top',
+        'success'
+      )
+
+      fetchAllData()
+    } catch (error) {
+      showToast('Error toggling pin: ' + error.message, 'error')
+    }
+  }
+
+  // ============================================
   // COMPUTED VALUES
   // ============================================
   const dynamicAccountDict = useMemo(() => {
@@ -434,6 +464,26 @@ export default function App() {
       ),
     [categories]
   )
+
+  // ============================================
+  // SORTED ACCOUNTS (pinned first, then display_order, then balance)
+  // ============================================
+  const sortedAccounts = useMemo(() => {
+    return [...accounts].sort((a, b) => {
+      // 1. Pinned accounts first
+      if (a.is_pinned !== b.is_pinned) {
+        return a.is_pinned ? -1 : 1
+      }
+      // 2. Then by display_order
+      const aOrder = a.display_order ?? 0
+      const bOrder = b.display_order ?? 0
+      if (aOrder !== bOrder) {
+        return aOrder - bOrder
+      }
+      // 3. Fallback: balance descending
+      return (b.balance || 0) - (a.balance || 0)
+    })
+  }, [accounts])
 
   // ============================================
   // OMNIBAR & TRANSACTION HANDLERS
@@ -710,11 +760,7 @@ export default function App() {
   // ============================================
   // RADAR ENGINE
   // ============================================
-  const radarCommitments = useMemo(() => {
-    return commitments.filter(
-      c => c.account_id === activeRadarId
-    )
-  }, [commitments, activeRadarId])
+  const radarCommitments = commitments
 
   const radarStats = useMemo(() => {
     const currentBalance = accounts.reduce(
@@ -948,7 +994,7 @@ export default function App() {
       />
 
       {/* ============================================
-          DESKTOP NAVIGATION — Liquid Glass Pill (mobile style)
+          DESKTOP NAVIGATION — Liquid Glass Pill
       ============================================ */}
       <div className="hidden md:flex justify-center sticky top-[64px] z-10 py-3 px-4">
         <nav className="relative w-[560px] rounded-3xl bg-white/10 backdrop-blur-2xl border border-white/25 shadow-[0_8px_30px_rgba(0,0,0,0.08)]">
@@ -1027,19 +1073,12 @@ export default function App() {
                 </div>
               ) : (
                 <AccountCards
-                  accounts={accounts}
-                  classifications={
-                    classifications
-                  }
-                  onAddAccount={
-                    handleAddAccount
-                  }
-                  onLogTransaction={
-                    handleLogTransactionFromAccount
-                  }
-                  onManageAccount={
-                    handleManageAccount
-                  }
+                  accounts={sortedAccounts}
+                  classifications={classifications}
+                  onAddAccount={handleAddAccount}
+                  onLogTransaction={handleLogTransactionFromAccount}
+                  onManageAccount={handleManageAccount}
+                  onTogglePin={handleTogglePin}
                 />
               )}
             </section>

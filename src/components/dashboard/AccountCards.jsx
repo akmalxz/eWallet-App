@@ -1,6 +1,6 @@
 // src/components/dashboard/AccountCards.jsx
 import { useState } from 'react'
-import { Wallet, Landmark, Activity, PiggyBank, Database, Plus, ChevronDown, ChevronUp, CreditCard, Eye, EyeOff, Settings } from 'lucide-react'
+import { Wallet, Landmark, Activity, PiggyBank, Database, Plus, ChevronDown, ChevronUp, CreditCard, Eye, EyeOff, Settings, Pin } from 'lucide-react'
 import { formatMYR, getAccountIcon } from '../../utils/formatters'
 
 const ICON_MAP = { 
@@ -11,7 +11,6 @@ const ICON_MAP = {
   Database 
 }
 
-// A dictionary of Tailwind gradient classes based on a base color string
 const getCustomCardStyle = (colorTheme) => {
   const colors = {
     blue: { bg: 'from-blue-600 to-blue-800', border: 'border-blue-400', text: 'text-blue-100' },
@@ -24,7 +23,6 @@ const getCustomCardStyle = (colorTheme) => {
     indigo: { bg: 'from-indigo-600 to-indigo-800', border: 'border-indigo-400', text: 'text-indigo-100' }
   }
   
-  // Default to slate if the color isn't found
   return colors[colorTheme] || colors.slate;
 }
 
@@ -40,7 +38,8 @@ export const AccountCards = ({
   classifications, 
   onAddAccount,
   onLogTransaction,
-  onManageAccount
+  onManageAccount,
+  onTogglePin
 }) => {
   const [expandedId, setExpandedId] = useState(null)
   const [showBalances, setShowBalances] = useState(true)
@@ -51,10 +50,6 @@ export const AccountCards = ({
 
   const toggleBalances = () => {
     setShowBalances(!showBalances)
-  }
-
-  const getCardStyle = (classification) => {
-    return CARD_COLORS[classification] || DEFAULT_CARD
   }
 
   if (!accounts || accounts.length === 0) {
@@ -75,7 +70,6 @@ export const AccountCards = ({
     )
   }
 
-  // Find the array index of the currently active/expanded card
   const expandedIndex = accounts.findIndex(acc => acc.id === expandedId)
 
   return (
@@ -83,7 +77,9 @@ export const AccountCards = ({
       {/* Header with balance toggle */}
       <div className="flex items-center justify-between mb-4">
         <div className="flex items-center gap-2">
-          <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">{accounts.length} Accounts</span>
+          <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">
+            {accounts.length} Accounts
+          </span>
         </div>
         <button
           onClick={toggleBalances}
@@ -94,11 +90,6 @@ export const AccountCards = ({
         </button>
       </div>
 
-      {/* 
-        Responsive Layout Engine:
-        - Mobile: Relative base framework layout container container (No negative grid overlaps).
-        - Desktop: Standard multi-column grid layouts.
-      */}
       <div className="relative md:grid md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 md:gap-4">
         {accounts.map((acc, index) => {
           const { Icon } = getAccountIcon(acc.classification, classifications, ICON_MAP)
@@ -106,12 +97,11 @@ export const AccountCards = ({
           const cardStyle = getCustomCardStyle(acc.color_theme)
           const classLabel = classifications.find(c => c.key_name === acc.classification)?.label || 'Account'
           const isExpanded = expandedId === acc.id
+          const isPinned = !!acc.is_pinned
 
-          // Dynamic Mobile Apple-Wallet Stacking Calculations
-          let mobileTranslateY = index * -110 // Base overlapping structure line value
+          let mobileTranslateY = index * -110
           
           if (expandedIndex !== -1 && index > expandedIndex) {
-            // Push all cards underneath the active one down by an extra 85px to avoid UI clipping
             mobileTranslateY += 85
           }
 
@@ -122,7 +112,6 @@ export const AccountCards = ({
               style={{
                 transform: `translateY(${mobileTranslateY}px)`,
                 zIndex: isExpanded ? 30 : index + 1,
-                // Reserve spacing at the bottom of the container only for the last card stack member
                 marginBottom: index === accounts.length - 1 ? `${(accounts.length - 1) * -110 + (isExpanded ? 85 : 0)}px` : '0px'
               }}
             >
@@ -137,6 +126,7 @@ export const AccountCards = ({
                   relative rounded-2xl overflow-hidden shadow-xl transition-all duration-500 ease-[cubic-bezier(0.34,1.56,0.64,1)] h-full flex flex-col justify-between
                   bg-gradient-to-br ${cardStyle.bg}
                   border ${cardStyle.border}
+                  ${isPinned ? 'ring-2 ring-white/40 ring-offset-0' : ''}
                   ${isExpanded ? 'shadow-2xl md:scale-100' : 'hover:shadow-lg md:hover:scale-[1.02] cursor-pointer md:cursor-default'}
                 `}
               >
@@ -152,34 +142,61 @@ export const AccountCards = ({
                 {/* Main Card Content */}
                 <div className="relative p-4 md:p-5 flex-1 flex flex-col justify-between">
                   <div>
-                    {/* Top Row: Icon + Classification + Toggle Button */}
+                    {/* Top Row: Icon + Classification + Action buttons */}
                     <div className="flex items-center justify-between mb-3">
-                      <div className="flex items-center gap-3">
-                        <div className="flex items-center justify-center p-2 rounded-xl bg-white/15 backdrop-blur-sm">
+                      <div className="flex items-center gap-3 min-w-0">
+                        <div className="flex items-center justify-center p-2 rounded-xl bg-white/15 backdrop-blur-sm shrink-0">
                           <IconComponent className={`w-5 h-5 ${cardStyle.text}`} />
                         </div>
-                        <div>
-                          <p className={`text-xs font-medium ${cardStyle.text} opacity-80`}>
+                        <div className="min-w-0">
+                          <p className={`text-xs font-medium ${cardStyle.text} opacity-80 truncate`}>
                             {classLabel}
                           </p>
-                          <p className={`text-sm font-bold ${cardStyle.text}`}>
+                          <p className={`text-sm font-bold ${cardStyle.text} truncate`}>
                             {acc.account_name}
                           </p>
                         </div>
                       </div>
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation()
-                          toggleExpand(acc.id)
-                        }}
-                        className="flex items-center justify-center p-1.5 rounded-full transition-all duration-300 bg-white/15 backdrop-blur-sm hover:bg-white/25"
-                      >
-                        {isExpanded ? (
-                          <ChevronUp className={`w-4 h-4 ${cardStyle.text}`} />
-                        ) : (
-                          <ChevronDown className={`w-4 h-4 ${cardStyle.text}`} />
+
+                      {/* Right-side action cluster: Pin + Expand */}
+                      <div className="flex items-center gap-1 shrink-0 ml-2">
+                        {onTogglePin && (
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation()
+                              onTogglePin(acc)
+                            }}
+                            className={`flex items-center justify-center p-1.5 rounded-full transition-all duration-300 backdrop-blur-sm ${
+                              isPinned
+                                ? 'bg-white/35 hover:bg-white/45'
+                                : 'bg-white/10 hover:bg-white/25'
+                            }`}
+                            aria-label={isPinned ? 'Unpin account' : 'Pin account to top'}
+                            title={isPinned ? 'Unpin' : 'Pin to top'}
+                          >
+                            <Pin
+                              className={`w-3.5 h-3.5 ${cardStyle.text} transition-transform duration-300 ${
+                                isPinned ? 'fill-current rotate-0' : 'rotate-45'
+                              }`}
+                            />
+                          </button>
                         )}
-                      </button>
+
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            toggleExpand(acc.id)
+                          }}
+                          className="flex items-center justify-center p-1.5 rounded-full transition-all duration-300 bg-white/15 backdrop-blur-sm hover:bg-white/25"
+                          aria-label={isExpanded ? 'Collapse card' : 'Expand card'}
+                        >
+                          {isExpanded ? (
+                            <ChevronUp className={`w-4 h-4 ${cardStyle.text}`} />
+                          ) : (
+                            <ChevronDown className={`w-4 h-4 ${cardStyle.text}`} />
+                          )}
+                        </button>
+                      </div>
                     </div>
 
                     {/* Balance */}
@@ -191,7 +208,7 @@ export const AccountCards = ({
                     </div>
                   </div>
 
-                  {/* Expanded Content Grid Panel */}
+                  {/* Expanded Content */}
                   <div className={`grid transition-all duration-300 ease-in-out ${isExpanded ? 'grid-rows-[1fr] opacity-100 mt-4' : 'grid-rows-[0fr] opacity-0 mt-0'}`}>
                     <div className="overflow-hidden">
                       <div className="pt-4 border-t border-white/20">

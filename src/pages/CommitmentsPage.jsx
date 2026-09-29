@@ -26,8 +26,6 @@ export function CommitmentsPage({
         radarStats={radarStats}
         commitments={radarCommitments}
         accounts={accounts}
-        selectedAccountId={activeRadarId}
-        onSelectAccount={setRadarAccountId}
         onAddCommitment={onAddCommitment}
         onDeleteCommitment={handleDeleteCommitment}
         onToggleCommitment={handleToggleCommitment}
