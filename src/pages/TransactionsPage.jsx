@@ -1,5 +1,5 @@
 // src/pages/TransactionsPage.jsx
-import { ScanText, AlertTriangle, Check } from 'lucide-react'
+import { ScanText, AlertTriangle, Check, RefreshCw, X } from 'lucide-react'
 import { ActionLedger } from '../components/dashboard/ActionLedger'
 import { formatMYR } from '../utils/formatters'
 
@@ -49,6 +49,21 @@ export function TransactionsPage({
               </span>
             )}
           </div>
+
+          {/* Refresh button */}
+          <button
+            onClick={onRefresh}
+            disabled={isRefreshing}
+            className={`ml-auto w-8 h-8 flex items-center justify-center rounded-lg transition-all ${
+              isRefreshing
+                ? 'text-slate-300 cursor-not-allowed'
+                : 'text-slate-400 hover:text-slate-600 hover:bg-slate-100'
+            }`}
+            title="Refresh OCR scans"
+            aria-label="Refresh OCR scans"
+          >
+            <RefreshCw className={`w-4 h-4 ${isRefreshing ? 'animate-spin' : ''}`} />
+          </button>
         </div>
 
         {pendingTransactions.length === 0 ? (
@@ -97,17 +112,33 @@ export function TransactionsPage({
                       </optgroup>
                     ))}
                   </select>
-                  <button
-                    onClick={() => handleApproveTransaction(
-                      tx.id,
-                      document.getElementById(`cat-select-${tx.id}`).value,
-                      document.getElementById(`date-select-${tx.id}`).value
-                    )}
-                    aria-label="Approve Transaction"
-                    className="bg-amber-500 hover:bg-amber-600 text-white p-2 rounded-xl transition-colors shadow-sm flex items-center justify-center shrink-0"
-                  >
-                    <Check className="w-4 h-4" />
-                  </button>
+
+                  {/* Approve + Delete action cluster */}
+                  <div className="flex items-center gap-1.5 flex-1">
+                    <button
+                      onClick={() =>
+                        handleApproveTransaction(
+                          tx.id,
+                          document.getElementById(`cat-select-${tx.id}`).value,
+                          document.getElementById(`date-select-${tx.id}`).value
+                        )
+                      }
+                      aria-label="Approve Transaction"
+                      title="Approve transaction"
+                      className="flex-1 bg-amber-500 hover:bg-amber-600 text-white p-2 rounded-xl transition-colors shadow-sm flex items-center justify-center"
+                    >
+                      <Check className="w-4 h-4" />
+                    </button>
+
+                    <button
+                      onClick={() => handleDeleteTransaction(tx.id, tx.description)}
+                      aria-label="Delete scan"
+                      title="Delete scan"
+                      className="flex-1 bg-white hover:bg-red-50 text-red-500 border border-red-200 p-2 rounded-xl transition-colors shadow-sm flex items-center justify-center"
+                    >
+                      <X className="w-4 h-4" />
+                    </button>
+                  </div>
                 </div>
               </div>
             ))}
