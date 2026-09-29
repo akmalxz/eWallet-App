@@ -101,11 +101,12 @@ function normalizeOCRText(text: string): string {
 
   // AEON Bank logo variants at start of text.
   // Catches: "/ON Bank", "2ÆON Bank", "2&/EONBank", "AEONBank", etc.
-  // Pattern: start-of-line + up to 8 junk chars + "ON" + optional space + "Bank"
-  out = out.replace(/^[^\n]{0,8}ON\s*Bank\b/i, 'AEON Bank')
+  // The prefix `[^a-zA-Z\n]*` only allows non-letter junk, so words like
+  // "COMMON Bank" or "TELECOM Bank" are NOT accidentally rewritten.
+  out = out.replace(/^[^a-zA-Z\n]*A?E?ON\s*Bank\b/i, 'AEON Bank')
 
-  // Additional safety: any line matching the same shape mid-document
-  out = out.replace(/\n[^\n]{0,8}ON\s*Bank\b/gi, '\nAEON Bank')
+  // Same for any line mid-document
+  out = out.replace(/\n[^a-zA-Z\n]*A?E?ON\s*Bank\b/gi, '\nAEON Bank')
 
   return out.trim()
 }
@@ -577,7 +578,7 @@ serve(async (req) => {
         raw_text: text,
         normalized_text: normalizeOCRText(text),
         parsed_at: new Date().toISOString(),
-        parser_version: '1.2.0'
+        parser_version: '1.2.1'
       }
     };
 
@@ -592,15 +593,17 @@ serve(async (req) => {
       });
     }
 
-    // Duplicate check for OCR inputs
-    if (isOCR) {
+    // Duplicate check for OCR inputs.
+    // Only run when source_account_id is present — otherwise PostgREST
+    // tries to compare an empty string against a uuid column and throws.
+    if (isOCR && payload.source_account_id) {
       const { data: existingTx } = await supabaseClient
         .from('transactions')
         .select('id')
         .eq('user_id', userId)
         .eq('amount', payload.amount)
         .eq('description', payload.description)
-        .eq('source_account_id', payload.source_account_id ?? '')
+        .eq('source_account_id', payload.source_account_id)
         .gte('transaction_date', new Date(Date.now() - 120000).toISOString())
         .limit(1);
 
