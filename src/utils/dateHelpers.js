@@ -87,3 +87,42 @@ export const getDaysInMonthMY = (input = new Date()) => {
 export const getDayOfMonthMY = (input = new Date()) => {
   return toMYDate(input).getUTCDate()
 }
+
+
+// ---------------------------------------------------------------------------
+// Commitment timing
+// Returns the effective due day (clamped to month length) and how it relates
+// to today. Handles short months and gives a negative-friendly ordering key.
+// ---------------------------------------------------------------------------
+export const getCommitmentTiming = (dueDay, now = new Date()) => {
+  const nowMY = toMYDate(now)
+  const year = nowMY.getUTCFullYear()
+  const monthIdx = nowMY.getUTCMonth()
+  const todayDate = nowMY.getUTCDate()
+  const lastDay = new Date(Date.UTC(year, monthIdx + 1, 0)).getUTCDate()
+  const effectiveDueDay = Math.min(dueDay, lastDay)
+
+  if (effectiveDueDay === todayDate) {
+    return { kind: 'today', days: 0, effectiveDueDay }
+  }
+  if (effectiveDueDay < todayDate) {
+    return { kind: 'overdue', days: todayDate - effectiveDueDay, effectiveDueDay }
+  }
+  return { kind: 'upcoming', days: effectiveDueDay - todayDate, effectiveDueDay }
+}
+
+// Is a commitment already marked paid for the *current* month/year?
+// Uses last_paid timestamp (source of truth) instead of month number only.
+export const isPaidThisMonth = (lastPaidISO, now = new Date()) => {
+  if (!lastPaidISO) return false
+  const paid = new Date(lastPaidISO)
+  const nowMY = toMYDate(now)
+  return (
+    paid.getFullYear() === nowMY.getUTCFullYear() &&
+    paid.getMonth() === nowMY.getUTCMonth()
+  )
+}
+
+// Short month-name from a day number in the current month (e.g. "Oct")
+export const monthShortName = (now = new Date()) =>
+  new Date().toLocaleString('en-MY', { month: 'short' })

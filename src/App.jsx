@@ -67,6 +67,12 @@ export default function App() {
   const [currentView, setCurrentView] = useState('dashboard')
   const [requestedModal, setRequestedModal] = useState(null)
 
+  useEffect(() => {
+    if (currentView !== 'profile') {
+      setRequestedModal(null)
+    }
+  }, [currentView])
+
   const [omnibarText, setOmnibarText] = useState('')
   const [omnibarStatus, setOmnibarStatus] = useState({ type: '', message: '' })
   const [isRefreshingLedger, setIsRefreshingLedger] = useState(false)
@@ -128,41 +134,102 @@ export default function App() {
   // ============================================
   // COMMITMENT HANDLERS
   // ============================================
-  const handleMarkAsPaid = async commitmentId => {
+  const handleMarkAsPaid = async (commitmentId, overrides = {}) => {
     try {
       const commitment = commitments.find(c => c.id === commitmentId)
-      if (!commitment) return showToast('Commitment not found', 'error')
-      const currentMonth = new Date().getMonth()
-      const currentYear = new Date().getFullYear()
-      const { error: txError } = await supabase.from('transactions').insert({
-        user_id: user.id,
-        description: `[Paid] ${commitment.name}`,
-        amount: commitment.amount,
-        source_account_id: commitment.account_id,
-        destination_account_id: null,
-        category: 'Commitments',
-        transaction_date: new Date().toISOString(),
-        needs_review: false,
-        metadata: {
-          commitment_id: commitment.id, payment_type: 'manual',
-          paid_month: currentMonth + 1, paid_year: currentYear
-        }
-      })
+
+      if (!commitment) {
+        return showToast('Commitment not found', 'error')
+      }
+
+      const finalAmount =
+        overrides.amount != null ? overrides.amount : commitment.amount
+
+      // paidDate is YYYY-MM-DD; anchor at noon MYT to avoid timezone drift
+      const paidAt = overrides.paidDate
+        ? new Date(`${overrides.paidDate}T12:00:00`)
+        : new Date()
+
+      const { error: txError } = await supabase
+        .from('transactions')
+        .insert({
+          user_id: user.id,
+          description: `[Paid] ${commitment.name}`,
+          amount: finalAmount,
+          source_account_id: commitment.account_id,
+          destination_account_id: null,
+          category: 'Commitments',
+          transaction_date: paidAt.toISOString(),
+          needs_review: false,
+          metadata: {
+            commitment_id: commitment.id,
+            payment_type: 'manual',
+            paid_month: paidAt.getMonth() + 1,
+            paid_year: paidAt.getFullYear()
+          }
+        })
+
       if (txError) throw txError
-      const { error: updateError } = await supabase.from('commitments').update({
-        last_paid: new Date().toISOString(),
-        last_paid_month: currentMonth
-      }).eq('id', commitmentId)
+
+      const { error: updateError } = await supabase
+        .from('commitments')
+        .update({
+          last_paid: paidAt.toISOString(),
+          last_paid_month: paidAt.getMonth()
+        })
+        .eq('id', commitmentId)
+
       if (updateError) throw updateError
+
       showToast(
         <div className="flex items-center gap-2">
           <CheckCircle className="w-4 h-4 shrink-0" />
-          <span>{commitment.name} marked as paid!</span>
-        </div>, 'success'
+          <span>{commitment.name} marked as paid</span>
+        </div>,
+        'success'
       )
+
       await fetchAllData()
     } catch (error) {
       showToast('Error marking as paid: ' + error.message, 'error')
+    }
+  }
+
+  const handleUnmarkAsPaid = async commitmentId => {
+    try {
+      const commitment = commitments.find(c => c.id === commitmentId)
+      if (!commitment) return
+
+      // Find the transaction we created when marking as paid
+      const { data: txs, error: findError } = await supabase
+        .from('transactions')
+        .select('id')
+        .eq('user_id', user.id)
+        .eq('description', `[Paid] ${commitment.name}`)
+        .order('created_at', { ascending: false })
+        .limit(1)
+
+      if (findError) throw findError
+
+      if (txs && txs.length > 0) {
+        const { error: delError } = await supabase
+          .from('transactions')
+          .delete()
+          .eq('id', txs[0].id)
+        if (delError) throw delError
+      }
+
+      const { error: updateError } = await supabase
+        .from('commitments')
+        .update({ last_paid: null, last_paid_month: null })
+        .eq('id', commitmentId)
+
+      if (updateError) throw updateError
+
+      showToast(`${commitment.name} reset to unpaid`, 'success')
+      await fetchAllData()
+    } catch (error) {
+      showToast('Error undoing payment: ' + error.message, 'error')
     }
   }
 
@@ -358,14 +425,39 @@ export default function App() {
   // ============================================
   const radarCommitments = commitments
   const radarStats = useMemo(() => {
-    const currentBalance = accounts.reduce((sum, a) => sum + (a.balance || 0), 0)
-    const currentMonth = new Date().getMonth()
-    const totalRequired = commitments
-      .filter(c => c.is_active && c.last_paid_month !== currentMonth)
-      .reduce((sum, c) => sum + Number(c.amount), 0)
+    const currentBalance = accounts.reduce(
+      (sum, a) => sum + (a.balance || 0),
+      0
+    )
+
+    // Use last_paid timestamp (year-aware). Older rows without last_paid
+    // are treated as unpaid this month.
+    const now = new Date()
+    const thisYear = now.getFullYear()
+    const thisMonth = now.getMonth()
+
+    const isPaidThisMonth = (c) => {
+      if (!c.last_paid) return false
+      const d = new Date(c.last_paid)
+      return d.getFullYear() === thisYear && d.getMonth() === thisMonth
+    }
+
+    const unpaid = commitments.filter(
+      c => c.is_active && !isPaidThisMonth(c)
+    )
+
+    const totalRequired = unpaid.reduce(
+      (sum, c) => sum + Number(c.amount),
+      0
+    )
+
     const isSafe = currentBalance >= totalRequired
+
     return {
-      currentBalance, totalRequired, isSafe,
+      currentBalance,
+      totalRequired,
+      unpaidCount: unpaid.length,
+      isSafe,
       shortfall: isSafe ? 0 : totalRequired - currentBalance,
       name: 'Total Vault'
     }
@@ -639,7 +731,7 @@ export default function App() {
                 <div className="w-10 h-10 bg-slate-100 text-slate-900 rounded-full flex items-center justify-center group-hover:scale-110 transition-transform">
                   <Users className="w-5 h-5" />
                 </div>
-                <span className="text-xs font-bold text-slate-700">My Network</span>
+                <span className="text-xs font-bold text-slate-700">Network</span>
               </button>
 
               <button onClick={() => handleNavClick('split')}
@@ -726,12 +818,19 @@ export default function App() {
         )}
 
         {currentView === 'commitments' && (
-          <CommitmentsPage radarStats={radarStats} radarCommitments={radarCommitments}
-            accounts={accounts} activeRadarId={activeRadarId} setRadarAccountId={setRadarAccountId}
-            onAddCommitment={() => setCurrentView('profile')}
+          <CommitmentsPage
+            radarStats={radarStats}
+            radarCommitments={radarCommitments}
+            accounts={accounts}
+            onAddCommitment={() => {
+              setRequestedModal('commitments')
+              setCurrentView('profile')
+            }}
             handleDeleteCommitment={handleDeleteCommitment}
             handleToggleCommitment={handleToggleCommitment}
-            handleMarkAsPaid={handleMarkAsPaid} />
+            handleMarkAsPaid={handleMarkAsPaid}
+            handleUnmarkAsPaid={handleUnmarkAsPaid}
+          />
         )}
 
         {currentView === 'network' && (

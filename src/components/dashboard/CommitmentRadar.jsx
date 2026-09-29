@@ -1,20 +1,72 @@
 // src/components/dashboard/CommitmentRadar.jsx
 import { useState } from 'react'
-import { Target, ShieldCheck, AlertTriangle, Calendar, Plus, Check, CheckCircle, 
-  ChevronDown, ChevronUp, Power, Trash2, Building2, Wallet, Landmark } from 'lucide-react'
+import {
+  Target, ShieldCheck, AlertTriangle, Calendar, Plus, Check, CheckCircle,
+  ChevronDown, ChevronUp, Power, Trash2, Building2, Undo2, Wallet
+} from 'lucide-react'
 import { formatMYR } from '../../utils/formatters'
+import {
+  getCommitmentTiming,
+  isPaidThisMonth,
+  monthShortName
+} from '../../utils/dateHelpers'
+import { MarkPaidSheet } from './MarkPaidSheet'
 
-export const CommitmentRadar = ({ 
-  radarStats, 
+// Status pill from timing
+const getStatusPill = (timing) => {
+  if (timing.kind === 'overdue') {
+    return {
+      label: `${timing.days}d overdue`,
+      color: 'text-red-700 bg-red-50 border border-red-200'
+    }
+  }
+  if (timing.kind === 'today') {
+    return {
+      label: 'Due today',
+      color: 'text-red-600 bg-red-50 border border-red-200'
+    }
+  }
+  if (timing.days <= 3) {
+    return {
+      label: `In ${timing.days}d`,
+      color: 'text-amber-700 bg-amber-50 border border-amber-200'
+    }
+  }
+  if (timing.days <= 7) {
+    return {
+      label: `In ${timing.days}d`,
+      color: 'text-blue-700 bg-blue-50 border border-blue-200'
+    }
+  }
+  return {
+    label: `Due ${timing.effectiveDueDay} ${monthShortName()}`,
+    color: 'text-slate-500 bg-slate-50 border border-slate-200'
+  }
+}
+
+// Sort key: overdue first (by days overdue desc), then soonest.
+// Overdue 5d = -5, overdue 1d = -1, today = 0, in 3d = 3, in 10d = 10
+const sortKeyFor = (comm) => {
+  const timing = getCommitmentTiming(comm.due_day_of_month)
+  if (timing.kind === 'overdue') return -timing.days
+  if (timing.kind === 'today') return 0
+  return timing.days
+}
+
+export const CommitmentRadar = ({
+  radarStats,
   commitments = [],
   accounts = [],
-  onAddCommitment, 
+  onAddCommitment,
   onDeleteCommitment,
   onToggleCommitment,
-  onMarkAsPaid 
+  onMarkAsPaid,
+  onUnmarkAsPaid,
+  saving = false
 }) => {
   const [showPaid, setShowPaid] = useState(false)
   const [showInactive, setShowInactive] = useState(false)
+  const [marking, setMarking] = useState(null) // commitment being marked
 
   const {
     currentBalance = 0,
@@ -23,281 +75,337 @@ export const CommitmentRadar = ({
     shortfall = 0
   } = radarStats || {}
 
-  const today = new Date()
-  const currentDay = today.getDate()
-  const currentMonth = today.getMonth()
-  const daysInMonth = new Date(today.getFullYear(), today.getMonth() + 1, 0).getDate()
+  const getAccount = (id) => accounts.find(a => a.id === id)
 
-  const getDaysUntil = (dueDay) => {
-    if (dueDay >= currentDay) {
-      return dueDay - currentDay
-    } else {
-      return (daysInMonth - currentDay) + dueDay
-    }
+  // Split into buckets using last_paid timestamp (year-aware)
+  const activeAll = commitments.filter(c => c.is_active)
+  const inactiveCommitments = [...commitments.filter(c => !c.is_active)]
+    .sort((a, b) => a.due_day_of_month - b.due_day_of_month)
+
+  const unpaidCommitments = activeAll
+    .filter(c => !isPaidThisMonth(c.last_paid))
+    .sort((a, b) => sortKeyFor(a) - sortKeyFor(b))
+
+  const paidCommitments = activeAll
+    .filter(c => isPaidThisMonth(c.last_paid))
+    .sort((a, b) => a.due_day_of_month - b.due_day_of_month)
+
+  const hasAnyCommitments = commitments.length > 0
+
+  const handleMarkPaidConfirm = async ({ amount, paidDate }) => {
+    if (!onMarkAsPaid || !marking) return
+    await onMarkAsPaid(marking.id, { amount, paidDate })
+    setMarking(null)
   }
 
-  const getCommitmentStatus = (dueDay) => {
-    const daysUntil = getDaysUntil(dueDay)
-    if (daysUntil === 0) return { label: 'Due today!', color: 'text-red-600 bg-red-50 border border-red-200' }
-    if (daysUntil <= 3) return { label: `${daysUntil}d left`, color: 'text-amber-700 bg-amber-50 border border-amber-200' }
-    if (daysUntil <= 7) return { label: `${daysUntil}d left`, color: 'text-blue-700 bg-blue-50 border border-blue-200' }
-    return { label: `Day ${dueDay}`, color: 'text-slate-500 bg-slate-50 border border-slate-200' }
-  }
-
-  const getAccountName = (id) => {
-    const acc = accounts.find(a => a.id === id)
-    return acc ? acc.account_name : 'Unknown Account'
-  }
-
-  const sortedCommitments = [...commitments].sort((a, b) => a.due_day_of_month - b.due_day_of_month)
-  const activeCommitments = sortedCommitments.filter(c => c.is_active)
-  const inactiveCommitments = sortedCommitments.filter(c => !c.is_active)
-  const unpaidCommitments = activeCommitments.filter(c => c.last_paid_month !== currentMonth)
-  const paidCommitments = activeCommitments.filter(c => c.last_paid_month === currentMonth)
-
-  return (
-    <div className={`bg-white rounded-2xl shadow-md border p-5 md:p-6 relative overflow-hidden transition-all duration-300 ${
-      isSafe ? 'border-slate-100 shadow-slate-100/40' : 'border-red-100 shadow-red-50/30'
-    }`}>
-      
-      {/* Dynamic Status Glow Strip */}
-      <div className={`absolute top-0 inset-x-0 h-1 ${isSafe ? 'bg-emerald-500' : 'bg-red-500'}`} />
-
-      {/* Header */}
-      <div className="flex justify-between items-center mb-5 mt-1">
-        <p className="text-xs font-medium text-slate-400">Track your subscriptions & bills</p>
-        
-        <div className="flex items-center gap-1.5">
+  // ---- Empty state (no commitments at all) --------------------------------
+  if (!hasAnyCommitments) {
+    return (
+      <div className="bg-white rounded-2xl shadow-md border border-slate-100 p-6 relative overflow-hidden">
+        <div className="absolute top-0 inset-x-0 h-1 bg-slate-200" />
+        <div className="text-center py-8">
+          <div className="w-14 h-14 bg-slate-50 border border-slate-100 rounded-2xl flex items-center justify-center mx-auto mb-3 text-slate-300">
+            <Target className="w-6 h-6" />
+          </div>
+          <p className="text-sm font-bold text-slate-700">No bills yet</p>
+          <p className="text-xs text-slate-400 mt-1 max-w-[260px] mx-auto leading-relaxed">
+            Add your first subscription or bill to track what's coming up.
+          </p>
           {onAddCommitment && (
-            <button 
+            <button
               onClick={onAddCommitment}
-              className="w-8 h-8 flex items-center justify-center text-slate-400 hover:text-blue-600 hover:bg-slate-50 rounded-xl transition-all border border-transparent hover:border-slate-200"
-              title="Add commitment"
+              className="mt-4 inline-flex items-center gap-2 px-4 py-2.5 bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold rounded-xl shadow-sm transition-colors"
+              style={{ minHeight: 44 }}
             >
-              <Plus className="w-4 h-4" />
+              <Plus className="w-4 h-4" /> Add your first bill
             </button>
           )}
-          <div className={`px-2.5 py-1.5 rounded-lg text-[10px] font-bold tracking-wider flex items-center gap-1.5 border shadow-sm ${
-            isSafe ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : 'bg-red-50 text-red-700 border-red-200'
-          }`}>
-            {isSafe ? <ShieldCheck className="w-3.5 h-3.5"/> : <AlertTriangle className="w-3.5 h-3.5"/>}
-            {isSafe ? 'SAFE' : 'ALERT'}
-          </div>
         </div>
       </div>
+    )
+  }
 
-      {/* Quick Status Info-Deck */}
-      <div className="grid grid-cols-3 gap-3 mb-5">
-        
-        {/* Total Liquidity */}
-        <div className="group relative overflow-hidden rounded-xl border border-slate-200/80 bg-white p-3.5 shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md">
-          <div className="flex items-center justify-between gap-2 mb-2">
+  // ---- Main card ----------------------------------------------------------
+  return (
+    <>
+      <div className={`bg-white rounded-2xl shadow-md border p-5 md:p-6 relative overflow-hidden transition-all duration-300 ${
+        isSafe ? 'border-slate-100 shadow-slate-100/40' : 'border-red-100 shadow-red-50/30'
+      }`}>
+        <div className={`absolute top-0 inset-x-0 h-1 ${isSafe ? 'bg-emerald-500' : 'bg-red-500'}`} />
 
-            <span className="text-[9px] font-bold uppercase tracking-wider text-slate-400">
-              Total Liquidity
-            </span>
+        {/* Header */}
+        <div className="flex justify-between items-center mb-5 mt-1 gap-3">
+          <div className="min-w-0">
+            <h2 className="text-base font-bold text-slate-800">Commitments</h2>
+            <p className="text-xs text-slate-400 mt-0.5">Track your subscriptions & bills</p>
           </div>
 
-          <p className="text-sm font-black tracking-tight text-slate-800">
-            {formatMYR(currentBalance)}
-          </p>
+          <div className="flex items-center gap-1.5 shrink-0">
+            {onAddCommitment && (
+              <button
+                onClick={onAddCommitment}
+                className="w-11 h-11 flex items-center justify-center text-slate-500 hover:text-blue-600 hover:bg-slate-50 rounded-xl transition-all border border-transparent hover:border-slate-200"
+                title="Add commitment"
+                aria-label="Add commitment"
+              >
+                <Plus className="w-5 h-5" />
+              </button>
+            )}
+            <div className={`px-2.5 py-1.5 rounded-lg text-[10px] font-bold tracking-wider flex items-center gap-1.5 border shadow-sm ${
+              isSafe ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : 'bg-red-50 text-red-700 border-red-200'
+            }`}>
+              {isSafe ? <ShieldCheck className="w-3.5 h-3.5"/> : <AlertTriangle className="w-3.5 h-3.5"/>}
+              {isSafe ? 'SAFE' : 'SHORT'}
+            </div>
+          </div>
         </div>
 
-
-        {/* Required */}
-        <div className="group relative overflow-hidden rounded-xl border border-slate-200/80 bg-white p-3.5 shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md">
-          <div className="flex items-center justify-between gap-2 mb-2">
-
-            <span className="text-[9px] font-bold uppercase tracking-wider text-slate-400">
-              Required
-            </span>
+        {/* Stats strip */}
+        <div className="grid grid-cols-3 gap-2 md:gap-3 mb-5">
+          <div className="rounded-xl border border-slate-200/80 bg-white p-2.5 md:p-3.5 shadow-sm min-w-0">
+            <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 whitespace-nowrap">Available</span>
+            <p className="text-sm font-black tracking-tight text-slate-800 mt-1 whitespace-nowrap">
+              {formatMYR(currentBalance)}
+            </p>
           </div>
-
-          <p className="text-sm font-black tracking-tight text-slate-800">
-            {formatMYR(totalRequired)}
-          </p>
+          <div className="rounded-xl border border-slate-200/80 bg-white p-2.5 md:p-3.5 shadow-sm min-w-0">
+            <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 whitespace-nowrap">To pay</span>
+            <p className="text-sm font-black tracking-tight text-slate-800 mt-1 whitespace-nowrap">
+              {formatMYR(totalRequired)}
+            </p>
+          </div>
+          <div className="rounded-xl border border-slate-200/80 bg-white p-2.5 md:p-3.5 shadow-sm min-w-0">
+            <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 whitespace-nowrap">Unpaid</span>
+            <p className={`text-sm font-black tracking-tight mt-1 whitespace-nowrap ${
+              unpaidCommitments.length > 0 ? 'text-amber-600' : 'text-slate-800'
+            }`}>
+              {unpaidCommitments.length}
+            </p>
+          </div>
         </div>
 
-
-        {/* Due Items */}
-        <div className="group relative overflow-hidden rounded-xl border border-slate-200/80 bg-white p-3.5 shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md">
-          <div className="flex items-center justify-between gap-2 mb-2">
-
-            <span className="text-[9px] font-bold uppercase tracking-wider text-slate-400">
-              Due Items
-            </span>
-          </div>
-
-          <p
-            className={`text-sm font-black tracking-tight ${
-              unpaidCommitments.length > 0
-                ? 'text-amber-600'
-                : 'text-slate-800'
-            }`}
-          >
-            {unpaidCommitments.length}
+        {/* Unpaid list */}
+        <div className="mb-4">
+          <p className="text-[10px] text-slate-400 uppercase font-bold tracking-wider mb-2.5 flex items-center gap-1.5">
+            <Calendar className="w-3.5 h-3.5 text-blue-500" /> Coming up ({unpaidCommitments.length})
           </p>
-        </div>
 
-      </div>
+          {unpaidCommitments.length === 0 ? (
+            <div className="text-xs font-medium text-emerald-700 p-3.5 bg-emerald-50/60 border border-emerald-100 rounded-xl flex items-center gap-2">
+              <CheckCircle className="w-4 h-4 text-emerald-500 shrink-0" />
+              You've paid everything for this month.
+            </div>
+          ) : (
+            <div className="space-y-2">
+              {unpaidCommitments.map(comm => {
+                const timing = getCommitmentTiming(comm.due_day_of_month)
+                const isOverdue = timing.kind === 'overdue'
+                const pill = getStatusPill(timing)
+                const account = getAccount(comm.account_id)
+                const accountBalance = account?.balance ?? 0
+                const accountShort = comm.amount > accountBalance
 
-      {/* Unpaid Commitments Section */}
-      <div className="mb-4">
-        <p className="text-[10px] text-slate-400 uppercase font-bold tracking-wider mb-2.5 flex items-center gap-1.5">
-          <Calendar className="w-3.5 h-3.5 text-blue-500" /> Upcoming Tasks ({unpaidCommitments.length})
-        </p>
-        {unpaidCommitments.length === 0 ? (
-          <div className="text-xs font-medium text-emerald-700 p-3.5 bg-emerald-50/60 border border-emerald-100 rounded-xl flex items-center gap-2 animate-fadeIn">
-            <CheckCircle className="w-4 h-4 text-emerald-500" /> All commitments paid for this month!
-          </div>
-        ) : (
-          <div className="space-y-2">
-            {unpaidCommitments.map(comm => {
-              const status = getCommitmentStatus(comm.due_day_of_month)
-              const isOverdue = getDaysUntil(comm.due_day_of_month) < 0
-              
-              return (
-                <div key={comm.id} className={`group flex flex-col sm:flex-row sm:items-center justify-between p-4 rounded-xl transition-all duration-200 border shadow-sm gap-4 sm:gap-6 ${
-                  isOverdue ? 'bg-red-50/50 border-red-200' : 'bg-white border-slate-100 hover:border-slate-200'
-                }`}>
-                  
-                  {/* Left Column: Details */}
-                  <div className="flex flex-col gap-2 min-w-0 flex-1">
-                    <div className="flex items-center gap-2.5">
-                      {isOverdue ? (
-                        <div className="bg-red-100 p-1.5 rounded-lg text-red-600 shrink-0">
-                          <AlertTriangle className="w-3.5 h-3.5 animate-pulse" />
-                        </div>
-                      ) : (
-                        <span className={`text-[10px] font-bold px-2 py-1 rounded-lg whitespace-nowrap uppercase tracking-wider ${status.color}`}>
-                          {status.label}
+                return (
+                  <div
+                    key={comm.id}
+                    className={`flex flex-col sm:flex-row sm:items-center justify-between p-4 rounded-xl transition-all border shadow-sm gap-3 sm:gap-4 ${
+                      isOverdue ? 'bg-red-50/50 border-red-200'
+                      : accountShort ? 'bg-amber-50/40 border-amber-200'
+                      : 'bg-white border-slate-100 hover:border-slate-200'
+                    }`}
+                  >
+                    {/* Left */}
+                    <div className="flex flex-col gap-2 min-w-0 flex-1">
+                      <div className="flex items-center gap-2.5 flex-wrap">
+                        {isOverdue ? (
+                          <div className="bg-red-100 p-1.5 rounded-lg text-red-600 shrink-0">
+                            <AlertTriangle className="w-3.5 h-3.5" />
+                          </div>
+                        ) : (
+                          <span className={`text-[10px] font-bold px-2 py-1 rounded-lg whitespace-nowrap uppercase tracking-wider ${pill.color}`}>
+                            {pill.label}
+                          </span>
+                        )}
+                        <span className="text-sm font-bold text-slate-800 truncate">
+                          {comm.name}
                         </span>
+                      </div>
+
+                      <div className="flex items-center gap-1.5 text-[11px] font-medium text-slate-500 pl-1 flex-wrap">
+                        <Building2 className="w-3 h-3 text-slate-400 shrink-0" />
+                        <span>
+                          Deducts from:{' '}
+                          <strong className="text-slate-700">{account?.account_name || 'Unknown'}</strong>
+                        </span>
+                        <span className="text-slate-300">·</span>
+                        <Wallet className="w-3 h-3 text-slate-400 shrink-0" />
+                        <span className={accountShort ? 'text-amber-700 font-semibold' : ''}>
+                          {formatMYR(accountBalance)} available
+                        </span>
+                      </div>
+                    </div>
+
+                    {/* Right */}
+                    <div className="flex items-center justify-between sm:justify-end gap-3 shrink-0 border-t sm:border-t-0 border-slate-100 pt-3 sm:pt-0">
+                      <span className="text-sm font-black whitespace-nowrap text-slate-900">
+                        {formatMYR(comm.amount)}
+                      </span>
+
+                      {onMarkAsPaid && (
+                        <button
+                          onClick={() => setMarking(comm)}
+                          disabled={saving}
+                          className="flex items-center gap-1.5 px-3.5 py-2 text-xs font-bold text-emerald-700 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 rounded-lg transition-all shadow-sm disabled:opacity-50"
+                          style={{ minHeight: 44 }}
+                        >
+                          <Check className="w-3.5 h-3.5" /> Mark as paid
+                        </button>
                       )}
-                      <span className="text-sm font-bold text-slate-800 truncate">
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
+          )}
+        </div>
+
+        {/* Paid this month */}
+        {paidCommitments.length > 0 && (
+          <div className="mb-2">
+            <button
+              onClick={() => setShowPaid(!showPaid)}
+              className="w-full flex items-center justify-between p-3 bg-white hover:bg-slate-50 border border-slate-100 rounded-xl transition-colors shadow-sm group"
+              aria-expanded={showPaid}
+            >
+              <span className="text-[10px] text-slate-500 uppercase font-bold tracking-wider flex items-center gap-1.5">
+                <CheckCircle className="w-3.5 h-3.5 text-emerald-500" /> Paid this month ({paidCommitments.length})
+              </span>
+              {showPaid
+                ? <ChevronUp className="w-4 h-4 text-slate-400" />
+                : <ChevronDown className="w-4 h-4 text-slate-400" />}
+            </button>
+
+            <div className={`grid transition-all duration-300 ease-in-out ${showPaid ? 'grid-rows-[1fr] opacity-100 mt-2' : 'grid-rows-[0fr] opacity-0'}`}>
+              <div className="overflow-hidden space-y-1.5">
+                {paidCommitments.map(comm => (
+                  <div
+                    key={comm.id}
+                    className="flex items-center justify-between p-2.5 rounded-xl bg-emerald-50/30 border border-emerald-100/50 gap-2"
+                  >
+                    <div className="flex items-center gap-2 min-w-0 flex-1">
+                      <CheckCircle className="w-3.5 h-3.5 text-emerald-500 shrink-0" />
+                      <span className="text-xs font-medium text-slate-500 line-through truncate">
                         {comm.name}
                       </span>
                     </div>
-                    
-                    {/* Account Indicator Badge - Properly aligned underneath */}
-                    <div className="flex items-center gap-1.5 text-[10px] font-medium text-slate-500 pl-1">
-                      <Building2 className="w-3 h-3 text-slate-400" />
-                      <span>Deducts from: <strong className="text-slate-700">{getAccountName(comm.account_id)}</strong></span>
+                    <div className="flex items-center gap-2 shrink-0">
+                      <span className="text-xs font-bold text-slate-400 line-through">
+                        {formatMYR(comm.amount)}
+                      </span>
+                      {onUnmarkAsPaid && (
+                        <button
+                          onClick={() => {
+                            if (window.confirm(
+                              `Undo payment for "${comm.name}"?\n\nThis will remove the logged expense and reset the bill to unpaid.`
+                            )) {
+                              onUnmarkAsPaid(comm.id)
+                            }
+                          }}
+                          className="inline-flex items-center gap-1 text-[10px] font-bold text-slate-400 hover:text-slate-700 hover:bg-white px-2 py-1.5 rounded-md transition-colors border border-transparent hover:border-slate-200"
+                          style={{ minHeight: 32 }}
+                          aria-label={`Undo payment for ${comm.name}`}
+                        >
+                          <Undo2 className="w-3 h-3" /> Undo
+                        </button>
+                      )}
                     </div>
                   </div>
-                  
-                  {/* Right Column: Actions */}
-                  <div className="flex items-center justify-between sm:justify-end gap-4 shrink-0 border-t sm:border-t-0 border-slate-100 pt-3 sm:pt-0">
-                    <span className="text-sm font-black whitespace-nowrap text-slate-900">
-                      {formatMYR(comm.amount)}
+                ))}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Paused */}
+        {inactiveCommitments.length > 0 && (
+          <div className="mb-2">
+            <button
+              onClick={() => setShowInactive(!showInactive)}
+              className="w-full flex items-center justify-between p-3 bg-white hover:bg-slate-50 border border-slate-100 rounded-xl transition-colors shadow-sm group"
+              aria-expanded={showInactive}
+            >
+              <span className="text-[10px] text-slate-500 uppercase font-bold tracking-wider flex items-center gap-1.5">
+                <Power className="w-3.5 h-3.5 text-slate-400" /> Paused ({inactiveCommitments.length})
+              </span>
+              {showInactive
+                ? <ChevronUp className="w-4 h-4 text-slate-400" />
+                : <ChevronDown className="w-4 h-4 text-slate-400" />}
+            </button>
+
+            <div className={`grid transition-all duration-300 ease-in-out ${showInactive ? 'grid-rows-[1fr] opacity-100 mt-2' : 'grid-rows-[0fr] opacity-0'}`}>
+              <div className="overflow-hidden space-y-1.5">
+                {inactiveCommitments.map(comm => (
+                  <div
+                    key={comm.id}
+                    className="flex items-center justify-between p-3 rounded-xl bg-slate-50/50 border border-slate-100 gap-2"
+                  >
+                    <span className="text-xs font-bold text-slate-500 truncate min-w-0">
+                      {comm.name}
                     </span>
-                    
-                    {onMarkAsPaid && (
-                      <button 
-                        onClick={() => {
-                          if (window.confirm(`Mark ${comm.name} as paid?\n\nThis will automatically log a ${formatMYR(comm.amount)} expense from ${getAccountName(comm.account_id)}.`)) {
-                            onMarkAsPaid(comm.id)
-                          }
-                        }}
-                        className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold text-emerald-700 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 rounded-lg transition-all shadow-sm shrink-0"
+                    <div className="flex items-center gap-1.5 shrink-0">
+                      <span className="text-xs font-bold text-slate-400 mr-1">
+                        {formatMYR(comm.amount)}
+                      </span>
+                      <button
+                        onClick={() => onToggleCommitment(comm.id, comm.is_active)}
+                        className="flex items-center justify-center w-10 h-10 text-slate-400 hover:text-emerald-600 hover:bg-emerald-50 rounded-lg transition-all border border-transparent hover:border-emerald-200"
+                        aria-label={`Reactivate ${comm.name}`}
                       >
-                        <Check className="w-3.5 h-3.5" /> Pay Now
+                        <Power className="w-4 h-4" />
                       </button>
-                    )}
+                      {onDeleteCommitment && (
+                        <button
+                          onClick={() => onDeleteCommitment(comm.id, comm.name)}
+                          className="flex items-center justify-center w-10 h-10 text-red-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-all border border-transparent hover:border-red-200"
+                          aria-label={`Delete ${comm.name}`}
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      )}
+                    </div>
                   </div>
-                  
-                </div>
-              )
-            })}
+                ))}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Shortfall notice */}
+        {!isSafe && totalRequired > 0 && (
+          <div className="bg-red-50/60 border border-red-200/60 rounded-xl p-3.5 mt-4 flex items-start gap-2.5">
+            <AlertTriangle className="w-4 h-4 text-red-600 shrink-0 mt-0.5" />
+            <div>
+              <p className="text-xs font-bold text-red-800">
+                You're short by {formatMYR(shortfall)}
+              </p>
+              <p className="text-xs text-red-700/90 mt-0.5 leading-relaxed">
+                Your available balance doesn't cover every unpaid bill this month.
+              </p>
+            </div>
           </div>
         )}
       </div>
 
-      {/* Paid Commitments Collapsible Panel */}
-      {paidCommitments.length > 0 && (
-        <div className="mb-2">
-          <button
-            onClick={() => setShowPaid(!showPaid)}
-            className="w-full flex items-center justify-between p-3 bg-white hover:bg-slate-50 border border-slate-100 rounded-xl transition-colors shadow-sm group"
-          >
-            <span className="text-[10px] text-slate-500 uppercase font-bold tracking-wider flex items-center gap-1.5">
-              <CheckCircle className="w-3.5 h-3.5 text-emerald-500" /> Fully Paid ({paidCommitments.length})
-            </span>
-            {showPaid ? <ChevronUp className="w-4 h-4 text-slate-400 group-hover:text-slate-600" /> : <ChevronDown className="w-4 h-4 text-slate-400 group-hover:text-slate-600" />}
-          </button>
-          
-          <div className={`grid transition-all duration-300 ease-in-out ${showPaid ? 'grid-rows-[1fr] opacity-100 mt-2' : 'grid-rows-[0fr] opacity-0'}`}>
-            <div className="overflow-hidden space-y-1.5">
-              {paidCommitments.map(comm => (
-                <div key={comm.id} className="flex items-center justify-between p-2.5 rounded-xl bg-emerald-50/30 border border-emerald-100/50">
-                  <div className="flex items-center gap-2 min-w-0">
-                    <CheckCircle className="w-3.5 h-3.5 text-emerald-500 shrink-0" />
-                    <span className="text-xs font-medium text-slate-500 line-through truncate">{comm.name}</span>
-                  </div>
-                  <span className="text-xs font-bold text-slate-400 line-through shrink-0">{formatMYR(comm.amount)}</span>
-                </div>
-              ))}
-            </div>
-          </div>
-        </div>
+      {/* Mark-paid sheet */}
+      {marking && (
+        <MarkPaidSheet
+          commitment={marking}
+          accounts={accounts}
+          saving={saving}
+          onConfirm={handleMarkPaidConfirm}
+          onCancel={() => setMarking(null)}
+        />
       )}
-
-      {/* Inactive Commitments Collapsible Panel */}
-      {inactiveCommitments.length > 0 && (
-        <div className="mb-2">
-          <button
-            onClick={() => setShowInactive(!showInactive)}
-            className="w-full flex items-center justify-between p-3 bg-white hover:bg-slate-50 border border-slate-100 rounded-xl transition-colors shadow-sm group"
-          >
-            <span className="text-[10px] text-slate-500 uppercase font-bold tracking-wider flex items-center gap-1.5">
-              <Power className="w-3.5 h-3.5 text-slate-400" /> Inactive Archives ({inactiveCommitments.length})
-            </span>
-            {showInactive ? <ChevronUp className="w-4 h-4 text-slate-400 group-hover:text-slate-600" /> : <ChevronDown className="w-4 h-4 text-slate-400 group-hover:text-slate-600" />}
-          </button>
-          
-          <div className={`grid transition-all duration-300 ease-in-out ${showInactive ? 'grid-rows-[1fr] opacity-100 mt-2' : 'grid-rows-[0fr] opacity-0'}`}>
-            <div className="overflow-hidden space-y-1.5">
-              {inactiveCommitments.map(comm => (
-                <div key={comm.id} className="group flex items-center justify-between p-3 rounded-xl bg-slate-50/50 border border-slate-100 hover:border-slate-200 transition-all">
-                  <span className="text-xs font-bold text-slate-500 truncate">{comm.name}</span>
-                  <div className="flex items-center gap-2 shrink-0">
-                    <span className="text-xs font-bold text-slate-400 mr-2">{formatMYR(comm.amount)}</span>
-                    <button 
-                      onClick={() => onToggleCommitment(comm.id, comm.is_active)}
-                      className="flex items-center justify-center p-1.5 text-slate-400 hover:text-emerald-600 hover:bg-emerald-50 rounded-md transition-all border border-transparent hover:border-emerald-200"
-                      title="Reactivate"
-                    >
-                      <Power className="w-3.5 h-3.5" />
-                    </button>
-                    {onDeleteCommitment && (
-                      <button 
-                        onClick={() => onDeleteCommitment(comm.id)}
-                        className="flex items-center justify-center p-1.5 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-md transition-all border border-transparent hover:border-red-200"
-                        title="Delete"
-                      >
-                        <Trash2 className="w-3.5 h-3.5" />
-                      </button>
-                    )}
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Warning Notification Drawer */}
-      {!isSafe && totalRequired > 0 && (
-        <div className="bg-red-50/60 border border-red-200/60 rounded-xl p-3.5 mt-4 animate-fadeIn flex items-start gap-2.5">
-          <AlertTriangle className="w-4 h-4 text-red-600 shrink-0 mt-0.5" />
-          <div>
-            <p className="text-xs font-bold text-red-800">Liquidity Shortfall Detected</p>
-            <p className="text-xs text-red-700/90 mt-0.5 leading-relaxed">
-              Your total available balance across all accounts is short by <span className="font-bold">{formatMYR(shortfall)}</span> to cover upcoming commitments securely.
-            </p>
-          </div>
-        </div>
-      )}
-
-    </div>
+    </>
   )
 }
