@@ -34,6 +34,7 @@ import { TransactionsPage } from './pages/TransactionsPage'
 import { CommitmentsPage } from './pages/CommitmentsPage'
 import { NetworkPage } from './pages/NetworkPage'
 import { SplitBillPage } from './pages/SplitBillPage'
+import { AnalyticsPage } from './pages/AnalyticsPage'
 
 // Hooks
 import { useAuth } from './hooks/useAuth'
@@ -1084,31 +1085,36 @@ export default function App() {
             </section>
 
             {/* Social Finance Quick Menu */}
-            <section className="grid grid-cols-2 gap-4 md:gap-6">
+            <section className="grid grid-cols-3 gap-3 md:gap-4">
               <button
-                onClick={() => {
-                  window.scrollTo({ top: 0 });
-                  setCurrentView('network');
-                }}
+                onClick={() => handleNavClick('network')}
                 className="bg-white/60 backdrop-blur-xl border border-white/40 p-4 rounded-2xl shadow-sm flex flex-col items-center justify-center gap-2 hover:bg-white/80 transition-all group"
               >
                 <div className="w-10 h-10 bg-emerald-50 text-emerald-600 rounded-full flex items-center justify-center group-hover:scale-110 transition-transform">
                   <Users className="w-5 h-5" />
                 </div>
-                <span className="text-sm font-bold text-slate-700">My Network</span>
+                <span className="text-xs font-bold text-slate-700">My Network</span>
               </button>
 
               <button
-                onClick={() => {
-                  window.scrollTo({ top: 0 });
-                  setCurrentView('split');
-                }}
+                onClick={() => handleNavClick('split')}
                 className="bg-white/60 backdrop-blur-xl border border-white/40 p-4 rounded-2xl shadow-sm flex flex-col items-center justify-center gap-2 hover:bg-white/80 transition-all group"
               >
                 <div className="w-10 h-10 bg-blue-50 text-blue-600 rounded-full flex items-center justify-center group-hover:scale-110 transition-transform">
                   <Receipt className="w-5 h-5" />
                 </div>
-                <span className="text-sm font-bold text-slate-700">Split Bill</span>
+                <span className="text-xs font-bold text-slate-700">Split Bill</span>
+              </button>
+
+              {/* NEW ANALYTICS BUTTON */}
+              <button
+                onClick={() => handleNavClick('analytics')}
+                className="bg-white/60 backdrop-blur-xl border border-white/40 p-4 rounded-2xl shadow-sm flex flex-col items-center justify-center gap-2 hover:bg-white/80 transition-all group"
+              >
+                <div className="w-10 h-10 bg-purple-50 text-purple-600 rounded-full flex items-center justify-center group-hover:scale-110 transition-transform">
+                  <Activity className="w-5 h-5" />
+                </div>
+                <span className="text-xs font-bold text-slate-700">Analytics</span>
               </button>
             </section>
 
@@ -1242,6 +1248,20 @@ export default function App() {
             showToast={showToast}
             selectedAccount={selectedAccount}
             initialModal={requestedModal}
+          />
+        )}
+
+        {/* ============================================
+            ANALYTICS PAGE
+        ============================================ */}
+        {currentView === 'analytics' && (
+          <AnalyticsPage
+            user={user}
+            profile={profile}
+            accounts={accounts}
+            categories={categories}
+            onBack={() => setCurrentView('dashboard')}
+            showToast={showToast}
           />
         )}
 

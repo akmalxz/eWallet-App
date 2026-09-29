@@ -37,6 +37,7 @@ export const Header = ({
     commitments: 'Subscriptions',
     network: 'My Network',
     split: 'Split Bill',
+    analytics: 'Analytics',
     profile: 'Profile & Settings'
   }
 
