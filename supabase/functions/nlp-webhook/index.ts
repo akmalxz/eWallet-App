@@ -254,8 +254,14 @@ class TransactionParser {
     return lines.length >= 4 && text.length > 80;
   }
 
-  parse(text: string) {
-    const normalizedText = text.trim();
+    parse(text: string) {
+    // Normalize common OCR misreads before parsing
+    const normalizedText = text
+      .replace(/Æ/g, 'AE')
+      .replace(/æ/g, 'ae')
+      .replace(/[`´'’‘“”]/g, '')
+      .trim();
+
     const result = {
       amount: null as number | null,
       sourceAccountId: null as string | null,
@@ -270,7 +276,7 @@ class TransactionParser {
 
     const lowerText = normalizedText.toLowerCase();
 
-    // Account matching (uses alias-expanded dict from buildAccountDictionary)
+    // Account matching
     for (const acc of Object.keys(this.accountDict)) {
       if (lowerText.includes(acc)) {
         if (/(?:received|deposit|income|credited)/i.test(lowerText)) {
@@ -282,12 +288,12 @@ class TransactionParser {
       }
     }
 
-    // Extract and validate category
+    // Category
     const extractedCategory = this.extractCategory(normalizedText);
     const validation = this.validateCategory(extractedCategory);
     result.category = validation.valid ? validation.normalizedCategory : 'uncategorized';
 
-    // Smart description extraction
+    // Description
     const isOCR = this.detectOCRSource(normalizedText);
 
     if (isOCR) {
@@ -295,47 +301,40 @@ class TransactionParser {
       let extractedName = '';
       let extractedRef = '';
 
-    const NAME_LABELS = ['biller', 'recipient', 'merchant name', 'transfer to']
-    const REF_LABELS  = ['recipient reference', 'ref-1', 'reference']
+      const NAME_LABELS = ['biller', 'recipient', 'merchant name', 'transfer to'];
+      const REF_LABELS  = ['recipient reference', 'ref-1', 'reference'];
 
-    for (let i = 0; i < lines.length; i++) {
-      const raw = lines[i]
-      const line = raw.toLowerCase()
+      for (let i = 0; i < lines.length; i++) {
+        const raw = lines[i];
+        const line = raw.toLowerCase();
 
-      // Name extraction — handles BOTH styles:
-      //   1. "Transfer to ajp enterprise"  (same line)
-      //   2. "Recipient" / "ajp enterprise" (next line)
-      if (!extractedName) {
-        for (const label of NAME_LABELS) {
-          if (line.startsWith(label + ' ')) {
-            // Same-line style: extract the rest of the line
-            const rest = raw.substring(label.length).trim()
-            if (rest) { extractedName = rest; break }
-          } else if (line === label && i + 1 < lines.length) {
-            // Multi-line style: grab the next line
-            extractedName = lines[i + 1]
-            break
+        if (!extractedName) {
+          for (const label of NAME_LABELS) {
+            if (line.startsWith(label + ' ')) {
+              const rest = raw.substring(label.length).trim();
+              if (rest) { extractedName = rest; break; }
+            } else if (line === label && i + 1 < lines.length) {
+              extractedName = lines[i + 1];
+              break;
+            }
+          }
+        }
+
+        if (!extractedRef) {
+          for (const label of REF_LABELS) {
+            if (line === label && i + 1 < lines.length) {
+              extractedRef = lines[i + 1];
+              break;
+            }
+            if (line.startsWith(label + ' ')) {
+              const rest = raw.substring(label.length).trim();
+              if (rest) { extractedRef = rest; break; }
+            }
           }
         }
       }
-
-      // Reference extraction (unchanged behavior)
-      if (!extractedRef) {
-        for (const label of REF_LABELS) {
-          if (line === label && i + 1 < lines.length) {
-            extractedRef = lines[i + 1]
-            break
-          }
-          if (line.startsWith(label + ' ')) {
-            const rest = raw.substring(label.length).trim()
-            if (rest) { extractedRef = rest; break }
-          }
-        }
-      }
-    }
 
       if (extractedName) {
-        // Preserve original casing if it's not all-lowercase
         const trimmed = extractedName.trim();
         const cleanName = trimmed === trimmed.toLowerCase()
           ? trimmed.replace(/\w\S*/g, (txt) => txt.charAt(0).toUpperCase() + txt.substring(1))
@@ -351,8 +350,10 @@ class TransactionParser {
       }
     } else {
       let description = normalizedText
-        .replace(/RM\s*[\d,]+\.?\d*/gi, '').replace(/[\d,]+\.?\d*/g, '')
-        .replace(/(?:from|to|at|into|for|dari|ke|di|pada)\s+[a-zA-Z\s]+/gi, '').trim();
+        .replace(/RM\s*[\d,]+\.?\d*/gi, '')
+        .replace(/[\d,]+\.?\d*/g, '')
+        .replace(/(?:from|to|at|into|for|dari|ke|di|pada)\s+[a-zA-Z\s]+/gi, '')
+        .trim();
       result.description = description || `${result.type} ${result.amount}`;
     }
 
