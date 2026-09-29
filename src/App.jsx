@@ -51,6 +51,18 @@ const ICON_MAP = {
   Database
 }
 
+// Navigation items shared between mobile + desktop navs
+const NAV_ITEMS = [
+  { id: 'dashboard',    icon: LayoutDashboard, label: 'Home' },
+  { id: 'transactions', icon: List,            label: 'Ledger' },
+  { id: 'log',          icon: Plus,            label: 'Log' },
+  { id: 'commitments',  icon: Layers,          label: 'Bills' },
+  { id: 'profile',      icon: User,            label: 'Profile' }
+]
+
+// Views that conceptually live "inside" the dashboard tab
+const DASHBOARD_SUBVIEWS = ['network', 'split']
+
 export default function App() {
   // ============================================
   // AUTH
@@ -118,6 +130,20 @@ export default function App() {
   const statusTimeoutRef = useRef(null)
   const hasFetchedRef = useRef(false)
   const autoRefreshIntervalRef = useRef(null)
+
+  // ============================================
+  // NAV STATE
+  // ============================================
+  const navKey = DASHBOARD_SUBVIEWS.includes(currentView)
+    ? 'dashboard'
+    : currentView
+
+  const activeIndex = NAV_ITEMS.findIndex(item => item.id === navKey)
+
+  const handleNavClick = useCallback((id) => {
+    window.scrollTo({ top: 0, behavior: 'smooth' })
+    setCurrentView(id)
+  }, [])
 
   // ============================================
   // INITIAL DATA FETCH
@@ -921,6 +947,63 @@ export default function App() {
         supabase={supabase}
       />
 
+      {/* ============================================
+          DESKTOP NAVIGATION — Liquid Glass Pill (mobile style)
+      ============================================ */}
+      <div className="hidden md:flex justify-center sticky top-[64px] z-10 py-3 px-4">
+        <nav className="relative w-[560px] rounded-3xl bg-white/10 backdrop-blur-2xl border border-white/25 shadow-[0_8px_30px_rgba(0,0,0,0.08)]">
+          <div className="relative flex items-center h-16">
+
+            {/* Sliding glass indicator */}
+            {activeIndex >= 0 && (
+              <div
+                className="absolute inset-y-0 left-0 pointer-events-none transition-transform duration-500 ease-[cubic-bezier(0.34,1.56,0.64,1)]"
+                style={{
+                  width: `${100 / NAV_ITEMS.length}%`,
+                  transform: `translateX(${activeIndex * 100}%)`
+                }}
+              >
+                <div className="absolute inset-1.5 rounded-2xl bg-gradient-to-b from-white/35 via-white/25 to-white/15 backdrop-blur-xl border border-white/40 shadow-[0_4px_16px_rgba(0,0,0,0.05),inset_0_1px_0_rgba(255,255,255,0.5)]" />
+              </div>
+            )}
+
+            {/* Buttons */}
+            {NAV_ITEMS.map((item) => {
+              const Icon = item.icon
+              const isActive = item.id === navKey
+
+              return (
+                <button
+                  key={item.id}
+                  onClick={() => handleNavClick(item.id)}
+                  aria-label={item.label}
+                  title={item.label}
+                  className="relative z-10 flex-1 h-full min-w-0 p-0 m-0 flex items-center justify-center gap-2"
+                >
+                  <Icon
+                    className={`w-5 h-5 shrink-0 transition-colors duration-300 ${
+                      isActive
+                        ? 'text-blue-600'
+                        : 'text-slate-500 hover:text-slate-700'
+                    }`}
+                  />
+                  <span
+                    className={`text-sm font-semibold transition-colors duration-300 ${
+                      isActive
+                        ? 'text-blue-600'
+                        : 'text-slate-500 hover:text-slate-700'
+                    }`}
+                  >
+                    {item.label}
+                  </span>
+                </button>
+              )
+            })}
+
+          </div>
+        </nav>
+      </div>
+
       <main className="max-w-6xl mx-auto px-3 md:px-4 py-4 md:py-8">
 
         {/* ============================================
@@ -1125,91 +1208,51 @@ export default function App() {
 
       </main>
 
+
       {/* ============================================
-          MOBILE BOTTOM NAVIGATION
+          MOBILE BOTTOM NAVIGATION — Liquid Glass Pill
       ============================================ */}
-      <nav className="md:hidden fixed bottom-6 left-4 right-4 z-50 bg-white/70 backdrop-blur-xl border border-white/40 rounded-3xl shadow-[0_8px_30px_rgba(0,0,0,0.08)]">
+      <nav className="md:hidden fixed bottom-6 left-4 right-4 z-50 rounded-3xl bg-white/5 backdrop-blur-2xl border border-white/25 shadow-[0_8px_30px_rgba(0,0,0,0.08)]">
 
-        <div className="flex justify-around items-center h-14 relative px-1">
+        <div className="relative flex items-center h-16">
 
-          {/* Dashboard */}
-          <button
-            onClick={() => {
-              window.scrollTo({ top: 0, behavior: 'smooth' })
-              setCurrentView('dashboard')
-            }}
-            className={`flex items-center justify-center w-14 h-14 transition-colors ${
-              currentView === 'dashboard'
-                ? 'text-blue-600'
-                : 'text-slate-400 hover:text-slate-600'
-            }`}
-            aria-label="Dashboard"
-          >
-            <LayoutDashboard className="w-5 h-5" />
-          </button>
-
-          {/* Transactions */}
-          <button
-            onClick={() => {
-              window.scrollTo({ top: 0, behavior: 'smooth' })
-              setCurrentView('transactions')
-            }}
-            className={`flex items-center justify-center w-14 h-14 transition-colors ${
-              currentView === 'transactions'
-                ? 'text-blue-600'
-                : 'text-slate-400 hover:text-slate-600'
-            }`}
-            aria-label="Transactions"
-          >
-            <List className="w-5 h-5" />
-          </button>
-
-          {/* Center Plus Button */}
-          <div className="relative w-14 h-14 flex items-center justify-center">
-            <button
-              onClick={() => setCurrentView('log')}
-              className={`absolute -top-5 text-white p-4 rounded-full shadow-[0_8px_30px_rgba(59,130,246,0.4)] hover:scale-105 active:scale-95 transition-all ${
-                currentView === 'log'
-                  ? 'bg-gradient-to-tr from-slate-900 to-slate-800'
-                  : 'bg-gradient-to-tr from-blue-600 to-blue-500'
-              }`}
-              aria-label="Log transaction"
+          {/* Sliding glass indicator */}
+          {activeIndex >= 0 && (
+            <div
+              className="absolute inset-y-0 left-0 pointer-events-none transition-transform duration-500 ease-[cubic-bezier(0.34,1.56,0.64,1)]"
+              style={{
+                width: `${100 / NAV_ITEMS.length}%`,
+                transform: `translateX(${activeIndex * 100}%)`
+              }}
             >
-              <Plus className="w-7 h-7" />
-            </button>
-          </div>
+              <div className="absolute inset-1.5 rounded-2xl bg-gradient-to-b from-white/35 via-white/25 to-white/15 backdrop-blur-xl border border-white/40 shadow-[0_4px_16px_rgba(0,0,0,0.05),inset_0_1px_0_rgba(255,255,255,0.5)]" />
+            </div>
+          )}
 
-          {/* Commitments */}
-          <button
-            onClick={() => {
-              window.scrollTo({ top: 0, behavior: 'smooth' })
-              setCurrentView('commitments')
-            }}
-            className={`flex items-center justify-center w-14 h-14 transition-colors ${
-              currentView === 'commitments'
-                ? 'text-blue-600'
-                : 'text-slate-400 hover:text-slate-600'
-            }`}
-            aria-label="Commitments"
-          >
-            <Layers className="w-5 h-5" />
-          </button>
+          {/* Buttons */}
+          {NAV_ITEMS.map((item) => {
+            const Icon = item.icon
+            const isActive = item.id === navKey
 
-          {/* User */}
-          <button
-            onClick={() => {
-              window.scrollTo({ top: 0, behavior: 'smooth' })
-              setCurrentView('profile')
-            }}
-            className={`flex items-center justify-center w-14 h-14 transition-colors ${
-              currentView === 'profile'
-                ? 'text-blue-600'
-                : 'text-slate-400 hover:text-slate-600'
-            }`}
-            aria-label="Profile"
-          >
-            <User className="w-5 h-5" />
-          </button>
+            return (
+              <button
+                key={item.id}
+                onClick={() => handleNavClick(item.id)}
+                aria-label={item.label}
+                className="relative z-10 flex-1 h-full min-w-0 p-0 m-0 flex items-center justify-center"
+              >
+                <span className="flex items-center justify-center w-10 h-10 leading-none">
+                  <Icon
+                    className={`block w-5 h-5 shrink-0 transition-colors duration-300 ${
+                      isActive
+                        ? 'text-blue-600'
+                        : 'text-slate-400'
+                    }`}
+                  />
+                </span>
+              </button>
+            )
+          })}
 
         </div>
       </nav>

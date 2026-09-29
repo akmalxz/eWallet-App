@@ -1,6 +1,6 @@
 // src/components/layouts/Header.jsx
 import { useState } from 'react'
-import { Activity, Plus, Settings, LogOut, Menu, X, LayoutDashboard } from 'lucide-react'
+import { Activity, Settings, LogOut, Menu, X } from 'lucide-react'
 
 export const Header = ({ 
   user,
@@ -72,25 +72,17 @@ export const Header = ({
             </button>
           </div>
 
-          {/* Desktop Actions */}
+          {/* Desktop Actions — Settings + Sign out only */}
           <div className="hidden md:flex items-center gap-2">
             <button 
-              onClick={() => setCurrentView('dashboard')} 
-              className={`p-2.5 rounded-full transition-colors ${currentView === 'dashboard' ? 'bg-blue-50 text-blue-600' : 'text-slate-500 hover:bg-slate-200/50'}`}
-              title="Dashboard"
-            >
-              <LayoutDashboard className="w-4 h-4" />
-            </button>
-            <button 
-              onClick={() => setCurrentView('log')} 
-              className="flex items-center gap-2 bg-slate-900 hover:bg-slate-800 shadow-sm text-white text-sm font-medium px-4 py-2 rounded-full transition-colors mx-1"
-            >
-              <Plus className="w-4 h-4" /> Log Data
-            </button>
-            <button 
               onClick={() => setCurrentView('profile')} 
-              className={`p-2.5 rounded-full transition-colors ${currentView === 'profile' ? 'bg-blue-50 text-blue-600' : 'text-slate-500 hover:bg-slate-200/50'}`}
-              title="Profile & Settings"
+              className={`p-2.5 rounded-full transition-colors ${
+                currentView === 'profile'
+                  ? 'bg-blue-50 text-blue-600'
+                  : 'text-slate-500 hover:bg-slate-200/50'
+              }`}
+              title="Settings"
+              aria-label="Settings"
             >
               <Settings className="w-4 h-4" />
             </button>
@@ -98,6 +90,7 @@ export const Header = ({
               onClick={() => supabase.auth.signOut()} 
               className="p-2.5 text-slate-400 hover:bg-red-50 hover:text-red-500 rounded-full transition-colors ml-1"
               title="Sign out"
+              aria-label="Sign out"
             >
               <LogOut className="w-4 h-4" />
             </button>
