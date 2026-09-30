@@ -702,7 +702,10 @@ export default function App() {
   )
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-slate-50 to-slate-100 font-sans text-slate-900 pb-28 md:pb-12">
+    <div
+      className="min-h-screen bg-gradient-to-b from-slate-50 to-slate-100 font-sans text-slate-900 md:pb-12"
+      style={{ paddingBottom: 'calc(7rem + env(safe-area-inset-bottom, 0px))' }}
+    >
 
       <div className="fixed top-4 right-4 z-50 space-y-2">
         {toasts.map(toast => (

@@ -85,7 +85,10 @@ export const NavigationBar = ({ currentView, setCurrentView }) => {
       {/* ============================================
           MOBILE — Fixed liquid glass pill
       ============================================ */}
-      <nav className="md:hidden fixed bottom-6 left-4 right-4 z-50 rounded-3xl bg-white/5 backdrop-blur-2xl border border-white/25 shadow-[0_8px_30px_rgba(0,0,0,0.08)]">
+      <nav
+        className="md:hidden fixed left-4 right-4 z-50 rounded-3xl bg-white/5 backdrop-blur-2xl border border-white/25 shadow-[0_8px_30px_rgba(0,0,0,0.08)]"
+        style={{ bottom: 'calc(1.5rem + env(safe-area-inset-bottom, 0px))' }}
+      >
         <div className="relative flex items-center h-16">
           {activeIndex >= 0 && (
             <div
