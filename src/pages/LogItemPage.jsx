@@ -1,6 +1,6 @@
 // src/pages/LogItemPage.jsx
-import { useState } from 'react'
-import { PlusCircle } from 'lucide-react'
+import { useState, useEffect, useMemo } from 'react'
+import { PlusCircle, AlertCircle } from 'lucide-react'
 import { supabase } from '../lib/supabaseClient'
 
 export function LogItemPage({
@@ -13,21 +13,51 @@ export function LogItemPage({
   const [category, setCategory] = useState('uncategorized')
   const [txDate, setTxDate] = useState(new Date().toISOString().split('T')[0])
   const [source, setSource] = useState(accounts[0]?.id || '')
-  const [dest, setDest] = useState(accounts[0]?.id || '')
+  const [dest, setDest] = useState(accounts[1]?.id || accounts[0]?.id || '')
   const [saving, setSaving] = useState(false)
 
+  // ----------------------------------------------------------
+  // Split main categories into income vs expense branches
+  // ----------------------------------------------------------
+  const incomeCategory = useMemo(
+    () => mainCategories.find(c => c.name.toLowerCase() === 'income'),
+    [mainCategories]
+  )
+
+  const expenseCategories = useMemo(
+    () => mainCategories.filter(c => c.name.toLowerCase() !== 'income'),
+    [mainCategories]
+  )
+
+  // ----------------------------------------------------------
+  // Reset the selected category whenever the transaction type
+  // changes so we never submit an invalid pairing.
+  // ----------------------------------------------------------
+  useEffect(() => {
+    setCategory('uncategorized')
+  }, [txType])
+
+  // ----------------------------------------------------------
+  // Submit
+  // ----------------------------------------------------------
   const handleSubmit = async (e) => {
     e.preventDefault()
     setSaving(true)
     try {
+      // Transfers are not categorizable — force a distinct label
+      const finalCategory =
+        txType === 'transfer' ? 'Transfer' : (category || 'uncategorized')
+
       const payload = {
         user_id: user.id,
         description: desc || 'Manual Entry',
         amount: Math.abs(parseFloat(amount)),
-        category,
+        category: finalCategory,
         transaction_date: new Date(`${txDate}T12:00:00`).toISOString(),
         source_account_id: txType === 'income' ? null : source,
-        destination_account_id: txType === 'expense' ? null : (txType === 'income' ? source : dest)
+        destination_account_id: txType === 'expense'
+          ? null
+          : (txType === 'income' ? source : dest)
       }
       const { error } = await supabase.from('transactions').insert([payload])
       if (error) throw error
@@ -35,6 +65,7 @@ export function LogItemPage({
       showToast('Transaction logged successfully!', 'success')
       setAmount('')
       setDesc('')
+      setCategory('uncategorized')
       fetchAllData()
     } catch (error) {
       showToast('Error saving transaction: ' + error.message, 'error')
@@ -42,6 +73,81 @@ export function LogItemPage({
       setSaving(false)
     }
   }
+
+  // ----------------------------------------------------------
+  // Helper: should we render the category field?
+  // ----------------------------------------------------------
+  const showCategory = txType !== 'transfer'
+
+  // ----------------------------------------------------------
+  // Helper: which tree to render for the current type
+  // ----------------------------------------------------------
+  const renderCategoryTree = () => {
+    if (txType === 'income') {
+      if (!incomeCategory) {
+        return (
+          <option value="uncategorized" disabled>
+            No income categories yet — create one in Settings
+          </option>
+        )
+      }
+      const subs = getSubCategories(incomeCategory.id)
+      if (subs.length === 0) {
+        return <option value={incomeCategory.name}>{incomeCategory.name}</option>
+      }
+      return (
+        <optgroup label={incomeCategory.name}>
+          {subs.map(sub => (
+            <option key={sub.id} value={`${incomeCategory.name} > ${sub.name}`}>
+              {sub.name}
+            </option>
+          ))}
+        </optgroup>
+      )
+    }
+
+    // expense (default)
+    if (expenseCategories.length === 0) {
+      return (
+        <option value="uncategorized" disabled>
+          No expense categories yet — create one in Settings
+        </option>
+      )
+    }
+    return expenseCategories.map(main => {
+      const subs = getSubCategories(main.id)
+      return (
+        <optgroup key={main.id} label={main.name}>
+          {subs.map(sub => (
+            <option key={sub.id} value={`${main.name} > ${sub.name}`}>
+              {sub.name}
+            </option>
+          ))}
+          {subs.length === 0 && (
+            <option value={main.name}>{main.name} (General)</option>
+          )}
+        </optgroup>
+      )
+    })
+  }
+
+  // ----------------------------------------------------------
+  // Helper: category hint text
+  // ----------------------------------------------------------
+  const categoryHint = () => {
+    if (txType === 'income') {
+      if (!incomeCategory) {
+        return 'Set up income categories in Settings first.'
+      }
+      return null
+    }
+    if (txType === 'expense' && expenseCategories.length === 0) {
+      return 'Set up expense categories in Settings first.'
+    }
+    return null
+  }
+
+  const hint = categoryHint()
 
   return (
     <div className="max-w-2xl mx-auto animate-in fade-in slide-in-from-bottom-4 duration-500 pb-12">
@@ -52,7 +158,6 @@ export function LogItemPage({
         <p className="text-xs text-slate-400 mt-1">Record a new income, expense, or transfer</p>
       </div>
 
-      {/* SECTION 2: LOG NEW EXPENSES */}
       <div className="bg-white/60 backdrop-blur-xl border border-white/40 rounded-3xl overflow-hidden shadow-sm p-5">
 
         <div className="flex items-center gap-4 mb-5">
@@ -67,6 +172,7 @@ export function LogItemPage({
           {['expense', 'income', 'transfer'].map((t) => (
             <button
               key={t}
+              type="button"
               onClick={(e) => {
                 e.preventDefault()
                 setTxType(t)
@@ -83,7 +189,9 @@ export function LogItemPage({
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-4">
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+          <div className={`grid gap-3 ${
+            showCategory ? 'grid-cols-1 sm:grid-cols-3' : 'grid-cols-1 sm:grid-cols-2'
+          }`}>
             <div>
               <label htmlFor="tx-date" className="block text-xs font-bold text-slate-500 uppercase mb-1">Date</label>
               <input
@@ -110,28 +218,29 @@ export function LogItemPage({
                 placeholder="0.00"
               />
             </div>
-            <div>
-              <label htmlFor="tx-category" className="block text-xs font-bold text-slate-500 uppercase mb-1">Category</label>
-              <select
-                id="tx-category"
-                name="tx-category"
-                value={category}
-                onChange={(e) => setCategory(e.target.value)}
-                className="w-full bg-white/60 border border-white/40 rounded-xl py-2 px-3 outline-none focus:ring-2 focus:ring-blue-500 text-sm transition-all"
-              >
-                <option value="uncategorized">Select...</option>
-                {mainCategories.map(main => (
-                  <optgroup key={main.id} label={main.name}>
-                    {getSubCategories(main.id).map(sub => (
-                      <option key={sub.id} value={`${main.name} > ${sub.name}`}>{sub.name}</option>
-                    ))}
-                    {getSubCategories(main.id).length === 0 && (
-                      <option value={main.name}>{main.name} (General)</option>
-                    )}
-                  </optgroup>
-                ))}
-              </select>
-            </div>
+
+            {showCategory && (
+              <div>
+                <label htmlFor="tx-category" className="block text-xs font-bold text-slate-500 uppercase mb-1">
+                  Category
+                </label>
+                <select
+                  id="tx-category"
+                  name="tx-category"
+                  value={category}
+                  onChange={(e) => setCategory(e.target.value)}
+                  className="w-full bg-white/60 border border-white/40 rounded-xl py-2 px-3 outline-none focus:ring-2 focus:ring-blue-500 text-sm transition-all"
+                >
+                  <option value="uncategorized">Select...</option>
+                  {renderCategoryTree()}
+                </select>
+                {hint && (
+                  <p className="text-[10px] text-amber-600 mt-1 flex items-center gap-1">
+                    <AlertCircle className="w-3 h-3" /> {hint}
+                  </p>
+                )}
+              </div>
+            )}
           </div>
 
           <div>
@@ -144,7 +253,13 @@ export function LogItemPage({
               value={desc}
               onChange={(e) => setDesc(e.target.value)}
               className="w-full bg-white/60 border border-white/40 rounded-xl py-2 px-3 outline-none focus:ring-2 focus:ring-blue-500 transition-all"
-              placeholder="e.g. Salary, Lunch at Nasi Kandar"
+              placeholder={
+                txType === 'transfer'
+                  ? 'e.g. Move to savings'
+                  : txType === 'income'
+                    ? 'e.g. Salary, Side hustle'
+                    : 'e.g. Lunch at Nasi Kandar'
+              }
             />
           </div>
 
@@ -195,7 +310,8 @@ export function LogItemPage({
           <button
             type="submit"
             disabled={saving}
-            className="w-full bg-slate-900 hover:bg-slate-800 text-white font-medium py-3 rounded-xl mt-4 transition-colors"
+            className="w-full bg-slate-900 hover:bg-slate-800 text-white font-medium py-3 rounded-xl mt-4 transition-colors disabled:opacity-50"
+            style={{ minHeight: 44 }}
           >
             {saving ? 'Saving...' : 'Log Transaction'}
           </button>
