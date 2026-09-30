@@ -10,8 +10,8 @@ import {
 import Auth from './components/Auth'
 import { ToastNotification } from './components/shared/Toast'
 import { LoadingSpinner } from './components/shared/LoadingSpinner'
-import { AccountSelector } from './components/shared/AccountSelector'
 import { AccountChipRow } from './components/shared/AccountChipRow'
+import { AccountDropdown } from './components/shared/AccountDropdown'
 import { Header } from './components/layouts/Header'
 import { NavigationBar } from './components/layouts/NavigationBar'
 import { AccountCards } from './components/dashboard/AccountCards'
@@ -244,22 +244,23 @@ export default function App() {
   const handleLogTransactionFromAccount = account => { setSelectedAccount(account); setCurrentView('log') }
   const handleManageAccount = account => { setSelectedAccount(account); setRequestedModal('banks'); setCurrentView('profile') }
 
-  // ============================================
-  // SORTED ACCOUNTS
-  // Pinned first → display_order → balance desc.
-  // Defined here (above handlers) so nothing below
-  // can accidentally reference it before init.
-  // ============================================
+
+  // Active = not archived. Used everywhere accounts are picked for a
+  // transaction, scope, or filter.
+  const activeAccounts = useMemo(
+    () => accounts.filter(a => !a.is_archived),
+    [accounts]
+  )
+
+  // Sorted: pinned first, then sort_order. Excludes archived.
   const sortedAccounts = useMemo(() => {
-    return [...accounts].sort((a, b) => {
-      // Pinned accounts always float to the top
+    return [...activeAccounts].sort((a, b) => {
       if (a.is_pinned !== b.is_pinned) return a.is_pinned ? -1 : 1
-      // Otherwise, respect display_order (user-defined)
-      const aOrder = a.display_order ?? 0
-      const bOrder = b.display_order ?? 0
+      const aOrder = a.sort_order ?? 0
+      const bOrder = b.sort_order ?? 0
       return aOrder - bOrder
     })
-  }, [accounts])
+  }, [activeAccounts])
 
   // ============================================
   // PIN — only one account can be pinned at a time
@@ -324,7 +325,7 @@ export default function App() {
         newList.map((a, i) =>
           supabase
             .from('accounts')
-            .update({ display_order: i })
+            .update({ sort_order: i })
             .eq('id', a.id)
             .select()
         )
@@ -727,10 +728,18 @@ export default function App() {
 
             <section>
               {isLoading ? (
-                <div className="flex items-center justify-center h-32 md:h-48">
-                  <div className="flex flex-col items-center gap-3">
-                    <div className="animate-spin rounded-full h-6 w-6 md:h-8 md:w-8 border-b-2 border-blue-500" />
-                    <p className="text-xs md:text-sm text-slate-400">Loading balances...</p>
+                <div>
+                  <div className="flex items-center justify-between mb-4">
+                    <span className="h-3 w-20 bg-slate-200 rounded-full animate-pulse" />
+                    <span className="h-3 w-24 bg-slate-200 rounded-full animate-pulse" />
+                  </div>
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 md:gap-4">
+                    {[1, 2, 3, 4].map(i => (
+                      <div
+                        key={i}
+                        className="rounded-2xl bg-gradient-to-br from-slate-200 to-slate-300 animate-pulse h-[190px]"
+                      />
+                    ))}
                   </div>
                 </div>
               ) : (
@@ -783,15 +792,15 @@ export default function App() {
 
                 <div className="hidden md:block">
                   <AccountChipRow
-                    accounts={accounts}
+                    accounts={activeAccounts}
                     value={homeAccountId}
                     onChange={setHomeAccountId}
                   />
                 </div>
 
                 <div className="md:hidden">
-                  <AccountSelector
-                    accounts={accounts}
+                  <AccountDropdown
+                    accounts={activeAccounts}
                     value={homeAccountId}
                     onChange={setHomeAccountId}
                   />
@@ -820,7 +829,7 @@ export default function App() {
         )}
 
         {currentView === 'log' && (
-          <LogItemPage user={user} accounts={accounts} mainCategories={mainCategories}
+          <LogItemPage user={user} accounts={activeAccounts} mainCategories={mainCategories}
             getSubCategories={getSubCategories} fetchAllData={fetchAllData} showToast={showToast} />
         )}
 
@@ -863,14 +872,16 @@ export default function App() {
 
         {currentView === 'profile' && (
           <ProfilePage user={user} profile={profile} refreshProfile={refreshProfile}
-            accounts={accounts} categories={categories} getSubCategories={getSubCategories}
+            accounts={accounts}
+            activeAccounts={activeAccounts}
+            categories={categories} getSubCategories={getSubCategories}
             classifications={classifications} commitments={commitments}
             fetchAllData={fetchAllData} showToast={showToast}
             selectedAccount={selectedAccount} initialModal={requestedModal} />
         )}
 
         {currentView === 'analytics' && (
-          <AnalyticsPage user={user} profile={profile} accounts={accounts}
+          <AnalyticsPage user={user} profile={profile} accounts={activeAccounts}
             categories={categories} onBack={() => setCurrentView('dashboard')} showToast={showToast} />
         )}
 

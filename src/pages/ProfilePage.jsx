@@ -79,6 +79,7 @@ export function ProfilePage({
   profile,
   refreshProfile,
   accounts,
+  activeAccounts,
   categories,
   getSubCategories,
   classifications,
@@ -271,7 +272,7 @@ export function ProfilePage({
       {activeModal === 'commitments' && (
         <CommitmentsModal
           user={user}
-          accounts={accounts}
+          accounts={activeAccounts || accounts}
           commitments={commitments}
           closeModal={closeModal}
           fetchAllData={fetchAllData}

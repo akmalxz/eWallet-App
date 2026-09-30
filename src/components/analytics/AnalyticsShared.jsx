@@ -2,6 +2,7 @@
 import { X, Inbox } from 'lucide-react'
 import { formatMYR } from '../../utils/formatters'
 import { COLORS } from '../../utils/analyticsColors'
+import { AccountCard } from '../shared/AccountCard'
 
 // ============================================================
 // ONE SHARED TOOLTIP — used by all charts
@@ -86,9 +87,14 @@ export const TransactionDrilldown = ({
               <p className="text-xs font-bold text-slate-800 truncate">
                 {tx.description || 'Untitled'}
               </p>
-              <p className="text-[10px] text-slate-400 truncate">
-                {tx.category || 'Uncategorized'} · {accountName(tx.source_account_id)}
-              </p>
+              <div className="flex items-center gap-2 mt-0.5 min-w-0">
+                <span className="text-[10px] text-slate-400 truncate shrink min-w-0">
+                  {tx.category || 'Uncategorized'}
+                </span>
+                {tx.source_account_id && accountFor(tx.source_account_id) && (
+                  <AccountCard account={accountFor(tx.source_account_id)} size="chip" />
+                )}
+              </div>
             </div>
             <span className="text-xs font-black text-slate-800 shrink-0">
               {formatMYR(tx.amount)}
@@ -108,8 +114,9 @@ export const TransactionDrilldown = ({
 
 // ============================================================
 // ONE SHARED ACCOUNT SELECT
+// Custom dropdown with chips — replaced native <select> in Phase 9.
 // ============================================================
-export { AccountSelector as AccountSelect } from '../shared/AccountSelector'
+export { AccountDropdown as AccountSelect } from '../shared/AccountDropdown'
 
 // ============================================================
 // ONE SHARED EMPTY STATE

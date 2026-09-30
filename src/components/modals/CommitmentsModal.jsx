@@ -20,6 +20,8 @@ export const CommitmentsModal = ({
   const [saving, setSaving] = useState(false)
   const [showAddCommitment, setShowAddCommitment] = useState(false)
 
+  const activeAccounts = accounts.filter(a => !a.is_archived)
+
   // ----------------------------------------------------------
   // EDIT STATE
   // ----------------------------------------------------------
@@ -277,7 +279,7 @@ export const CommitmentsModal = ({
               className="w-full bg-white border border-slate-200 rounded-lg py-2 px-3 text-sm outline-none focus:border-blue-500"
             >
               <option value="">Select deduct account...</option>
-              {accounts.map(a => (
+              {activeAccounts.map(a => (
                 <option key={a.id} value={a.id}>
                   {a.account_name}
                 </option>
@@ -409,7 +411,7 @@ export const CommitmentsModal = ({
                         className="w-full bg-white border border-slate-200 rounded-lg py-2 px-3 text-sm outline-none focus:border-blue-500"
                       >
                         <option value="">Select deduct account...</option>
-                        {accounts.map(a => (
+                        {activeAccounts.map(a => (
                           <option key={a.id} value={a.id}>
                             {a.account_name}
                           </option>

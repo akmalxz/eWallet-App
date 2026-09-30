@@ -196,6 +196,8 @@ export const ActionLedger = ({
     return account?.account_name || 'Unknown'
   }
 
+  const accountFor = (id) => accounts.find(a => a.id === id)
+
   // Calculate total for each day group
   const getDailyTotal = (transactions) => {
     return transactions.reduce((sum, tx) => sum + Number(tx.amount), 0)
@@ -612,11 +614,45 @@ export const ActionLedger = ({
                             <div className="min-w-0 flex-1">
                               <p className="text-sm font-semibold text-slate-700 truncate">{tx.description}</p>
                               <p className="text-xs text-slate-400">{tx.category || 'Uncategorized'}</p>
-                              <p className="text-[10px] font-medium text-slate-400 mt-0.5 truncate bg-slate-50 border border-slate-100 px-1.5 py-0.5 rounded-md inline-block">
-                                {isIncome ? `→ ${getAccountName(tx.destination_account_id)}` :
-                                 isTransfer ? `${getAccountName(tx.source_account_id)} → ${getAccountName(tx.destination_account_id)}` :
-                                 `← ${getAccountName(tx.source_account_id)}`}
-                              </p>
+                              <div className="flex items-center gap-1.5 mt-1 min-w-0">
+                                {isIncome && (
+                                  <>
+                                    <span className="text-[10px] font-bold text-slate-400 shrink-0">→</span>
+                                    {accountFor(tx.destination_account_id) ? (
+                                      <AccountCard account={accountFor(tx.destination_account_id)} size="chip" />
+                                    ) : (
+                                      <span className="text-[10px] text-slate-400">Unknown</span>
+                                    )}
+                                  </>
+                                )}
+
+                                {isTransfer && (
+                                  <>
+                                    {accountFor(tx.source_account_id) ? (
+                                      <AccountCard account={accountFor(tx.source_account_id)} size="chip" />
+                                    ) : (
+                                      <span className="text-[10px] text-slate-400">Unknown</span>
+                                    )}
+                                    <span className="text-[10px] font-bold text-slate-400 shrink-0">→</span>
+                                    {accountFor(tx.destination_account_id) ? (
+                                      <AccountCard account={accountFor(tx.destination_account_id)} size="chip" />
+                                    ) : (
+                                      <span className="text-[10px] text-slate-400">Unknown</span>
+                                    )}
+                                  </>
+                                )}
+
+                                {!isIncome && !isTransfer && (
+                                  <>
+                                    <span className="text-[10px] font-bold text-slate-400 shrink-0">←</span>
+                                    {accountFor(tx.source_account_id) ? (
+                                      <AccountCard account={accountFor(tx.source_account_id)} size="chip" />
+                                    ) : (
+                                      <span className="text-[10px] text-slate-400">Unknown</span>
+                                    )}
+                                  </>
+                                )}
+                              </div>
                             </div>
                           </div>
                           <div className="flex items-center gap-2.5 ml-2 shrink-0">

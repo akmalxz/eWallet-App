@@ -1,33 +1,7 @@
 // src/components/dashboard/AccountCards.jsx
 import { useState } from 'react'
-import {
-  Wallet, Landmark, Activity, PiggyBank, Database,
-  Plus, ChevronDown, ChevronUp, ChevronLeft, ChevronRight,
-  CreditCard, Eye, EyeOff, Settings, Pin
-} from 'lucide-react'
-import { formatMYR, getAccountIcon } from '../../utils/formatters'
-
-const ICON_MAP = {
-  Landmark,
-  Wallet,
-  Activity,
-  PiggyBank,
-  Database
-}
-
-const getCustomCardStyle = (colorTheme) => {
-  const colors = {
-    blue:    { bg: 'from-blue-600 to-blue-800',       border: 'border-blue-400',    text: 'text-blue-100' },
-    purple:  { bg: 'from-purple-600 to-purple-800',   border: 'border-purple-400',  text: 'text-purple-100' },
-    emerald: { bg: 'from-emerald-600 to-emerald-800', border: 'border-emerald-400', text: 'text-emerald-100' },
-    amber:   { bg: 'from-amber-600 to-amber-800',     border: 'border-amber-400',   text: 'text-amber-100' },
-    rose:    { bg: 'from-rose-600 to-rose-800',       border: 'border-rose-400',    text: 'text-rose-100' },
-    slate:   { bg: 'from-slate-600 to-slate-800',     border: 'border-slate-400',   text: 'text-slate-100' },
-    cyan:    { bg: 'from-cyan-600 to-cyan-800',       border: 'border-cyan-400',    text: 'text-cyan-100' },
-    indigo:  { bg: 'from-indigo-600 to-indigo-800',   border: 'border-indigo-400',  text: 'text-indigo-100' }
-  }
-  return colors[colorTheme] || colors.slate
-}
+import { Wallet, Plus, Eye, EyeOff } from 'lucide-react'
+import { AccountCard } from '../shared/AccountCard'
 
 export const AccountCards = ({
   accounts,
@@ -45,9 +19,7 @@ export const AccountCards = ({
     setExpandedId(expandedId === id ? null : id)
   }
 
-  const toggleBalances = () => {
-    setShowBalances(!showBalances)
-  }
+  const toggleBalances = () => setShowBalances(!showBalances)
 
   if (!accounts || accounts.length === 0) {
     return (
@@ -73,11 +45,9 @@ export const AccountCards = ({
     <div className="relative">
       {/* Header with balance toggle */}
       <div className="flex items-center justify-between mb-4">
-        <div className="flex items-center gap-2">
-          <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">
-            {accounts.length} Accounts
-          </span>
-        </div>
+        <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">
+          {accounts.length} Accounts
+        </span>
         <button
           onClick={toggleBalances}
           className="flex items-center justify-center gap-1.5 text-xs text-slate-400 hover:text-slate-600 transition-colors p-1.5 rounded-lg hover:bg-slate-100"
@@ -89,14 +59,13 @@ export const AccountCards = ({
 
       <div className="relative md:grid md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 md:gap-4">
         {accounts.map((acc, index) => {
-          const { Icon } = getAccountIcon(acc.classification, classifications, ICON_MAP)
-          const IconComponent = Icon || Wallet
-          const cardStyle = getCustomCardStyle(acc.color_theme)
-          const classLabel = classifications.find(c => c.key_name === acc.classification)?.label || 'Account'
           const isExpanded = expandedId === acc.id
           const isPinned = !!acc.is_pinned
+          const classLabel =
+            classifications.find(c => c.key_name === acc.classification)?.label
+            || 'Account'
 
-          // Can only reorder within the same pin state
+          // Can only reorder within the same pin group
           const canMoveUp =
             index > 0 &&
             !!accounts[index - 1].is_pinned === isPinned
@@ -104,6 +73,7 @@ export const AccountCards = ({
             index < accounts.length - 1 &&
             !!accounts[index + 1].is_pinned === isPinned
 
+          // Mobile wallet stack positioning
           let mobileTranslateY = index * -110
           if (expandedIndex !== -1 && index > expandedIndex) {
             mobileTranslateY += 85
@@ -121,202 +91,25 @@ export const AccountCards = ({
                   : '0px'
               }}
             >
-              {/* Card Container */}
-              <div
+              <AccountCard
+                account={acc}
+                size="full"
+                showBalance={showBalances}
+                isExpanded={isExpanded}
+                classificationLabel={classLabel}
+                canMoveUp={canMoveUp}
+                canMoveDown={canMoveDown}
+                onToggleExpand={() => toggleExpand(acc.id)}
+                onTogglePin={onTogglePin}
+                onMoveAccount={onMoveAccount}
+                onLogTransaction={onLogTransaction}
+                onManageAccount={onManageAccount}
                 onClick={() => {
                   if (window.innerWidth < 768 && !isExpanded) {
                     toggleExpand(acc.id)
                   }
                 }}
-                className={`
-                  relative rounded-2xl overflow-hidden shadow-xl transition-all duration-500 ease-[cubic-bezier(0.34,1.56,0.64,1)] h-full flex flex-col justify-between
-                  bg-gradient-to-br ${cardStyle.bg}
-                  border ${cardStyle.border}
-                  ${isPinned ? 'ring-2 ring-white/40 ring-offset-0' : ''}
-                  ${isExpanded ? 'shadow-2xl md:scale-100' : 'hover:shadow-lg md:hover:scale-[1.02] cursor-pointer md:cursor-default'}
-                `}
-              >
-                {/* Card Glow Effect */}
-                <div className="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent pointer-events-none" />
-
-                {/* Card Pattern Overlay */}
-                <div className="absolute inset-0 opacity-5 pointer-events-none">
-                  <div className="absolute top-0 right-0 w-32 h-32 bg-white rounded-full -translate-y-1/2 translate-x-1/2" />
-                  <div className="absolute bottom-0 left-0 w-24 h-24 bg-white rounded-full translate-y-1/2 -translate-x-1/2" />
-                </div>
-
-                {/* Main Card Content */}
-                <div className="relative p-4 md:p-5 flex-1 flex flex-col justify-between">
-                  <div>
-                    {/* Top Row: Icon + Classification + Action buttons */}
-                    <div className="flex items-center justify-between mb-3">
-                      <div className="flex items-center gap-3 min-w-0">
-                        <div className="flex items-center justify-center p-2 rounded-xl bg-white/15 backdrop-blur-sm shrink-0">
-                          <IconComponent className={`w-5 h-5 ${cardStyle.text}`} />
-                        </div>
-                        <div className="min-w-0">
-                          <p className={`text-xs font-medium ${cardStyle.text} opacity-80 truncate`}>
-                            {classLabel}
-                          </p>
-                          <p className={`text-sm font-bold ${cardStyle.text} truncate`}>
-                            {acc.account_name}
-                          </p>
-                        </div>
-                      </div>
-
-                      {/* Right-side action cluster: Pin + Expand */}
-                      <div className="flex items-center gap-1 shrink-0 ml-2">
-                        {onTogglePin && (
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation()
-                              onTogglePin(acc)
-                            }}
-                            className={`flex items-center justify-center p-1.5 rounded-full transition-all duration-300 backdrop-blur-sm ${
-                              isPinned
-                                ? 'bg-white/45 hover:bg-white/55 ring-2 ring-white/60 shadow-lg shadow-white/20'
-                                : 'bg-white/10 hover:bg-white/25'
-                            }`}
-                            aria-label={isPinned ? 'Unpin account' : 'Pin account to top'}
-                            title={isPinned ? 'Unpin' : 'Pin to top'}
-                          >
-                            <Pin
-                              className={`w-3.5 h-3.5 ${cardStyle.text} transition-transform duration-300 ${
-                                isPinned ? 'fill-current rotate-0' : 'rotate-45'
-                              }`}
-                            />
-                          </button>
-                        )}
-
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation()
-                            toggleExpand(acc.id)
-                          }}
-                          className="flex items-center justify-center p-1.5 rounded-full transition-all duration-300 bg-white/15 backdrop-blur-sm hover:bg-white/25"
-                          aria-label={isExpanded ? 'Collapse card' : 'Expand card'}
-                        >
-                          {isExpanded ? (
-                            <ChevronUp className={`w-4 h-4 ${cardStyle.text}`} />
-                          ) : (
-                            <ChevronDown className={`w-4 h-4 ${cardStyle.text}`} />
-                          )}
-                        </button>
-                      </div>
-                    </div>
-
-                    {/* Balance */}
-                    <div className="mb-2">
-                      <p className={`text-xs ${cardStyle.text} opacity-60`}>Balance</p>
-                      <p className={`text-2xl font-bold ${cardStyle.text} tracking-tight break-all`}>
-                        {showBalances ? formatMYR(acc.balance) : '••••••'}
-                      </p>
-                    </div>
-                  </div>
-
-                  {/* Expanded Content */}
-                  <div className={`grid transition-all duration-300 ease-in-out ${isExpanded ? 'grid-rows-[1fr] opacity-100 mt-4' : 'grid-rows-[0fr] opacity-0 mt-0'}`}>
-                    <div className="overflow-hidden">
-                      <div className="pt-4 border-t border-white/20 space-y-2">
-
-                        {/* Primary actions — Transaction + Manage */}
-                        <div className="flex flex-col sm:flex-row gap-2">
-                          <button
-                            className="flex-1 bg-white/20 hover:bg-white/30 text-white text-xs font-medium py-2.5 rounded-xl transition-colors backdrop-blur-sm flex items-center justify-center gap-1.5"
-                            onClick={(e) => {
-                              e.stopPropagation()
-                              onLogTransaction?.(acc)
-                            }}
-                          >
-                            <Plus className="w-3.5 h-3.5" />
-                            Transaction
-                          </button>
-                          <button
-                            className="flex-1 bg-white/10 hover:bg-white/20 text-white text-xs font-medium py-2.5 rounded-xl transition-colors backdrop-blur-sm flex items-center justify-center gap-1.5"
-                            onClick={(e) => {
-                              e.stopPropagation()
-                              onManageAccount?.(acc)
-                            }}
-                          >
-                            <Settings className="w-3.5 h-3.5" />
-                            Manage
-                          </button>
-                        </div>
-
-                        {/* Reorder controls — arrows match the layout direction:
-                            up/down on mobile (vertical stack), left/right on desktop (grid) */}
-                        {onMoveAccount && (
-                          <div className="grid grid-cols-2 gap-2">
-                            <button
-                              onClick={(e) => {
-                                e.stopPropagation()
-                                onMoveAccount(acc.id, 'up')
-                              }}
-                              disabled={!canMoveUp}
-                              className={`flex items-center justify-center gap-1.5 py-2 rounded-xl text-[11px] font-semibold backdrop-blur-sm transition-colors ${
-                                canMoveUp
-                                  ? 'bg-white/10 hover:bg-white/20 text-white'
-                                  : 'bg-white/5 text-white/30 cursor-not-allowed'
-                              }`}
-                              aria-label={
-                                canMoveUp
-                                  ? `Move ${acc.account_name} earlier`
-                                  : `Cannot move ${acc.account_name} earlier`
-                              }
-                            >
-                              <ChevronUp className="md:hidden w-3.5 h-3.5" />
-                              <span className="md:hidden">Up</span>
-                              <ChevronLeft className="hidden md:inline w-3.5 h-3.5" />
-                              <span className="hidden md:inline">Left</span>
-                            </button>
-
-                            <button
-                              onClick={(e) => {
-                                e.stopPropagation()
-                                onMoveAccount(acc.id, 'down')
-                              }}
-                              disabled={!canMoveDown}
-                              className={`flex items-center justify-center gap-1.5 py-2 rounded-xl text-[11px] font-semibold backdrop-blur-sm transition-colors ${
-                                canMoveDown
-                                  ? 'bg-white/10 hover:bg-white/20 text-white'
-                                  : 'bg-white/5 text-white/30 cursor-not-allowed'
-                              }`}
-                              aria-label={
-                                canMoveDown
-                                  ? `Move ${acc.account_name} later`
-                                  : `Cannot move ${acc.account_name} later`
-                              }
-                            >
-                              <ChevronDown className="md:hidden w-3.5 h-3.5" />
-                              <span className="md:hidden">Down</span>
-                              <ChevronRight className="hidden md:inline w-3.5 h-3.5" />
-                              <span className="hidden md:inline">Right</span>
-                            </button>
-                          </div>
-                        )}
-
-                        {/* Small hint about the pin boundary */}
-                        {onMoveAccount && !canMoveUp && !canMoveDown && accounts.length > 1 && (
-                          <p className="text-[10px] text-white/40 text-center pt-0.5">
-                            Locked in this pin group
-                          </p>
-                        )}
-                      </div>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Card Footer */}
-                <div className="relative px-4 pb-3 flex items-center justify-between mt-auto">
-                  <div className="flex gap-1.5">
-                    <span className={`text-[10px] ${cardStyle.text} opacity-30 font-mono`}>••••</span>
-                    <span className={`text-[10px] ${cardStyle.text} opacity-30 font-mono`}>••••</span>
-                    <span className={`text-[10px] ${cardStyle.text} opacity-30 font-mono`}>••••</span>
-                    <span className={`text-[10px] ${cardStyle.text} opacity-40 font-mono`}>••••</span>
-                  </div>
-                  <CreditCard className={`w-4 h-4 ${cardStyle.text} opacity-30`} />
-                </div>
-              </div>
+              />
             </div>
           )
         })}
