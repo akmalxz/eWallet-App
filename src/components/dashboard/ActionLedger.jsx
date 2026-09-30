@@ -611,7 +611,7 @@ export const ActionLedger = ({
                             </div>
                             <div className="min-w-0 flex-1">
                               <p className="text-sm font-semibold text-slate-700 truncate">{tx.description}</p>
-                              <p className="text-xs text-slate-400 capitalize">{tx.category || 'Uncategorized'}</p>
+                              <p className="text-xs text-slate-400">{tx.category || 'Uncategorized'}</p>
                               <p className="text-[10px] font-medium text-slate-400 mt-0.5 truncate bg-slate-50 border border-slate-100 px-1.5 py-0.5 rounded-md inline-block">
                                 {isIncome ? `→ ${getAccountName(tx.destination_account_id)}` :
                                  isTransfer ? `${getAccountName(tx.source_account_id)} → ${getAccountName(tx.destination_account_id)}` :

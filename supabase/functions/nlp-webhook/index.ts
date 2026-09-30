@@ -343,11 +343,11 @@ class TransactionParser {
       const extractedName = extractLabeledValue(lines, NAME_LABELS);
 
       if (extractedName) {
-        const trimmed = extractedName.trim();
-        const cleanName = trimmed === trimmed.toLowerCase()
-          ? trimmed.replace(/\w\S*/g, (txt) => txt.charAt(0).toUpperCase() + txt.substring(1))
-          : trimmed;
-        result.description = cleanName;
+        result.description = extractedName.trim();
+
+        if (extractedRef && extractedRef.length < 25) {
+          result.description += ` (${extractedRef})`;
+        }
       } else {
         result.description = 'Scanned Receipt';
       }

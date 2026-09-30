@@ -3,6 +3,21 @@ import { ScanText, AlertTriangle, Check, RefreshCw, X } from 'lucide-react'
 import { ActionLedger } from '../components/dashboard/ActionLedger'
 import { formatMYR } from '../utils/formatters'
 
+// ============================================================
+// Sort helper — newest first, with created_at as tiebreaker.
+// Manual entries share a 12:00:00 timestamp on their day, so
+// transaction_date alone can't distinguish two same-day entries.
+// ============================================================
+const sortNewestFirst = (a, b) => {
+  const aTxTime = new Date(a.transaction_date || a.created_at || 0).getTime()
+  const bTxTime = new Date(b.transaction_date || b.created_at || 0).getTime()
+  if (aTxTime !== bTxTime) return bTxTime - aTxTime
+
+  const aCreated = new Date(a.created_at || 0).getTime()
+  const bCreated = new Date(b.created_at || 0).getTime()
+  return bCreated - aCreated
+}
+
 export function TransactionsPage({
   user,
   accounts,
@@ -18,18 +33,21 @@ export function TransactionsPage({
   isRefreshing,
   onAddTransaction
 }) {
-  // Extract Pending OCR items vs Verified Ledger items
-  const pendingTransactions = recentTransactions?.filter(tx => tx.needs_review) || []
-  const verifiedTransactions = recentTransactions?.filter(tx => !tx.needs_review) || []
+  // Extract Pending OCR items vs Verified Ledger items, newest first
+  const pendingTransactions = (recentTransactions?.filter(tx => tx.needs_review) || [])
+    .sort(sortNewestFirst)
+
+  const verifiedTransactions = (recentTransactions?.filter(tx => !tx.needs_review) || [])
+    .sort(sortNewestFirst)
 
   return (
     <div className="max-w-2xl mx-auto animate-in fade-in slide-in-from-bottom-4 duration-500 pb-12 space-y-4">
 
       {/* Page Header */}
-        <div className="hidden md:block mb-5 px-1">
-            <h1 className="text-xl font-bold text-slate-800 tracking-tight">Ledger & Verification</h1>
-            <p className="text-xs text-slate-400 mt-1">Review OCR scans and manage your transaction history</p>
-        </div>
+      <div className="hidden md:block mb-5 px-1">
+        <h1 className="text-xl font-bold text-slate-800 tracking-tight">Ledger & Verification</h1>
+        <p className="text-xs text-slate-400 mt-1">Review OCR scans and manage your transaction history</p>
+      </div>
 
       {/* SECTION 1: OCR VERIFICATION */}
       <section className="bg-white/60 backdrop-blur-xl border border-white/40 rounded-3xl p-5 shadow-sm">
