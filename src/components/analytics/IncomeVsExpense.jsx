@@ -10,7 +10,15 @@ import { monthKey, lastNMonths } from '../../utils/dateHelpers'
 import { COLORS } from '../../utils/analyticsColors'
 import { ChartTooltip, EmptyState } from './AnalyticsShared'
 
-export const IncomeVsExpense = ({ income, expenses, periodMonths, onAddIncome }) => {
+export const IncomeVsExpense = ({
+  income,
+  expenses,
+  periodMonths,
+  accounts = [],
+  selectedAccountId = 'all',
+  accountLabel = 'All accounts',
+  onAddIncome
+}) => {
   const { months, stats } = useMemo(() => {
     const now = new Date()
     const monthList = lastNMonths(periodMonths, now)
@@ -46,6 +54,7 @@ export const IncomeVsExpense = ({ income, expenses, periodMonths, onAddIncome })
   }, [income, expenses, periodMonths])
 
   const hasIncome = stats.totalIncome > 0
+  const isScoped = selectedAccountId !== 'all'
 
   // Color the savings rate
   const rateColor = (() => {
@@ -55,14 +64,25 @@ export const IncomeVsExpense = ({ income, expenses, periodMonths, onAddIncome })
     return COLORS.up
   })()
 
+  // ----------------------------------------------------------
+  // Empty state — the message adapts to the active scope
+  // ----------------------------------------------------------
   if (!hasIncome) {
     return (
       <div className="bg-white/60 backdrop-blur-xl border border-white/40 rounded-3xl p-6 shadow-sm">
         <EmptyState
           icon={Wallet}
-          title="No income logged yet"
-          message="Log an income transaction to unlock savings rate analytics."
-          action={onAddIncome ? { label: 'Log Income', icon: TrendingUp, onClick: onAddIncome } : null}
+          title={isScoped ? `No income for ${accountLabel}` : 'No income logged yet'}
+          message={
+            isScoped
+              ? `Try switching to All accounts, or log income for ${accountLabel}.`
+              : 'Log an income transaction to unlock savings rate analytics.'
+          }
+          action={
+            !isScoped && onAddIncome
+              ? { label: 'Log Income', icon: TrendingUp, onClick: onAddIncome }
+              : null
+          }
         />
       </div>
     )
@@ -82,8 +102,17 @@ export const IncomeVsExpense = ({ income, expenses, periodMonths, onAddIncome })
           The share of your income you kept.
         </p>
         <p className="text-xs text-slate-500 mt-3 max-w-md mx-auto">
-          You saved <strong>{formatMYR(stats.net)}</strong> out of{' '}
-          <strong>{formatMYR(stats.totalIncome)}</strong> income over the last {periodMonths} months.
+          {isScoped ? (
+            <>
+              For <strong>{accountLabel}</strong>: you saved <strong>{formatMYR(stats.net)}</strong> out
+              of <strong>{formatMYR(stats.totalIncome)}</strong> income over the last {periodMonths} months.
+            </>
+          ) : (
+            <>
+              You saved <strong>{formatMYR(stats.net)}</strong> out of{' '}
+              <strong>{formatMYR(stats.totalIncome)}</strong> income over the last {periodMonths} months.
+            </>
+          )}
         </p>
       </div>
 
@@ -114,7 +143,12 @@ export const IncomeVsExpense = ({ income, expenses, periodMonths, onAddIncome })
 
       {/* Paired monthly bars */}
       <div className="bg-white/60 backdrop-blur-xl border border-white/40 rounded-3xl p-5 md:p-6 shadow-sm">
-        <h3 className="text-sm font-bold text-slate-800 mb-3">Income vs Expense</h3>
+        <div className="flex items-start justify-between gap-3 mb-3">
+          <h3 className="text-sm font-bold text-slate-800">Income vs Expense</h3>
+          <span className="text-[10px] font-semibold text-slate-400 shrink-0">
+            {accountLabel}
+          </span>
+        </div>
         <ResponsiveContainer width="100%" height={280}>
           <BarChart data={months} margin={{ top: 10, right: 8, bottom: 0, left: 0 }}>
             <CartesianGrid strokeDasharray="3 3" stroke={COLORS.grid} vertical={false} />

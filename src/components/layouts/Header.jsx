@@ -1,6 +1,6 @@
 // src/components/layouts/Header.jsx
 import { useState } from 'react'
-import { Activity, Settings, LogOut, Menu, X } from 'lucide-react'
+import { Settings, LogOut, Menu, X } from 'lucide-react'
 
 export const Header = ({ 
   user,
@@ -52,10 +52,15 @@ export const Header = ({
           <button 
             onClick={() => setCurrentView('dashboard')}
             className="flex items-center gap-2 hover:opacity-80 transition-opacity min-w-0"
+            aria-label="Go to dashboard"
           >
-            <div className="bg-slate-900 p-1.5 md:p-2 rounded-lg shadow-sm shrink-0">
-              <Activity className="text-white w-4 h-4 md:w-5 md:h-5" />
-            </div>
+            <img
+              src="/favicon.svg"
+              alt=""
+              width="28"
+              height="28"
+              className="w-6 h-6 md:w-7 md:h-7 shrink-0"
+            />
             <h1 className="text-base md:text-xl font-bold tracking-tight truncate">
               <span className="md:hidden">{mobileTitle}</span>
               <span className="hidden md:inline">FlowState</span>
@@ -73,7 +78,7 @@ export const Header = ({
             </button>
           </div>
 
-          {/* Desktop Actions — Settings + Sign out only */}
+          {/* Desktop Actions */}
           <div className="hidden md:flex items-center gap-2">
             <button 
               onClick={() => setCurrentView('profile')} 

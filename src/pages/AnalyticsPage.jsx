@@ -144,6 +144,11 @@ export function AnalyticsPage({
 
   const handleTabNavigate = useCallback((newTab) => setTab(newTab), [])
 
+  const activeAccountName =
+    selectedAccount === 'all'
+      ? 'All accounts'
+      : accounts.find(a => a.id === selectedAccount)?.account_name || 'Account'
+
   // ----------------------------------------------------------
   // Render
   // ----------------------------------------------------------
@@ -180,6 +185,7 @@ export function AnalyticsPage({
 
       {/* ======================================================
           Tabs row — sliding glass pill, matches bottom nav
+          Account filter appears on ALL tabs now.
       ====================================================== */}
       <div className="flex items-center gap-3">
         <div className="flex-1 min-w-0">
@@ -190,16 +196,14 @@ export function AnalyticsPage({
           />
         </div>
 
-        {/* Account filter — desktop only, sits beside tabs */}
-        {tab !== 'income' && (
-          <div className="hidden md:block w-56 shrink-0">
-            <AccountSelect
-              accounts={accounts}
-              value={selectedAccount}
-              onChange={setSelectedAccount}
-            />
-          </div>
-        )}
+        {/* Account filter — desktop only */}
+        <div className="hidden md:block w-56 shrink-0">
+          <AccountSelect
+            accounts={accounts}
+            value={selectedAccount}
+            onChange={setSelectedAccount}
+          />
+        </div>
       </div>
 
       {/* ======================================================
@@ -213,13 +217,11 @@ export function AnalyticsPage({
           onChange={setPeriod}
         />
 
-        {tab !== 'income' && (
-          <AccountSelect
-            accounts={accounts}
-            value={selectedAccount}
-            onChange={setSelectedAccount}
-          />
-        )}
+        <AccountSelect
+          accounts={accounts}
+          value={selectedAccount}
+          onChange={setSelectedAccount}
+        />
       </div>
 
       {/* ======================================================
@@ -254,6 +256,9 @@ export function AnalyticsPage({
           income={periodScopedIncome}
           expenses={periodScopedExpenses}
           periodMonths={period}
+          accounts={accounts}
+          selectedAccountId={selectedAccount}
+          accountLabel={activeAccountName}
           onAddIncome={onBack}
         />
       )}
