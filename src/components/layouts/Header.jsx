@@ -44,7 +44,10 @@ export const Header = ({
   const mobileTitle = viewTitles[currentView] || 'FlowState'
 
   return (
-    <header className="bg-gradient-to-b from-slate-50 via-slate-50/80 to-transparent backdrop-blur-xl border-none sticky top-0 z-20">
+    <header
+      className="bg-gradient-to-b from-slate-50 via-slate-50/80 to-transparent backdrop-blur-xl border-none sticky top-0 z-20"
+      style={{ paddingTop: 'env(safe-area-inset-top, 0px)' }}
+    >
       <div className="max-w-6xl mx-auto px-3 py-2 md:py-3">
         {/* Top Row: Logo + Actions */}
         <div className="flex items-center justify-between gap-2">
