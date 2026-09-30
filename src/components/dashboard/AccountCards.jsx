@@ -1,45 +1,42 @@
 // src/components/dashboard/AccountCards.jsx
 import { useState } from 'react'
-import { Wallet, Landmark, Activity, PiggyBank, Database, Plus, ChevronDown, ChevronUp, CreditCard, Eye, EyeOff, Settings, Pin } from 'lucide-react'
+import {
+  Wallet, Landmark, Activity, PiggyBank, Database,
+  Plus, ChevronDown, ChevronUp, ChevronLeft, ChevronRight,
+  CreditCard, Eye, EyeOff, Settings, Pin
+} from 'lucide-react'
 import { formatMYR, getAccountIcon } from '../../utils/formatters'
 
-const ICON_MAP = { 
-  Landmark, 
-  Wallet, 
-  Activity, 
-  PiggyBank, 
-  Database 
+const ICON_MAP = {
+  Landmark,
+  Wallet,
+  Activity,
+  PiggyBank,
+  Database
 }
 
 const getCustomCardStyle = (colorTheme) => {
   const colors = {
-    blue: { bg: 'from-blue-600 to-blue-800', border: 'border-blue-400', text: 'text-blue-100' },
-    purple: { bg: 'from-purple-600 to-purple-800', border: 'border-purple-400', text: 'text-purple-100' },
+    blue:    { bg: 'from-blue-600 to-blue-800',       border: 'border-blue-400',    text: 'text-blue-100' },
+    purple:  { bg: 'from-purple-600 to-purple-800',   border: 'border-purple-400',  text: 'text-purple-100' },
     emerald: { bg: 'from-emerald-600 to-emerald-800', border: 'border-emerald-400', text: 'text-emerald-100' },
-    amber: { bg: 'from-amber-600 to-amber-800', border: 'border-amber-400', text: 'text-amber-100' },
-    rose: { bg: 'from-rose-600 to-rose-800', border: 'border-rose-400', text: 'text-rose-100' },
-    slate: { bg: 'from-slate-600 to-slate-800', border: 'border-slate-400', text: 'text-slate-100' },
-    cyan: { bg: 'from-cyan-600 to-cyan-800', border: 'border-cyan-400', text: 'text-cyan-100' },
-    indigo: { bg: 'from-indigo-600 to-indigo-800', border: 'border-indigo-400', text: 'text-indigo-100' }
+    amber:   { bg: 'from-amber-600 to-amber-800',     border: 'border-amber-400',   text: 'text-amber-100' },
+    rose:    { bg: 'from-rose-600 to-rose-800',       border: 'border-rose-400',    text: 'text-rose-100' },
+    slate:   { bg: 'from-slate-600 to-slate-800',     border: 'border-slate-400',   text: 'text-slate-100' },
+    cyan:    { bg: 'from-cyan-600 to-cyan-800',       border: 'border-cyan-400',    text: 'text-cyan-100' },
+    indigo:  { bg: 'from-indigo-600 to-indigo-800',   border: 'border-indigo-400',  text: 'text-indigo-100' }
   }
-  
-  return colors[colorTheme] || colors.slate;
+  return colors[colorTheme] || colors.slate
 }
 
-const DEFAULT_CARD = {
-  bg: 'from-slate-600 to-slate-800',
-  border: 'border-slate-400',
-  text: 'text-slate-100',
-  label: 'Account'
-}
-
-export const AccountCards = ({ 
-  accounts, 
-  classifications, 
+export const AccountCards = ({
+  accounts,
+  classifications,
   onAddAccount,
   onLogTransaction,
   onManageAccount,
-  onTogglePin
+  onTogglePin,
+  onMoveAccount
 }) => {
   const [expandedId, setExpandedId] = useState(null)
   const [showBalances, setShowBalances] = useState(true)
@@ -60,7 +57,7 @@ export const AccountCards = ({
         </div>
         <h3 className="text-sm font-medium text-slate-700 mb-1">No Accounts Yet</h3>
         <p className="text-xs text-slate-400 mb-4">Add your first bank account to start tracking</p>
-        <button 
+        <button
           onClick={onAddAccount}
           className="inline-flex items-center justify-center gap-2 px-4 py-2 bg-slate-900 hover:bg-slate-800 text-white text-sm font-medium rounded-xl transition-colors"
         >
@@ -99,8 +96,15 @@ export const AccountCards = ({
           const isExpanded = expandedId === acc.id
           const isPinned = !!acc.is_pinned
 
+          // Can only reorder within the same pin state
+          const canMoveUp =
+            index > 0 &&
+            !!accounts[index - 1].is_pinned === isPinned
+          const canMoveDown =
+            index < accounts.length - 1 &&
+            !!accounts[index + 1].is_pinned === isPinned
+
           let mobileTranslateY = index * -110
-          
           if (expandedIndex !== -1 && index > expandedIndex) {
             mobileTranslateY += 85
           }
@@ -112,11 +116,13 @@ export const AccountCards = ({
               style={{
                 transform: `translateY(${mobileTranslateY}px)`,
                 zIndex: isExpanded ? 30 : index + 1,
-                marginBottom: index === accounts.length - 1 ? `${(accounts.length - 1) * -110 + (isExpanded ? 85 : 0)}px` : '0px'
+                marginBottom: index === accounts.length - 1
+                  ? `${(accounts.length - 1) * -110 + (isExpanded ? 85 : 0)}px`
+                  : '0px'
               }}
             >
               {/* Card Container */}
-              <div 
+              <div
                 onClick={() => {
                   if (window.innerWidth < 768 && !isExpanded) {
                     toggleExpand(acc.id)
@@ -132,7 +138,7 @@ export const AccountCards = ({
               >
                 {/* Card Glow Effect */}
                 <div className="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent pointer-events-none" />
-                
+
                 {/* Card Pattern Overlay */}
                 <div className="absolute inset-0 opacity-5 pointer-events-none">
                   <div className="absolute top-0 right-0 w-32 h-32 bg-white rounded-full -translate-y-1/2 translate-x-1/2" />
@@ -168,7 +174,7 @@ export const AccountCards = ({
                             }}
                             className={`flex items-center justify-center p-1.5 rounded-full transition-all duration-300 backdrop-blur-sm ${
                               isPinned
-                                ? 'bg-white/35 hover:bg-white/45'
+                                ? 'bg-white/45 hover:bg-white/55 ring-2 ring-white/60 shadow-lg shadow-white/20'
                                 : 'bg-white/10 hover:bg-white/25'
                             }`}
                             aria-label={isPinned ? 'Unpin account' : 'Pin account to top'}
@@ -211,9 +217,11 @@ export const AccountCards = ({
                   {/* Expanded Content */}
                   <div className={`grid transition-all duration-300 ease-in-out ${isExpanded ? 'grid-rows-[1fr] opacity-100 mt-4' : 'grid-rows-[0fr] opacity-0 mt-0'}`}>
                     <div className="overflow-hidden">
-                      <div className="pt-4 border-t border-white/20">
+                      <div className="pt-4 border-t border-white/20 space-y-2">
+
+                        {/* Primary actions — Transaction + Manage */}
                         <div className="flex flex-col sm:flex-row gap-2">
-                          <button 
+                          <button
                             className="flex-1 bg-white/20 hover:bg-white/30 text-white text-xs font-medium py-2.5 rounded-xl transition-colors backdrop-blur-sm flex items-center justify-center gap-1.5"
                             onClick={(e) => {
                               e.stopPropagation()
@@ -223,7 +231,7 @@ export const AccountCards = ({
                             <Plus className="w-3.5 h-3.5" />
                             Transaction
                           </button>
-                          <button 
+                          <button
                             className="flex-1 bg-white/10 hover:bg-white/20 text-white text-xs font-medium py-2.5 rounded-xl transition-colors backdrop-blur-sm flex items-center justify-center gap-1.5"
                             onClick={(e) => {
                               e.stopPropagation()
@@ -234,6 +242,65 @@ export const AccountCards = ({
                             Manage
                           </button>
                         </div>
+
+                        {/* Reorder controls — arrows match the layout direction:
+                            up/down on mobile (vertical stack), left/right on desktop (grid) */}
+                        {onMoveAccount && (
+                          <div className="grid grid-cols-2 gap-2">
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation()
+                                onMoveAccount(acc.id, 'up')
+                              }}
+                              disabled={!canMoveUp}
+                              className={`flex items-center justify-center gap-1.5 py-2 rounded-xl text-[11px] font-semibold backdrop-blur-sm transition-colors ${
+                                canMoveUp
+                                  ? 'bg-white/10 hover:bg-white/20 text-white'
+                                  : 'bg-white/5 text-white/30 cursor-not-allowed'
+                              }`}
+                              aria-label={
+                                canMoveUp
+                                  ? `Move ${acc.account_name} earlier`
+                                  : `Cannot move ${acc.account_name} earlier`
+                              }
+                            >
+                              <ChevronUp className="md:hidden w-3.5 h-3.5" />
+                              <span className="md:hidden">Up</span>
+                              <ChevronLeft className="hidden md:inline w-3.5 h-3.5" />
+                              <span className="hidden md:inline">Left</span>
+                            </button>
+
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation()
+                                onMoveAccount(acc.id, 'down')
+                              }}
+                              disabled={!canMoveDown}
+                              className={`flex items-center justify-center gap-1.5 py-2 rounded-xl text-[11px] font-semibold backdrop-blur-sm transition-colors ${
+                                canMoveDown
+                                  ? 'bg-white/10 hover:bg-white/20 text-white'
+                                  : 'bg-white/5 text-white/30 cursor-not-allowed'
+                              }`}
+                              aria-label={
+                                canMoveDown
+                                  ? `Move ${acc.account_name} later`
+                                  : `Cannot move ${acc.account_name} later`
+                              }
+                            >
+                              <ChevronDown className="md:hidden w-3.5 h-3.5" />
+                              <span className="md:hidden">Down</span>
+                              <ChevronRight className="hidden md:inline w-3.5 h-3.5" />
+                              <span className="hidden md:inline">Right</span>
+                            </button>
+                          </div>
+                        )}
+
+                        {/* Small hint about the pin boundary */}
+                        {onMoveAccount && !canMoveUp && !canMoveDown && accounts.length > 1 && (
+                          <p className="text-[10px] text-white/40 text-center pt-0.5">
+                            Locked in this pin group
+                          </p>
+                        )}
                       </div>
                     </div>
                   </div>

@@ -3,8 +3,7 @@ import { useState, useCallback, useMemo, useRef, useEffect } from 'react'
 import { supabase } from './lib/supabaseClient'
 import {
   Wallet, Landmark, Activity, PiggyBank, Database,
-  AlertTriangle, LayoutDashboard, Plus, User, CheckCircle,
-  List, Layers, Users, Receipt
+  AlertTriangle, CheckCircle, Users, Receipt
 } from 'lucide-react'
 
 // Components
@@ -14,6 +13,7 @@ import { LoadingSpinner } from './components/shared/LoadingSpinner'
 import { AccountSelector } from './components/shared/AccountSelector'
 import { AccountChipRow } from './components/shared/AccountChipRow'
 import { Header } from './components/layouts/Header'
+import { NavigationBar } from './components/layouts/NavigationBar'
 import { AccountCards } from './components/dashboard/AccountCards'
 import { BurnRateWidget } from './components/dashboard/BurnRateWidget'
 import { CashFlowHeatmap } from './components/dashboard/CashFlowHeatmap'
@@ -37,16 +37,6 @@ import { getDaysInMonthMY, getDayOfMonthMY, monthKey, toMYDate } from './utils/d
 import { rollUpToMain, getCategoryColor, OTHER_COLOR } from './utils/categoryColors'
 
 const ICON_MAP = { Landmark, Wallet, Activity, PiggyBank, Database }
-
-const NAV_ITEMS = [
-  { id: 'dashboard',    icon: LayoutDashboard, label: 'Home' },
-  { id: 'transactions', icon: List,            label: 'Ledger' },
-  { id: 'log',          icon: Plus,            label: 'Log' },
-  { id: 'commitments',  icon: Layers,          label: 'Bills' },
-  { id: 'profile',      icon: User,            label: 'Profile' }
-]
-
-const DASHBOARD_SUBVIEWS = ['network', 'split', 'analytics']
 
 export default function App() {
   const { user, profile, refreshProfile, isAuthenticated, isAuthLoading } = useAuth()
@@ -82,13 +72,6 @@ export default function App() {
   const hasFetchedRef = useRef(false)
   const autoRefreshIntervalRef = useRef(null)
 
-  const navKey = DASHBOARD_SUBVIEWS.includes(currentView) ? 'dashboard' : currentView
-  const activeIndex = NAV_ITEMS.findIndex(item => item.id === navKey)
-  const handleNavClick = useCallback((id) => {
-    window.scrollTo({ top: 0, behavior: 'smooth' })
-    setCurrentView(id)
-  }, [])
-
   useEffect(() => {
     if (isAuthenticated && user && !hasFetchedRef.current) {
       hasFetchedRef.current = true
@@ -122,7 +105,7 @@ export default function App() {
   useEffect(() => {
     if (!user) return
     if (autoRefreshIntervalRef.current) clearInterval(autoRefreshIntervalRef.current)
-    autoRefreshIntervalRef.current = setInterval(() => handleRefreshLedger(false), 30000)
+    autoRefreshIntervalRef.current = setInterval(() => handleRefreshLedger(false), 60000)
     return () => {
       if (autoRefreshIntervalRef.current) {
         clearInterval(autoRefreshIntervalRef.current)
@@ -145,7 +128,6 @@ export default function App() {
       const finalAmount =
         overrides.amount != null ? overrides.amount : commitment.amount
 
-      // paidDate is YYYY-MM-DD; anchor at noon MYT to avoid timezone drift
       const paidAt = overrides.paidDate
         ? new Date(`${overrides.paidDate}T12:00:00`)
         : new Date()
@@ -200,7 +182,6 @@ export default function App() {
       const commitment = commitments.find(c => c.id === commitmentId)
       if (!commitment) return
 
-      // Find the transaction we created when marking as paid
       const { data: txs, error: findError } = await supabase
         .from('transactions')
         .select('id')
@@ -263,21 +244,100 @@ export default function App() {
   const handleLogTransactionFromAccount = account => { setSelectedAccount(account); setCurrentView('log') }
   const handleManageAccount = account => { setSelectedAccount(account); setRequestedModal('banks'); setCurrentView('profile') }
 
+  // ============================================
+  // SORTED ACCOUNTS
+  // Pinned first → display_order → balance desc.
+  // Defined here (above handlers) so nothing below
+  // can accidentally reference it before init.
+  // ============================================
+  const sortedAccounts = useMemo(() => {
+    return [...accounts].sort((a, b) => {
+      // Pinned accounts always float to the top
+      if (a.is_pinned !== b.is_pinned) return a.is_pinned ? -1 : 1
+      // Otherwise, respect display_order (user-defined)
+      const aOrder = a.display_order ?? 0
+      const bOrder = b.display_order ?? 0
+      return aOrder - bOrder
+    })
+  }, [accounts])
+
+  // ============================================
+  // PIN — only one account can be pinned at a time
+  // ============================================
   const handleTogglePin = async (account) => {
     try {
+      // If we're pinning this account (not unpinning), check for an existing pin
+      if (!account.is_pinned) {
+        const otherPinned = accounts.find(a => a.id !== account.id && a.is_pinned)
+        if (otherPinned) {
+          showToast(
+            `Only one account can be pinned. Unpin "${otherPinned.account_name}" first.`,
+            'warning'
+          )
+          return
+        }
+      }
+
       const { data, error } = await supabase
         .from('accounts')
         .update({ is_pinned: !account.is_pinned })
         .eq('id', account.id)
         .select()
+
       if (error) throw error
       if (!data || data.length === 0) {
         throw new Error('Pin failed — no rows affected. Check RLS on accounts.')
       }
+
       showToast(account.is_pinned ? 'Account unpinned' : 'Account pinned to top', 'success')
       fetchAllData()
     } catch (error) {
       showToast('Error toggling pin: ' + error.message, 'error')
+    }
+  }
+
+  // ============================================
+  // MOVE ACCOUNT
+  // ============================================
+  const handleMoveAccount = async (accountId, direction) => {
+    if (!user) return
+
+    const list = sortedAccounts
+    const idx = list.findIndex(a => a.id === accountId)
+    if (idx === -1) return
+
+    const targetIdx = direction === 'up' ? idx - 1 : idx + 1
+    if (targetIdx < 0 || targetIdx >= list.length) return
+
+    const current = list[idx]
+    const target = list[targetIdx]
+
+    // Don't cross the pinned / unpinned boundary
+    if (!!current.is_pinned !== !!target.is_pinned) return
+
+    const newList = [...list]
+    newList[idx] = target
+    newList[targetIdx] = current
+
+    try {
+      const results = await Promise.all(
+        newList.map((a, i) =>
+          supabase
+            .from('accounts')
+            .update({ display_order: i })
+            .eq('id', a.id)
+            .select()
+        )
+      )
+
+      const failed = results.find(r => r.error || !r.data || r.data.length === 0)
+      if (failed) {
+        throw new Error('Reorder failed — no rows updated. Check RLS on accounts.')
+      }
+
+      fetchAllData()
+    } catch (error) {
+      showToast('Error reordering: ' + error.message, 'error')
     }
   }
 
@@ -307,16 +367,6 @@ export default function App() {
     parentId => categories.filter(c => c.parent_id === parentId),
     [categories]
   )
-
-  const sortedAccounts = useMemo(() => {
-    return [...accounts].sort((a, b) => {
-      if (a.is_pinned !== b.is_pinned) return a.is_pinned ? -1 : 1
-      const aOrder = a.display_order ?? 0
-      const bOrder = b.display_order ?? 0
-      if (aOrder !== bOrder) return aOrder - bOrder
-      return (b.balance || 0) - (a.balance || 0)
-    })
-  }, [accounts])
 
   // ============================================
   // OMNIBAR
@@ -416,7 +466,7 @@ export default function App() {
   // WIDGET ACCOUNT STATE
   // ============================================
   const [radarAccountId, setRadarAccountId] = useState('')
-  const [homeAccountId, setHomeAccountId] = useState('all')  // shared between BurnRate + CashFlow
+  const [homeAccountId, setHomeAccountId] = useState('all')
 
   const activeRadarId = radarAccountId || accounts[0]?.id
 
@@ -430,8 +480,6 @@ export default function App() {
       0
     )
 
-    // Use last_paid timestamp (year-aware). Older rows without last_paid
-    // are treated as unpaid this month.
     const now = new Date()
     const thisYear = now.getFullYear()
     const thisMonth = now.getMonth()
@@ -464,18 +512,16 @@ export default function App() {
   }, [accounts, commitments])
 
   // ============================================
-  // BURN RATE ENGINE (Parts 2.1, 1.3, 2.5)
+  // BURN RATE ENGINE
   // ============================================
   const velocityStats = useMemo(() => {
     const now = new Date()
     const monthDays = getDaysInMonthMY(now)
     const dayOfMonth = getDayOfMonthMY(now)
 
-    // Today counts as passed
     const daysPassed = dayOfMonth
     const daysRemaining = monthDays - dayOfMonth
 
-    // Account scope
     const isAll = homeAccountId === 'all'
     const scopedAccounts = isAll
       ? accounts
@@ -484,19 +530,17 @@ export default function App() {
 
     const currentBalance = scopedAccounts.reduce((s, a) => s + (a.balance || 0), 0)
 
-    // Scope expenses to those accounts
     const scopedExpenses = (monthlyExpenses || []).filter(
       tx => accountIds.has(tx.source_account_id)
     )
 
-    // This month's total + last month's total
     const thisKey = monthKey(now)
     const lastDate = new Date(now.getFullYear(), now.getMonth() - 1, 1)
     const lastKey = monthKey(lastDate)
     const lastMonthDays = getDaysInMonthMY(lastDate)
 
     let thisMonthTotal = 0
-    let lastMonthSamePeriod = 0   // day 1..today last month
+    let lastMonthSamePeriod = 0
     let lastMonthFullTotal = 0
 
     scopedExpenses.forEach(tx => {
@@ -510,26 +554,21 @@ export default function App() {
       }
     })
 
-    // Average daily spend = total this month / days passed
     const rawDailyAvg = daysPassed > 0 ? thisMonthTotal / daysPassed : 0
 
-    // Spending trend: compare daily avg so far this month vs last month's same period
     const lastDailyAvg = daysPassed > 0 ? lastMonthSamePeriod / daysPassed : 0
     const spendingTrend = lastDailyAvg > 0
       ? ((rawDailyAvg - lastDailyAvg) / lastDailyAvg) * 100
       : 0
 
-    // Early-month blend: on day 1-3, blend in last month's daily avg
     const isEarlyMonth = dayOfMonth <= 3
     const lastMonthDailyAvg = lastMonthDays > 0 ? lastMonthFullTotal / lastMonthDays : 0
     const averageDailySpend = isEarlyMonth && lastMonthDailyAvg > 0
       ? (rawDailyAvg * dayOfMonth + lastMonthDailyAvg * (3 - dayOfMonth)) / 3
       : rawDailyAvg
 
-    // Safe daily spend: what the balance supports for the rest of the month
     const dailyBudget = daysRemaining > 0 ? currentBalance / daysRemaining : 0
 
-    // Runway
     const projectedRunwayDays = averageDailySpend > 0
       ? Math.floor(currentBalance / averageDailySpend)
       : 999
@@ -540,7 +579,6 @@ export default function App() {
       ? new Date(now.getFullYear(), now.getMonth(), runoutDayOfMonth)
       : null
 
-    // isSafe: balance lasts past month end
     const isSafe = projectedRunwayDays >= daysRemaining || averageDailySpend === 0
 
     return {
@@ -562,7 +600,7 @@ export default function App() {
   }, [accounts, monthlyExpenses, homeAccountId])
 
   // ============================================
-  // CASH FLOW ENGINE (Parts 3.2, 3.3, 3.6)
+  // CASH FLOW ENGINE
   // ============================================
   const cashFlowData = useMemo(() => {
     const now = new Date()
@@ -577,13 +615,13 @@ export default function App() {
     const lastKey = monthKey(lastDate)
 
     const thisByCat = {}
-    const lastByCat = {}   // day 1..today last month
+    const lastByCat = {}
 
     ;(monthlyExpenses || []).forEach(tx => {
       if (!accountIds.has(tx.source_account_id)) return
       if (tx.needs_review) return
       const amt = Number(tx.amount) || 0
-      if (amt <= 0) return   // skip refunds/zeros for donut
+      if (amt <= 0) return
       const k = monthKey(tx.transaction_date)
       const cat = rollUpToMain(tx.category)
       if (k === thisKey) {
@@ -599,7 +637,6 @@ export default function App() {
     const grandTotal = Object.values(thisByCat).reduce((s, v) => s + v, 0)
     if (grandTotal === 0) return []
 
-    // Build sorted rows
     const rows = Object.entries(thisByCat)
       .map(([name, value]) => {
         const last = lastByCat[name] || 0
@@ -614,7 +651,6 @@ export default function App() {
       })
       .sort((a, b) => b.value - a.value)
 
-    // Keep top 5, merge the rest into "Other"; also merge any < 3%
     const top5 = rows.slice(0, 5).filter(r => (r.value / grandTotal) * 100 >= 3)
     const rest = rows.filter(r => !top5.includes(r))
 
@@ -629,7 +665,6 @@ export default function App() {
       top5.push({ name: 'Other', value: otherTotal, comparison, isOther: true })
     }
 
-    // Attach colors
     return top5.map(r => ({
       ...r,
       color: r.isOther ? OTHER_COLOR : getCategoryColor(r.name)
@@ -675,35 +710,15 @@ export default function App() {
         ))}
       </div>
 
-      <Header user={user} profile={profile} currentView={currentView} setCurrentView={setCurrentView} supabase={supabase} />
+      <Header
+        user={user}
+        profile={profile}
+        currentView={currentView}
+        setCurrentView={setCurrentView}
+        supabase={supabase}
+      />
 
-      {/* DESKTOP NAV */}
-      <div className="hidden md:flex justify-center sticky top-[64px] z-10 py-3 px-4">
-        <nav className="relative w-[560px] rounded-3xl bg-white/10 backdrop-blur-2xl border border-white/25 shadow-[0_8px_30px_rgba(0,0,0,0.08)]">
-          <div className="relative flex items-center h-16">
-            {activeIndex >= 0 && (
-              <div className="absolute inset-y-0 left-0 pointer-events-none transition-transform duration-500 ease-[cubic-bezier(0.34,1.56,0.64,1)]"
-                style={{ width: `${100 / NAV_ITEMS.length}%`, transform: `translateX(${activeIndex * 100}%)` }}>
-                <div className="absolute inset-1.5 rounded-2xl bg-gradient-to-b from-white/35 via-white/25 to-white/15 backdrop-blur-xl border border-white/40 shadow-[0_4px_16px_rgba(0,0,0,0.05),inset_0_1px_0_rgba(255,255,255,0.5)]" />
-              </div>
-            )}
-            {NAV_ITEMS.map((item) => {
-              const Icon = item.icon
-              const isActive = item.id === navKey
-              return (
-                <button key={item.id} onClick={() => handleNavClick(item.id)}
-                  aria-label={item.label} title={item.label}
-                  className="relative z-10 flex-1 h-full min-w-0 p-0 m-0 flex items-center justify-center gap-2">
-                  <Icon className={`w-5 h-5 shrink-0 transition-colors duration-300 ${isActive ? 'text-blue-600' : 'text-slate-500 hover:text-slate-700'}`} />
-                  <span className={`text-sm font-semibold transition-colors duration-300 ${isActive ? 'text-blue-600' : 'text-slate-500 hover:text-slate-700'}`}>
-                    {item.label}
-                  </span>
-                </button>
-              )
-            })}
-          </div>
-        </nav>
-      </div>
+      <NavigationBar currentView={currentView} setCurrentView={setCurrentView} />
 
       <main className="max-w-6xl mx-auto px-3 md:px-4 py-4 md:py-8">
 
@@ -719,14 +734,20 @@ export default function App() {
                   </div>
                 </div>
               ) : (
-                <AccountCards accounts={sortedAccounts} classifications={classifications}
-                  onAddAccount={handleAddAccount} onLogTransaction={handleLogTransactionFromAccount}
-                  onManageAccount={handleManageAccount} onTogglePin={handleTogglePin} />
+                <AccountCards
+                  accounts={sortedAccounts}
+                  classifications={classifications}
+                  onAddAccount={handleAddAccount}
+                  onLogTransaction={handleLogTransactionFromAccount}
+                  onManageAccount={handleManageAccount}
+                  onTogglePin={handleTogglePin}
+                  onMoveAccount={handleMoveAccount}
+                />
               )}
             </section>
 
             <section className="grid grid-cols-3 gap-3 md:gap-4">
-              <button onClick={() => handleNavClick('network')}
+              <button onClick={() => setCurrentView('network')}
                 className="bg-white/60 backdrop-blur-xl border border-white/40 p-4 rounded-2xl shadow-sm flex flex-col items-center justify-center gap-2 hover:bg-white/80 transition-all group">
                 <div className="w-10 h-10 bg-slate-100 text-slate-900 rounded-full flex items-center justify-center group-hover:scale-110 transition-transform">
                   <Users className="w-5 h-5" />
@@ -734,7 +755,7 @@ export default function App() {
                 <span className="text-xs font-bold text-slate-700">Network</span>
               </button>
 
-              <button onClick={() => handleNavClick('split')}
+              <button onClick={() => setCurrentView('split')}
                 className="bg-white/60 backdrop-blur-xl border border-white/40 p-4 rounded-2xl shadow-sm flex flex-col items-center justify-center gap-2 hover:bg-white/80 transition-all group">
                 <div className="w-10 h-10 bg-slate-100 text-slate-900 rounded-full flex items-center justify-center group-hover:scale-110 transition-transform">
                   <Receipt className="w-5 h-5" />
@@ -742,7 +763,7 @@ export default function App() {
                 <span className="text-xs font-bold text-slate-700">Split Bill</span>
               </button>
 
-              <button onClick={() => handleNavClick('analytics')}
+              <button onClick={() => setCurrentView('analytics')}
                 className="bg-white/60 backdrop-blur-xl border border-white/40 p-4 rounded-2xl shadow-sm flex flex-col items-center justify-center gap-2 hover:bg-white/80 transition-all group">
                 <div className="w-10 h-10 bg-slate-100 text-slate-900 rounded-full flex items-center justify-center group-hover:scale-110 transition-transform">
                   <Activity className="w-5 h-5" />
@@ -751,10 +772,8 @@ export default function App() {
               </button>
             </section>
 
-            {/* Combined scope card — one account selector, two panels */}
             <section className="bg-white/70 backdrop-blur-xl border border-white/50 rounded-3xl shadow-sm overflow-hidden">
 
-              {/* Header — scope selector (chips on desktop, dropdown on mobile) */}
               <div className="px-4 pt-4 pb-3 md:px-5 md:pt-5 md:pb-4 border-b border-slate-100">
                 <div className="flex items-center justify-between gap-3 mb-3">
                   <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">
@@ -762,7 +781,6 @@ export default function App() {
                   </span>
                 </div>
 
-                {/* Desktop — chip row with sliding pill */}
                 <div className="hidden md:block">
                   <AccountChipRow
                     accounts={accounts}
@@ -771,7 +789,6 @@ export default function App() {
                   />
                 </div>
 
-                {/* Mobile — native dropdown with balance context */}
                 <div className="md:hidden">
                   <AccountSelector
                     accounts={accounts}
@@ -781,7 +798,6 @@ export default function App() {
                 </div>
               </div>
 
-              {/* Two panels side by side on desktop, stacked on mobile */}
               <div className="grid grid-cols-1 lg:grid-cols-2 divide-y lg:divide-y-0 lg:divide-x divide-slate-100">
                 <div className="p-4 md:p-5">
                   <BurnRateWidget
@@ -859,30 +875,6 @@ export default function App() {
         )}
 
       </main>
-
-      {/* MOBILE NAV */}
-      <nav className="md:hidden fixed bottom-6 left-4 right-4 z-50 rounded-3xl bg-white/5 backdrop-blur-2xl border border-white/25 shadow-[0_8px_30px_rgba(0,0,0,0.08)]">
-        <div className="relative flex items-center h-16">
-          {activeIndex >= 0 && (
-            <div className="absolute inset-y-0 left-0 pointer-events-none transition-transform duration-500 ease-[cubic-bezier(0.34,1.56,0.64,1)]"
-              style={{ width: `${100 / NAV_ITEMS.length}%`, transform: `translateX(${activeIndex * 100}%)` }}>
-              <div className="absolute inset-1.5 rounded-2xl bg-gradient-to-b from-white/35 via-white/25 to-white/15 backdrop-blur-xl border border-white/40 shadow-[0_4px_16px_rgba(0,0,0,0.05),inset_0_1px_0_rgba(255,255,255,0.5)]" />
-            </div>
-          )}
-          {NAV_ITEMS.map((item) => {
-            const Icon = item.icon
-            const isActive = item.id === navKey
-            return (
-              <button key={item.id} onClick={() => handleNavClick(item.id)} aria-label={item.label}
-                className="relative z-10 flex-1 h-full min-w-0 p-0 m-0 flex items-center justify-center">
-                <span className="flex items-center justify-center w-10 h-10 leading-none">
-                  <Icon className={`block w-5 h-5 shrink-0 transition-colors duration-300 ${isActive ? 'text-blue-600' : 'text-slate-400'}`} />
-                </span>
-              </button>
-            )
-          })}
-        </div>
-      </nav>
 
     </div>
   )

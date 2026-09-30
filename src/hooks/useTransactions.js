@@ -20,33 +20,87 @@ export const useTransactions = (user, showToast) => {
 
     setIsLoading(true)
     setError(null)
-    
-    try {
-      const { error: testError } = await supabase
-        .from('accounts')
-        .select('id')
-        .limit(1)
-      
-      if (testError) {
-        throw new Error(`Database connection failed: ${testError.message}`)
-      }
 
-      // Fetch Accounts
-      const accResult = await supabase
-        .from('v_account_balances')
-        .select('*')
-        .eq('user_id', user.id) // Scoped
-        .order('balance', { ascending: false })
-      
+    try {
+      // ============================================================
+      // FIRE ALL INDEPENDENT FETCHES IN PARALLEL
+      // ============================================================
+      // These six queries don't depend on each other. Only the
+      // seeding logic below depends on their results, and that runs
+      // after this batch resolves.
+      // ============================================================
+      const startOfLastMonth = new Date(
+        new Date().getFullYear(),
+        new Date().getMonth() - 1,
+        1
+      ).toISOString()
+
+      const [
+        accResult,
+        catResult,
+        classResult,
+        txResult,
+        commResult,
+        monthResult
+      ] = await Promise.all([
+        supabase
+          .from('v_account_balances')
+          .select('*')
+          .eq('user_id', user.id)
+          .order('display_order', { ascending: true }),
+
+        supabase
+          .from('categories')
+          .select('*')
+          .eq('user_id', user.id)
+          .order('name'),
+
+        supabase
+          .from('classifications')
+          .select('*')
+          .eq('user_id', user.id),
+
+        supabase
+          .from('transactions')
+          .select('id, amount, source_account_id, destination_account_id, category, transaction_date, description, needs_review, created_at, metadata')
+          .eq('user_id', user.id)
+          .order('needs_review', { ascending: false })
+          .order('transaction_date', { ascending: false })
+          .order('created_at', { ascending: false })
+          .limit(30),
+
+        supabase
+          .from('commitments')
+          .select('*')
+          .eq('user_id', user.id),
+
+        supabase
+          .from('transactions')
+          .select('id, amount, source_account_id, destination_account_id, category, transaction_date, needs_review')
+          .eq('user_id', user.id)
+          .is('destination_account_id', null)
+          .gte('transaction_date', startOfLastMonth)
+      ])
+
+      // Surface any hard errors early
       if (accResult.error) throw accResult.error
-      
-      const normalizedAccounts = (accResult.data || []).map(acc => {
+      if (catResult.error) throw catResult.error
+      if (txResult.error) throw txResult.error
+      if (commResult.error) throw commResult.error
+
+      // ============================================================
+      // NORMALIZE ACCOUNTS
+      // ============================================================
+      let normalizedAccounts = (accResult.data || []).map(acc => {
         const { account_id, ...rest } = acc
         return { id: account_id, ...rest }
       })
-      
-      setAccounts(normalizedAccounts)
 
+      // ============================================================
+      // SEEDING — ACCOUNTS
+      // Runs only if the user has zero accounts. Sequential because
+      // we need the inserted rows before refetching.
+      // ============================================================
       if (normalizedAccounts.length === 0) {
         const defaultAccounts = [
           { user_id: user.id, account_name: 'Maybank', classification: 'hub' },
@@ -54,35 +108,32 @@ export const useTransactions = (user, showToast) => {
           { user_id: user.id, account_name: 'GX Bank', classification: 'digital_bank' },
           { user_id: user.id, account_name: 'Bank Rakyat', classification: 'savings' }
         ]
-        
+
         const { error: insertError } = await supabase.from('accounts').insert(defaultAccounts)
-        
+
         if (!insertError) {
           const { data: newAccounts } = await supabase
             .from('v_account_balances')
             .select('*')
-            .eq('user_id', user.id) // Scoped
-            .order('balance', { ascending: false })
-          
-          const normalizedNewAccounts = (newAccounts || []).map(acc => {
+            .eq('user_id', user.id)
+            .order('display_order', { ascending: true })
+
+          normalizedAccounts = (newAccounts || []).map(acc => {
             const { account_id, ...rest } = acc
             return { id: account_id, ...rest }
           })
-          setAccounts(normalizedNewAccounts)
         }
       }
 
-      // Fetch Categories
-      const catResult = await supabase
-        .from('categories')
-        .select('*')
-        .eq('user_id', user.id) // Scoped
-        .order('name')
-      
-      if (catResult.error) throw catResult.error
+      setAccounts(normalizedAccounts)
 
-      if (!catResult.data || catResult.data.length === 0) {
-        const { data: mainCats, error: mainError } = await supabase
+      // ============================================================
+      // SEEDING — CATEGORIES
+      // ============================================================
+      let finalCategories = catResult.data || []
+
+      if (finalCategories.length === 0) {
+        const { data: mainCats } = await supabase
           .from('categories')
           .insert([
             { user_id: user.id, name: 'Food & Beverages', keywords: ['food', 'lunch', 'dinner', 'breakfast', 'makan', 'eat', 'restaurant'] },
@@ -92,7 +143,7 @@ export const useTransactions = (user, showToast) => {
             { user_id: user.id, name: 'Entertainment', keywords: ['netflix', 'spotify', 'movie', 'game', 'subscription', 'entertainment'] }
           ])
           .select()
-        
+
         if (mainCats) {
           const foodId = mainCats.find(c => c.name === 'Food & Beverages')?.id
           if (foodId) {
@@ -103,24 +154,25 @@ export const useTransactions = (user, showToast) => {
               { user_id: user.id, name: 'Groceries', parent_id: foodId, keywords: ['groceries', 'supermarket', 'shopping'] }
             ])
           }
+
           const { data: newCats } = await supabase
             .from('categories')
             .select('*')
-            .eq('user_id', user.id) // Scoped
+            .eq('user_id', user.id)
             .order('name')
-          setCategories(newCats || [])
+
+          finalCategories = newCats || []
         }
-      } else {
-        setCategories(catResult.data)
       }
 
-      // Fetch Classifications
-      const classResult = await supabase
-        .from('classifications')
-        .select('*')
-        .eq('user_id', user.id) // Scoped
+      setCategories(finalCategories)
 
-      if (classResult.error || !classResult.data || classResult.data.length === 0) {
+      // ============================================================
+      // SEEDING — CLASSIFICATIONS
+      // ============================================================
+      let finalClassifications = classResult.data || []
+
+      if (!finalClassifications || finalClassifications.length === 0) {
         try {
           const defaultClass = [
             { user_id: user.id, key_name: 'hub', label: 'Main Hub', icon_name: 'Landmark', color_class: 'text-blue-500', bg_class: 'bg-blue-50' },
@@ -129,68 +181,40 @@ export const useTransactions = (user, showToast) => {
             { user_id: user.id, key_name: 'savings', label: 'Savings', icon_name: 'PiggyBank', color_class: 'text-amber-500', bg_class: 'bg-amber-50' }
           ]
           const { error: insertError } = await supabase.from('classifications').insert(defaultClass)
-          
+
           if (!insertError) {
             const { data: refreshedClass } = await supabase
               .from('classifications')
               .select('*')
-              .eq('user_id', user.id) // Scoped
-            setClassifications(refreshedClass || [])
+              .eq('user_id', user.id)
+
+            finalClassifications = refreshedClass || []
           } else {
-            throw new Error("Fallback execution")
+            throw new Error('Fallback execution')
           }
         } catch {
-          setClassifications([
+          finalClassifications = [
             { id: 'temp-hub', key_name: 'hub', label: 'Main Hub', icon_name: 'Landmark', color_class: 'text-blue-500', bg_class: 'bg-blue-50' },
             { id: 'temp-ewallet', key_name: 'ewallet', label: 'Daily eWallet', icon_name: 'Wallet', color_class: 'text-purple-500', bg_class: 'bg-purple-50' },
             { id: 'temp-digital', key_name: 'digital_bank', label: 'Digital Bank', icon_name: 'Activity', color_class: 'text-emerald-500', bg_class: 'bg-emerald-50' },
             { id: 'temp-savings', key_name: 'savings', label: 'Savings', icon_name: 'PiggyBank', color_class: 'text-amber-500', bg_class: 'bg-amber-50' }
-          ])
+          ]
         }
-      } else {
-        setClassifications(classResult.data)
       }
 
-      // Fetch Transactions
-      const txResult = await supabase
-        .from('transactions')
-        .select('*')
-        .eq('user_id', user.id) // Scoped
-        .order('needs_review', { ascending: false })
-        .order('transaction_date', { ascending: false })
-        .limit(30)
-      
-      if (txResult.error) throw txResult.error
-      setRecentTransactions(txResult.data || [])
+      setClassifications(finalClassifications)
 
-      // Fetch Commitments
-      const commResult = await supabase
-        .from('commitments')
-        .select('*')
-        .eq('user_id', user.id) // Scoped
-      
-      if (commResult.error) throw commResult.error
+      // ============================================================
+      // TRANSACTIONS, COMMITMENTS, MONTHLY EXPENSES
+      // These were already fetched in parallel above.
+      // ============================================================
+      setRecentTransactions(txResult.data || [])
       setCommitments(commResult.data || [])
 
-      // Fetch recent expenses — last 2 months so we can compute
-      // month-over-month comparisons. Callers filter to their window.
-      const startOfLastMonth = new Date(
-        new Date().getFullYear(),
-        new Date().getMonth() - 1,
-        1
-      ).toISOString()
-
-      const { data: monthData, error: monthError } = await supabase
-        .from('transactions')
-        .select('*')
-        .eq('user_id', user.id)
-        .is('destination_account_id', null)
-        .gte('transaction_date', startOfLastMonth)
-
-      if (!monthError) {
-        setMonthlyExpenses(monthData || [])
+      if (!monthResult.error) {
+        setMonthlyExpenses(monthResult.data || [])
       }
-      
+
     } catch (error) {
       setError(error.message)
       showToast(`Failed to load data: ${error.message}`, 'error')
