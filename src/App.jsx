@@ -11,7 +11,7 @@ import Auth from './components/Auth'
 import { ToastNotification } from './components/shared/Toast'
 import { LoadingSpinner } from './components/shared/LoadingSpinner'
 import { AccountChipRow } from './components/shared/AccountChipRow'
-import { AccountDropdown } from './components/shared/AccountDropdown'
+import { AccountSelector } from './components/shared/AccountSelector'
 import { Header } from './components/layouts/Header'
 import { NavigationBar } from './components/layouts/NavigationBar'
 import { AccountCards } from './components/dashboard/AccountCards'
@@ -799,7 +799,7 @@ export default function App() {
                 </div>
 
                 <div className="md:hidden">
-                  <AccountDropdown
+                  <AccountSelector
                     accounts={activeAccounts}
                     value={homeAccountId}
                     onChange={setHomeAccountId}

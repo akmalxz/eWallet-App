@@ -9,6 +9,7 @@ import { PatternViews } from '../components/analytics/PatternViews'
 import { CategoryMovement } from '../components/analytics/CategoryMovement'
 import { IncomeVsExpense } from '../components/analytics/IncomeVsExpense'
 import { toMYDate } from '../utils/dateHelpers'
+import { AccountSelector } from '../components/shared/AccountSelector'
 
 // ============================================================
 // ITEM DEFINITIONS
@@ -217,7 +218,7 @@ export function AnalyticsPage({
           onChange={setPeriod}
         />
 
-        <AccountSelect
+        <AccountSelector
           accounts={accounts}
           value={selectedAccount}
           onChange={setSelectedAccount}

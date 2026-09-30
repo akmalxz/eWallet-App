@@ -18,7 +18,7 @@ export const AccountSelector = ({
       value={value}
       onChange={(e) => onChange(e.target.value)}
       aria-label={label}
-      className="appearance-none w-full bg-white/70 backdrop-blur-xl border border-white/60 rounded-xl py-3 pl-10 pr-10 text-sm font-semibold text-slate-800 outline-none cursor-pointer focus:border-blue-500 focus:ring-2 focus:ring-blue-100 transition-all min-h-[48px]"
+      className="appearance-none w-full bg-white/70 backdrop-blur-xl border border-white/60 rounded-2xl py-3 pl-10 pr-10 text-sm font-semibold text-slate-800 outline-none cursor-pointer focus:border-blue-500 focus:ring-2 focus:ring-blue-100 transition-all min-h-[44px]"
     >
       {includeAll && <option value="all">All accounts</option>}
       {accounts.map(a => (
