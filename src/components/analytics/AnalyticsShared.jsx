@@ -55,7 +55,9 @@ export const TransactionDrilldown = ({
 
   const sorted = [...transactions].sort((a, b) => b.amount - a.amount)
   const top5 = sorted.slice(0, 5)
-  const accountName = (id) => accounts.find(a => a.id === id)?.account_name || 'Unknown'
+
+  // Lookup helper used by the account chip in each row
+  const accountFor = (id) => accounts.find(a => a.id === id)
 
   return (
     <div className="mt-4 bg-slate-50/70 border border-slate-200 rounded-2xl p-4 animate-fadeIn">
@@ -78,29 +80,33 @@ export const TransactionDrilldown = ({
       </div>
 
       <div className="space-y-1.5">
-        {top5.map(tx => (
-          <div
-            key={tx.id}
-            className="flex items-center justify-between bg-white border border-slate-100 rounded-lg px-3 py-2"
-          >
-            <div className="min-w-0 flex-1 pr-2">
-              <p className="text-xs font-bold text-slate-800 truncate">
-                {tx.description || 'Untitled'}
-              </p>
-              <div className="flex items-center gap-2 mt-0.5 min-w-0">
-                <span className="text-[10px] text-slate-400 truncate shrink min-w-0">
-                  {tx.category || 'Uncategorized'}
-                </span>
-                {tx.source_account_id && accountFor(tx.source_account_id) && (
-                  <AccountCard account={accountFor(tx.source_account_id)} size="chip" />
-                )}
+        {top5.map(tx => {
+          const sourceAccount = accountFor(tx.source_account_id)
+
+          return (
+            <div
+              key={tx.id}
+              className="flex items-center justify-between bg-white border border-slate-100 rounded-lg px-3 py-2"
+            >
+              <div className="min-w-0 flex-1 pr-2">
+                <p className="text-xs font-bold text-slate-800 truncate">
+                  {tx.description || 'Untitled'}
+                </p>
+                <div className="flex items-center gap-2 mt-0.5 min-w-0">
+                  <span className="text-[10px] text-slate-400 truncate shrink min-w-0">
+                    {tx.category || 'Uncategorized'}
+                  </span>
+                  {sourceAccount && (
+                    <AccountCard account={sourceAccount} size="chip" showIcon={false} />
+                  )}
+                </div>
               </div>
+              <span className="text-xs font-black text-slate-800 shrink-0">
+                {formatMYR(tx.amount)}
+              </span>
             </div>
-            <span className="text-xs font-black text-slate-800 shrink-0">
-              {formatMYR(tx.amount)}
-            </span>
-          </div>
-        ))}
+          )
+        })}
       </div>
 
       {sorted.length > 5 && (
