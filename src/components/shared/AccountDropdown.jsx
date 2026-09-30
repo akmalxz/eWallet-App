@@ -15,9 +15,9 @@ const ALL_ACCOUNTS = {
 
 // ===========================================================================
 // AccountDropdown
-// Custom account picker that shows chips (color + icon) on the trigger
-// and in the option list. Bottom sheet on mobile, floating panel on desktop.
-// Full keyboard support. Replaces native <select> everywhere accounts appear.
+// Custom account picker that shows colored pills on the trigger and in the
+// option list (no icon — see showIcon={false} below).
+// Bottom sheet on mobile, floating panel on desktop. Full keyboard support.
 // ===========================================================================
 export const AccountDropdown = ({
   accounts = [],
@@ -35,7 +35,6 @@ export const AccountDropdown = ({
   const options = includeAll ? [ALL_ACCOUNTS, ...accounts] : accounts
   const selected = options.find(o => o.id === value) || options[0]
 
-  // Focus the list when the panel opens
   useEffect(() => {
     if (!open) return
     const t = setTimeout(() => {
@@ -46,7 +45,6 @@ export const AccountDropdown = ({
     return () => clearTimeout(t)
   }, [open, options, value])
 
-  // Escape closes
   useEffect(() => {
     if (!open) return
     const onKey = (e) => {
@@ -86,10 +84,13 @@ export const AccountDropdown = ({
     }
   }
 
-  // Trigger renders a chip for the selected account, or a neutral chip for "All"
   const triggerChip = (
     <span className="min-w-0 flex-1 text-left">
-      <AccountCard account={selected || { id: 'none', account_name: placeholder, color_theme: 'slate' }} size="chip" />
+      <AccountCard
+        account={selected || { id: 'none', account_name: placeholder, color_theme: 'slate' }}
+        size="chip"
+        showIcon={false}
+      />
     </span>
   )
 
@@ -129,7 +130,6 @@ export const AccountDropdown = ({
             className="w-full md:max-w-sm bg-white rounded-t-3xl md:rounded-3xl shadow-2xl overflow-hidden animate-in slide-in-from-bottom-4 md:zoom-in-95 duration-300 max-h-[80vh] flex flex-col"
             onClick={(e) => e.stopPropagation()}
           >
-            {/* Mobile drag handle */}
             <div className="md:hidden flex justify-center pt-3 pb-1 shrink-0">
               <div className="w-10 h-1 rounded-full bg-slate-200" />
             </div>
@@ -163,7 +163,7 @@ export const AccountDropdown = ({
                     }`}
                   >
                     <span className="min-w-0 flex-1">
-                      <AccountCard account={acc} size="chip" />
+                      <AccountCard account={acc} size="chip" showIcon={false} />
                     </span>
                     {isSelected && (
                       <Check className="w-4 h-4 text-slate-700 shrink-0" strokeWidth={3} />

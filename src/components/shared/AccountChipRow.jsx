@@ -18,7 +18,6 @@ export const AccountChipRow = ({
 
   const activeIndex = chips.findIndex(c => c.id === value)
 
-  // Measure the active chip and position the sliding pill
   const measure = useCallback(() => {
     const el = chipRefs.current[activeIndex]
     const container = containerRef.current

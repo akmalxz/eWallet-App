@@ -9,8 +9,6 @@ import { getColorTheme, getIcon, getPattern } from '../../utils/themeRegistry'
 
 // ---------------------------------------------------------------------------
 // Pattern SVG cache — one data URI per (patternKey, tone) combo.
-// The guide calls this out explicitly: generate each tile once per
-// pattern and tone, and reuse it. Do not create new ones per card.
 // ---------------------------------------------------------------------------
 const patternCache = new Map()
 const getPatternSvg = (patternKey, tone) => {
@@ -22,16 +20,12 @@ const getPatternSvg = (patternKey, tone) => {
   return svg
 }
 
-// ===========================================================================
-// AccountCard
-// Renders one of three sizes: 'full' | 'chip' | 'dot'.
-// Accepts a saved account, or `draft` overrides for the editor preview.
-// ===========================================================================
 export const AccountCard = memo(function AccountCard({
   account,
   draft,
   size = 'full',
   showBalance = true,
+  showIcon = true,
   isExpanded = false,
   classificationLabel = 'Account',
   canMoveUp = false,
@@ -43,10 +37,8 @@ export const AccountCard = memo(function AccountCard({
   onManageAccount,
   onClick
 }) {
-  // Merge saved account with draft overrides (editor preview path)
   const data = draft ? { ...account, ...draft } : account
 
-  // Always go through the registry helpers — never read a raw key
   const theme = getColorTheme(data.color_theme)
   const iconEntry = getIcon(data.icon)
   const isLetterIcon = iconEntry.key === 'letter'
@@ -75,25 +67,30 @@ export const AccountCard = memo(function AccountCard({
 
   // ------------------------------------------------------------
   // CHIP — inline labels for transaction rows, selectors, filters
+  // When `showIcon` is false, renders a plain colored pill with the name only.
   // ------------------------------------------------------------
   if (size === 'chip') {
     return (
       <span
-        className="inline-flex items-center gap-1.5 pl-1 pr-2 py-0.5 rounded-lg text-xs font-semibold max-w-full"
+        className={`inline-flex items-center gap-1.5 py-0.5 rounded-lg text-xs font-semibold max-w-full ${
+          showIcon ? 'pl-1 pr-2' : 'px-2'
+        }`}
         style={{ background: gradient, color: textColor }}
       >
-        <span
-          className="w-5 h-5 rounded-md flex items-center justify-center shrink-0"
-          style={{ background: 'rgba(255,255,255,0.18)' }}
-        >
-          {isLetterIcon ? (
-            <span className="text-[10px] font-bold" style={{ color: textColor }}>
-              {firstLetter}
-            </span>
-          ) : IconComponent ? (
-            <IconComponent className="w-3 h-3" style={{ color: textColor }} />
-          ) : null}
-        </span>
+        {showIcon && (
+          <span
+            className="w-5 h-5 rounded-md flex items-center justify-center shrink-0"
+            style={{ background: 'rgba(255,255,255,0.18)' }}
+          >
+            {isLetterIcon ? (
+              <span className="text-[10px] font-bold" style={{ color: textColor }}>
+                {firstLetter}
+              </span>
+            ) : IconComponent ? (
+              <IconComponent className="w-3 h-3" style={{ color: textColor }} />
+            ) : null}
+          </span>
+        )}
         <span className="truncate">{data.account_name}</span>
       </span>
     )
@@ -118,7 +115,7 @@ export const AccountCard = memo(function AccountCard({
         borderColor: 'rgba(255,255,255,0.3)'
       }}
     >
-      {/* Depth overlay (bottom shade) */}
+      {/* Depth overlay */}
       <div
         className="absolute inset-0 pointer-events-none"
         style={{
@@ -126,7 +123,7 @@ export const AccountCard = memo(function AccountCard({
         }}
       />
 
-      {/* Pattern overlay — faded toward the balance area so text stays clear */}
+      {/* Pattern overlay */}
       {hasPattern && (
         <div
           className="absolute inset-0 pointer-events-none"
@@ -143,7 +140,6 @@ export const AccountCard = memo(function AccountCard({
       {/* Main content */}
       <div className="relative p-4 md:p-5 flex-1 flex flex-col justify-between">
         <div>
-          {/* Top row */}
           <div className="flex items-center justify-between mb-3">
             <div className="flex items-center gap-3 min-w-0">
               <div
@@ -210,7 +206,6 @@ export const AccountCard = memo(function AccountCard({
             </div>
           </div>
 
-          {/* Balance */}
           <div className="mb-2">
             <p className="text-xs" style={{ color: textMuted }}>Balance</p>
             <p
@@ -222,7 +217,7 @@ export const AccountCard = memo(function AccountCard({
           </div>
         </div>
 
-        {/* Expanded panel — only mounted when a toggle handler exists */}
+        {/* Expanded panel */}
         {onToggleExpand && (
           <div className={`grid transition-all duration-300 ease-in-out ${isExpanded ? 'grid-rows-[1fr] opacity-100 mt-4' : 'grid-rows-[0fr] opacity-0 mt-0'}`}>
             <div className="overflow-hidden">
@@ -230,7 +225,6 @@ export const AccountCard = memo(function AccountCard({
                 className="pt-4 space-y-2"
                 style={{ borderTop: '1px solid rgba(255,255,255,0.2)' }}
               >
-                {/* Primary actions */}
                 <div className="flex flex-col sm:flex-row gap-2">
                   <button
                     className="flex-1 text-xs font-medium py-2.5 rounded-xl transition-colors flex items-center justify-center gap-1.5"
@@ -250,7 +244,6 @@ export const AccountCard = memo(function AccountCard({
                   </button>
                 </div>
 
-                {/* Reorder controls */}
                 {onMoveAccount && (
                   <div className="grid grid-cols-2 gap-2">
                     <button
@@ -298,13 +291,12 @@ export const AccountCard = memo(function AccountCard({
         )}
       </div>
 
-      {/* Footer */}
       <div className="relative px-4 pb-3 flex items-center justify-between mt-auto">
         <div className="flex gap-1.5" style={{ color: textColor, opacity: 0.3 }}>
           <span className="text-[10px] font-mono">••••</span>
           <span className="text-[10px] font-mono">••••</span>
           <span className="text-[10px] font-mono">••••</span>
-          <span className="text-[10px] font-mono" style={{ opacity: 1.4 }}>••••</span>
+          <span className="text-[10px] font-mono">••••</span>
         </div>
         <CreditCard className="w-4 h-4" style={{ color: textColor, opacity: 0.3 }} />
       </div>

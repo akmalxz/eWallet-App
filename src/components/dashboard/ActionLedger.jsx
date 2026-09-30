@@ -5,6 +5,7 @@ import {
   Check, Trash2, Edit2, X, Save, Plus, Inbox, Calendar, ChevronDown, ChevronUp 
 } from 'lucide-react'
 import { formatMYR } from '../../utils/formatters'
+import { AccountCard } from '../shared/AccountCard'
 
 export const ActionLedger = ({ 
   recentTransactions, 
@@ -58,7 +59,6 @@ export const ActionLedger = ({
       }
 
       if (!groups[dateKey]) {
-        // Today's group is expanded by default, others collapsed
         const isToday = dateKey === today.toISOString().split('T')[0]
         groups[dateKey] = { 
           label, 
@@ -70,7 +70,6 @@ export const ActionLedger = ({
       groups[dateKey].transactions.push(tx)
     })
 
-    // Sort groups by date (newest first)
     return Object.values(groups).sort((a, b) => b.date.localeCompare(a.date))
   }, [recentTransactions])
 
@@ -82,10 +81,9 @@ export const ActionLedger = ({
     }))
   }
 
-  // Check if a group is expanded (default to true for Today)
   const isGroupExpanded = (group) => {
-    if (group.label === 'Today') return true // Today always expanded
-    return expandedGroups[group.date] ?? false // Other groups collapsed by default
+    if (group.label === 'Today') return true
+    return expandedGroups[group.date] ?? false
   }
 
   const startEdit = (tx) => {
@@ -198,7 +196,6 @@ export const ActionLedger = ({
 
   const accountFor = (id) => accounts.find(a => a.id === id)
 
-  // Calculate total for each day group
   const getDailyTotal = (transactions) => {
     return transactions.reduce((sum, tx) => sum + Number(tx.amount), 0)
   }
@@ -208,32 +205,28 @@ export const ActionLedger = ({
       <section className="bg-white rounded-2xl shadow-md border border-slate-100 flex flex-col overflow-hidden transition-all duration-300">
         <div className="px-4 pt-4 pb-1 border-b border-slate-100 bg-slate-50/60 flex items-center justify-between flex-shrink-0">
           <div className="flex items-center gap-3 px-1 mb-3">
-              <div className="p-2 rounded-xl bg-slate-200/60 text-slate-600 border border-slate-200/50">
-                <List className="w-5 h-5" />
-              </div>
-              <div>
-                <h2 className="text-base font-bold text-slate-800 leading-tight">Action Ledger</h2>
-                <p className="text-[9px] font-bold uppercase tracking-wider text-slate-400">Verified History</p>
-              </div>
+            <div className="p-2 rounded-xl bg-slate-200/60 text-slate-600 border border-slate-200/50">
+              <List className="w-5 h-5" />
             </div>
+            <div>
+              <h2 className="text-base font-bold text-slate-800 leading-tight">Action Ledger</h2>
+              <p className="text-[9px] font-bold uppercase tracking-wider text-slate-400">Verified History</p>
+            </div>
+          </div>
 
-        {/* Refresh button - Right */}
-        <button 
-          onClick={onRefresh}
-          disabled={isRefreshing}
-          className={`ml-auto w-8 h-8 flex items-center justify-center rounded-lg transition-all ${
-            isRefreshing 
-              ? 'text-slate-300 cursor-not-allowed' 
-              : 'text-slate-400 hover:text-slate-600 hover:bg-slate-100'
-          }`}
-          title="Refresh transactions"
-        >
-          <RefreshCw 
-            className={`w-4 h-4 ${isRefreshing ? 'animate-spin' : ''}`} 
-          />
-        </button>
-
-      </div>
+          <button 
+            onClick={onRefresh}
+            disabled={isRefreshing}
+            className={`ml-auto w-8 h-8 flex items-center justify-center rounded-lg transition-all ${
+              isRefreshing 
+                ? 'text-slate-300 cursor-not-allowed' 
+                : 'text-slate-400 hover:text-slate-600 hover:bg-slate-100'
+            }`}
+            title="Refresh transactions"
+          >
+            <RefreshCw className={`w-4 h-4 ${isRefreshing ? 'animate-spin' : ''}`} />
+          </button>
+        </div>
         <div className="flex-1 flex flex-col items-center justify-center p-8 text-slate-400">
           <div className="w-14 h-14 bg-slate-50 border border-slate-100 rounded-2xl flex items-center justify-center mb-4 text-slate-300 shadow-sm shadow-slate-100/40">
             <Inbox className="w-6 h-6" />
@@ -255,19 +248,17 @@ export const ActionLedger = ({
 
   return (
     <section className="bg-white rounded-2xl shadow-md border border-slate-100 flex flex-col overflow-hidden transition-all duration-300">
-      {/* Header */}
       <div className="px-4 pt-4 pb-1 border-b border-slate-100 bg-slate-50/60 flex items-center justify-between flex-shrink-0">
         <div className="flex items-center gap-3 px-1 mb-3">
-            <div className="p-2 rounded-xl bg-slate-200/60 text-slate-600 border border-slate-200/50">
-              <List className="w-5 h-5" />
-            </div>
-            <div>
-              <h2 className="text-base font-bold text-slate-800 leading-tight">Action Ledger</h2>
-              <p className="text-[9px] font-bold uppercase tracking-wider text-slate-400">Verified History</p>
-            </div>
+          <div className="p-2 rounded-xl bg-slate-200/60 text-slate-600 border border-slate-200/50">
+            <List className="w-5 h-5" />
           </div>
+          <div>
+            <h2 className="text-base font-bold text-slate-800 leading-tight">Action Ledger</h2>
+            <p className="text-[9px] font-bold uppercase tracking-wider text-slate-400">Verified History</p>
+          </div>
+        </div>
 
-        {/* Refresh button - Right */}
         <button 
           onClick={onRefresh}
           disabled={isRefreshing}
@@ -278,14 +269,10 @@ export const ActionLedger = ({
           }`}
           title="Refresh transactions"
         >
-          <RefreshCw 
-            className={`w-4 h-4 ${isRefreshing ? 'animate-spin' : ''}`} 
-          />
+          <RefreshCw className={`w-4 h-4 ${isRefreshing ? 'animate-spin' : ''}`} />
         </button>
-
       </div>
       
-      {/* Transaction List Box */}
       <div className="flex-1 overflow-y-auto space-y-3 p-3">
         {groupedTransactions.map((group, groupIndex) => {
           const dailyTotal = getDailyTotal(group.transactions)
@@ -294,7 +281,7 @@ export const ActionLedger = ({
 
           return (
             <div key={group.date} className="space-y-1.5">
-              {/* Date Separator with Expand/Collapse Toggle */}
+              {/* Date separator */}
               <div 
                 className="flex items-center gap-3 px-2 py-1.5 cursor-pointer hover:bg-slate-50 rounded-lg transition-colors select-none"
                 onClick={() => toggleGroup(group.date)}
@@ -332,7 +319,7 @@ export const ActionLedger = ({
                 </div>
               </div>
 
-              {/* Transactions for this date - Collapsible */}
+              {/* Transactions for this date */}
               {isExpanded && (
                 <div className="space-y-1.5 animate-fadeIn">
                   {group.transactions.map((tx, index) => {
@@ -348,7 +335,7 @@ export const ActionLedger = ({
                     return (
                       <div key={tx.id} className="relative overflow-hidden rounded-xl border border-slate-100 bg-white">
                         
-                        {/* Inline Editor Container with Grid Expansion */}
+                        {/* Inline editor */}
                         <div className={`grid transition-all duration-300 ease-in-out ${isEditingThis ? 'grid-rows-[1fr] opacity-100 bg-slate-50/50 p-4' : 'grid-rows-[0fr] opacity-0'}`}>
                           <div className="overflow-hidden space-y-4">
                             <div className="flex justify-between items-center border-b border-slate-100 pb-2">
@@ -381,7 +368,6 @@ export const ActionLedger = ({
                               )}
                             </div>
 
-                            {/* Date & Amount Row */}
                             <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                               <div>
                                 <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1.5">Date</label>
@@ -594,7 +580,7 @@ export const ActionLedger = ({
                           </div>
                         </div>
 
-                        {/* Standard Static Interactive Row Template */}
+                        {/* Standard row */}
                         <div 
                           id={`tx-${globalIndex}`}
                           className={`flex items-center justify-between p-3.5 hover:bg-slate-50/60 transition-all duration-200 border-b border-slate-50 group last:border-none ${isEditingThis ? 'hidden' : ''}`}
@@ -614,12 +600,18 @@ export const ActionLedger = ({
                             <div className="min-w-0 flex-1">
                               <p className="text-sm font-semibold text-slate-700 truncate">{tx.description}</p>
                               <p className="text-xs text-slate-400">{tx.category || 'Uncategorized'}</p>
+
+                              {/* Account chips — icons removed */}
                               <div className="flex items-center gap-1.5 mt-1 min-w-0">
                                 {isIncome && (
                                   <>
                                     <span className="text-[10px] font-bold text-slate-400 shrink-0">→</span>
                                     {accountFor(tx.destination_account_id) ? (
-                                      <AccountCard account={accountFor(tx.destination_account_id)} size="chip" />
+                                      <AccountCard
+                                        account={accountFor(tx.destination_account_id)}
+                                        size="chip"
+                                        showIcon={false}
+                                      />
                                     ) : (
                                       <span className="text-[10px] text-slate-400">Unknown</span>
                                     )}
@@ -629,13 +621,21 @@ export const ActionLedger = ({
                                 {isTransfer && (
                                   <>
                                     {accountFor(tx.source_account_id) ? (
-                                      <AccountCard account={accountFor(tx.source_account_id)} size="chip" />
+                                      <AccountCard
+                                        account={accountFor(tx.source_account_id)}
+                                        size="chip"
+                                        showIcon={false}
+                                      />
                                     ) : (
                                       <span className="text-[10px] text-slate-400">Unknown</span>
                                     )}
                                     <span className="text-[10px] font-bold text-slate-400 shrink-0">→</span>
                                     {accountFor(tx.destination_account_id) ? (
-                                      <AccountCard account={accountFor(tx.destination_account_id)} size="chip" />
+                                      <AccountCard
+                                        account={accountFor(tx.destination_account_id)}
+                                        size="chip"
+                                        showIcon={false}
+                                      />
                                     ) : (
                                       <span className="text-[10px] text-slate-400">Unknown</span>
                                     )}
@@ -646,7 +646,11 @@ export const ActionLedger = ({
                                   <>
                                     <span className="text-[10px] font-bold text-slate-400 shrink-0">←</span>
                                     {accountFor(tx.source_account_id) ? (
-                                      <AccountCard account={accountFor(tx.source_account_id)} size="chip" />
+                                      <AccountCard
+                                        account={accountFor(tx.source_account_id)}
+                                        size="chip"
+                                        showIcon={false}
+                                      />
                                     ) : (
                                       <span className="text-[10px] text-slate-400">Unknown</span>
                                     )}
@@ -663,7 +667,6 @@ export const ActionLedger = ({
                               {isIncome ? '+' : (isTransfer ? '' : '-')}{formatMYR(tx.amount)}
                             </span>
                             
-                            {/* Action Controllers Panel */}
                             <div className="flex items-center md:opacity-0 md:group-hover:opacity-100 focus-within:opacity-100 transition-opacity gap-0.5">
                               <button 
                                 onClick={() => startEdit(tx)}
