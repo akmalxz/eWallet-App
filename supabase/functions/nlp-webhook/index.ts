@@ -341,6 +341,7 @@ class TransactionParser {
       const lines = normalizedText.split('\n').map(l => l.trim()).filter(l => l);
 
       const extractedName = extractLabeledValue(lines, NAME_LABELS);
+      const extractedRef = extractLabeledValue(lines, REF_LABELS);
 
       if (extractedName) {
         result.description = extractedName.trim();
@@ -565,7 +566,7 @@ serve(async (req) => {
         raw_text: text,
         normalized_text: normalizeOCRText(text),
         parsed_at: new Date().toISOString(),
-        parser_version: '1.2.2'
+        parser_version: '1.2.3'
       }
     };
 
