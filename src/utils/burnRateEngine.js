@@ -6,10 +6,10 @@ import {
   getDayOfMonthMY,
   nextPayday,
   isTodayPayday,
-  daysBetweenMY,
-  occurrencesUntil,
-  isOccurrencePaid
+  daysBetweenMY
 } from './dateHelpers'
+import { resolveAccountScope } from './accountScope'
+import { computeCommitmentSchedule } from './commitmentSchedule'
 
 // ===========================================================================
 // Named thresholds (Phase 5)
@@ -54,41 +54,30 @@ export const computeBurnRate = ({
   accounts = [],
   expenses = [],
   commitments = [],
+  payments = [],
   scopeAccountId = 'all',
   now = new Date(),
   isHoliday = () => false
 }) => {
   // ------------------------------------------------------------
-  // 1. Scope (Phase 3)
+  // 1. Scope (P3.2 — shared with the radar)
   // ------------------------------------------------------------
-  const isAll = scopeAccountId === 'all'
-
-  // For "All", use only active (not archived) accounts.
-  // For a specific account, still respect the archived flag.
-  const scopedAccounts = isAll
-    ? accounts.filter(a => !a.is_archived)
-    : accounts.filter(a => a.id === scopeAccountId && !a.is_archived)
-
-  const accountIds = new Set(scopedAccounts.map(a => a.id))
-
-  const scopeLabel = isAll
-    ? 'All accounts'
-    : (scopedAccounts[0]?.account_name || 'Account')
+  const { scopedAccounts, accountIds, scopeLabel } = resolveAccountScope(
+    accounts,
+    scopeAccountId
+  )
 
   // ------------------------------------------------------------
   // 2. Dates
   // ------------------------------------------------------------
   const payday = nextPayday(now, isHoliday)
   const paydayToday = isTodayPayday(now, isHoliday)
-  const daysToPayday = Math.max(
-    0,
-    daysBetweenMY(now, payday)
-  )
+  const daysToPayday = Math.max(0, daysBetweenMY(now, payday))
   const daysPassed = getDayOfMonthMY(now)
   const monthLength = getDaysInMonthMY(now)
 
   // ------------------------------------------------------------
-  // 3. Balance (Phase 3)
+  // 3. Balance (P3.2)
   // ------------------------------------------------------------
   const balance = scopedAccounts.reduce(
     (s, a) => s + (Number(a.balance) || 0),
@@ -96,26 +85,19 @@ export const computeBurnRate = ({
   )
 
   // ------------------------------------------------------------
-  // 4. Bills before payday (Phase 4)
+  // 4. Bills before payday (P3.3 — shared schedule function)
   // ------------------------------------------------------------
-  const scopedCommitments = commitments.filter(
-    c => c.is_active && c.account_id && accountIds.has(c.account_id)
-  )
+  const schedule = computeCommitmentSchedule({
+    commitments,
+    payments,
+    accounts,
+    scopeAccountId,
+    now,
+    horizon: payday
+  })
 
-  let billsBeforePayday = 0
-  let billCount = 0
-  const unpaidOccurrences = []
-
-  for (const comm of scopedCommitments) {
-    const occurrences = occurrencesUntil(comm.due_day_of_month, now, payday)
-    for (const occ of occurrences) {
-      if (isOccurrencePaid(comm, occ)) continue
-      const amt = Number(comm.amount) || 0
-      billsBeforePayday += amt
-      billCount++
-      unpaidOccurrences.push({ commitment: comm, date: occ, amount: amt })
-    }
-  }
+  const billsBeforePayday = schedule.total
+  const billCount = schedule.unpaidPeriods.length
 
   // ------------------------------------------------------------
   // 5. Free money

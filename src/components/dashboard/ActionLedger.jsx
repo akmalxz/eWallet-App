@@ -1,17 +1,17 @@
 // src/components/dashboard/ActionLedger.jsx
 import { useState, useMemo } from 'react'
-import { 
-  Clock, ArrowDownRight, ArrowUpRight, RefreshCw, AlertTriangle, List,
-  Check, Trash2, Edit2, X, Save, Plus, Inbox, Calendar, ChevronDown, ChevronUp 
+import {
+  ArrowDownRight, ArrowUpRight, RefreshCw, List,
+  Trash2, Edit2, X, Save, Plus, Inbox, Calendar, ChevronDown, ChevronUp
 } from 'lucide-react'
 import { formatMYR } from '../../utils/formatters'
 import { AccountCard } from '../shared/AccountCard'
+import { ConfirmSheet } from '../shared/ConfirmSheet'
 
-export const ActionLedger = ({ 
-  recentTransactions, 
-  mainCategories, 
-  getSubCategories, 
-  handleApproveTransaction, 
+export const ActionLedger = ({
+  recentTransactions,
+  mainCategories,
+  getSubCategories,
   handleDeleteTransaction,
   handleEditTransaction,
   onRefresh,
@@ -20,9 +20,9 @@ export const ActionLedger = ({
   onAddTransaction
 }) => {
   const [editingId, setEditingId] = useState(null)
-  const [editData, setEditData] = useState({ 
-    description: '', 
-    category: '', 
+  const [editData, setEditData] = useState({
+    description: '',
+    category: '',
     amount: '',
     transaction_date: '',
     source_account_id: '',
@@ -30,8 +30,8 @@ export const ActionLedger = ({
   })
   const [editErrors, setEditErrors] = useState({})
   const [expandedGroups, setExpandedGroups] = useState({})
+  const [pendingDelete, setPendingDelete] = useState(null) // tx object
 
-  // Group transactions by date
   const groupedTransactions = useMemo(() => {
     if (!recentTransactions || recentTransactions.length === 0) return []
 
@@ -40,32 +40,27 @@ export const ActionLedger = ({
     const yesterday = new Date(today)
     yesterday.setDate(yesterday.getDate() - 1)
 
-    recentTransactions.forEach(tx => {
+    recentTransactions.forEach((tx) => {
       const date = new Date(tx.transaction_date || tx.created_at)
       const dateKey = date.toISOString().split('T')[0]
-      
+
       let label
       if (dateKey === today.toISOString().split('T')[0]) {
         label = 'Today'
       } else if (dateKey === yesterday.toISOString().split('T')[0]) {
         label = 'Yesterday'
       } else {
-        label = date.toLocaleDateString('en-MY', { 
-          weekday: 'long', 
-          day: 'numeric', 
-          month: 'long', 
-          year: 'numeric' 
+        label = date.toLocaleDateString('en-MY', {
+          weekday: 'long',
+          day: 'numeric',
+          month: 'long',
+          year: 'numeric'
         })
       }
 
       if (!groups[dateKey]) {
         const isToday = dateKey === today.toISOString().split('T')[0]
-        groups[dateKey] = { 
-          label, 
-          date: dateKey, 
-          transactions: [],
-          isExpanded: isToday
-        }
+        groups[dateKey] = { label, date: dateKey, transactions: [], isExpanded: isToday }
       }
       groups[dateKey].transactions.push(tx)
     })
@@ -73,12 +68,8 @@ export const ActionLedger = ({
     return Object.values(groups).sort((a, b) => b.date.localeCompare(a.date))
   }, [recentTransactions])
 
-  // Toggle group expansion
   const toggleGroup = (dateKey) => {
-    setExpandedGroups(prev => ({
-      ...prev,
-      [dateKey]: !prev[dateKey]
-    }))
+    setExpandedGroups((prev) => ({ ...prev, [dateKey]: !prev[dateKey] }))
   }
 
   const isGroupExpanded = (group) => {
@@ -88,7 +79,9 @@ export const ActionLedger = ({
 
   const startEdit = (tx) => {
     const rawDate = tx.transaction_date || tx.created_at
-    const formattedDate = rawDate ? new Date(rawDate).toISOString().split('T')[0] : new Date().toISOString().split('T')[0]
+    const formattedDate = rawDate
+      ? new Date(rawDate).toISOString().split('T')[0]
+      : new Date().toISOString().split('T')[0]
 
     setEditingId(tx.id)
     setEditData({
@@ -104,9 +97,9 @@ export const ActionLedger = ({
 
   const cancelEdit = () => {
     setEditingId(null)
-    setEditData({ 
-      description: '', 
-      category: '', 
+    setEditData({
+      description: '',
+      category: '',
       amount: '',
       transaction_date: '',
       source_account_id: '',
@@ -117,15 +110,15 @@ export const ActionLedger = ({
 
   const validateEdit = () => {
     const errors = {}
-    
+
     if (!editData.description || editData.description.trim().length < 2) {
       errors.description = 'Description must be at least 2 characters'
     }
-    
+
     if (!editData.category || editData.category === 'uncategorized') {
       errors.category = 'Please select a category'
     }
-    
+
     const amountNum = parseFloat(editData.amount)
     if (!editData.amount || isNaN(amountNum) || amountNum <= 0) {
       errors.amount = 'Please enter a valid amount greater than 0'
@@ -142,7 +135,7 @@ export const ActionLedger = ({
     if (isTransfer && editData.source_account_id === editData.destination_account_id) {
       errors.accounts = 'Source and destination accounts must be different'
     }
-    
+
     setEditErrors(errors)
     return Object.keys(errors).length === 0
   }
@@ -155,22 +148,20 @@ export const ActionLedger = ({
     const isExpense = editData.source_account_id && !editData.destination_account_id
     const isTransfer = editData.source_account_id && editData.destination_account_id
 
-    const finalAmount = Math.abs(amountNum)
-
     handleEditTransaction(editingId, {
       description: editData.description.trim(),
       category: editData.category,
-      amount: finalAmount,
+      amount: Math.abs(amountNum),
       transaction_date: editData.transaction_date,
       source_account_id: editData.source_account_id || null,
       destination_account_id: editData.destination_account_id || null,
       transaction_type: isIncome ? 'income' : isExpense ? 'expense' : 'transfer'
     })
-    
+
     setEditingId(null)
-    setEditData({ 
-      description: '', 
-      category: '', 
+    setEditData({
+      description: '',
+      category: '',
       amount: '',
       source_account_id: '',
       destination_account_id: ''
@@ -189,16 +180,10 @@ export const ActionLedger = ({
 
   const isEditing = (id) => editingId === id
 
-  const getAccountName = (id) => {
-    const account = accounts.find(a => a.id === id)
-    return account?.account_name || 'Unknown'
-  }
+  const accountFor = (id) => accounts.find((a) => a.id === id)
 
-  const accountFor = (id) => accounts.find(a => a.id === id)
-
-  const getDailyTotal = (transactions) => {
-    return transactions.reduce((sum, tx) => sum + Number(tx.amount), 0)
-  }
+  const getDailyTotal = (transactions) =>
+    transactions.reduce((sum, tx) => sum + Number(tx.amount), 0)
 
   if (!recentTransactions || recentTransactions.length === 0) {
     return (
@@ -209,24 +194,30 @@ export const ActionLedger = ({
               <List className="w-5 h-5" />
             </div>
             <div>
-              <h2 className="text-base font-bold text-slate-800 leading-tight">Action Ledger</h2>
-              <p className="text-[9px] font-bold uppercase tracking-wider text-slate-400">Verified History</p>
+              <h2 className="text-base font-bold text-slate-800 leading-tight">
+                Action Ledger
+              </h2>
+              <p className="text-[9px] font-bold uppercase tracking-wider text-slate-400">
+                Verified History
+              </p>
             </div>
           </div>
 
-          <button 
+          <button
             onClick={onRefresh}
             disabled={isRefreshing}
-            className={`ml-auto w-8 h-8 flex items-center justify-center rounded-lg transition-all ${
-              isRefreshing 
-                ? 'text-slate-300 cursor-not-allowed' 
+            className={`ml-auto w-11 h-11 flex items-center justify-center rounded-lg transition-all ${
+              isRefreshing
+                ? 'text-slate-300 cursor-not-allowed'
                 : 'text-slate-400 hover:text-slate-600 hover:bg-slate-100'
             }`}
             title="Refresh transactions"
+            aria-label="Refresh transactions"
           >
             <RefreshCw className={`w-4 h-4 ${isRefreshing ? 'animate-spin' : ''}`} />
           </button>
         </div>
+
         <div className="flex-1 flex flex-col items-center justify-center p-8 text-slate-400">
           <div className="w-14 h-14 bg-slate-50 border border-slate-100 rounded-2xl flex items-center justify-center mb-4 text-slate-300 shadow-sm shadow-slate-100/40">
             <Inbox className="w-6 h-6" />
@@ -235,9 +226,10 @@ export const ActionLedger = ({
           <p className="text-xs text-slate-400 text-center mt-1 max-w-xs leading-relaxed">
             Record a fast entry with the platform omnibar tools or choose the transaction button below.
           </p>
-          <button 
+          <button
             onClick={onAddTransaction}
             className="mt-4 inline-flex items-center justify-center gap-2 px-4 py-2.5 bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold rounded-xl shadow-sm transition-all"
+            style={{ minHeight: 44 }}
           >
             <Plus className="w-4 h-4" /> Log Transaction
           </button>
@@ -247,454 +239,569 @@ export const ActionLedger = ({
   }
 
   return (
-    <section className="bg-white rounded-2xl shadow-md border border-slate-100 flex flex-col overflow-hidden transition-all duration-300">
-      <div className="px-4 pt-4 pb-1 border-b border-slate-100 bg-slate-50/60 flex items-center justify-between flex-shrink-0">
-        <div className="flex items-center gap-3 px-1 mb-3">
-          <div className="p-2 rounded-xl bg-slate-200/60 text-slate-600 border border-slate-200/50">
-            <List className="w-5 h-5" />
+    <>
+      <section className="bg-white rounded-2xl shadow-md border border-slate-100 flex flex-col overflow-hidden transition-all duration-300">
+        <div className="px-4 pt-4 pb-1 border-b border-slate-100 bg-slate-50/60 flex items-center justify-between flex-shrink-0">
+          <div className="flex items-center gap-3 px-1 mb-3">
+            <div className="p-2 rounded-xl bg-slate-200/60 text-slate-600 border border-slate-200/50">
+              <List className="w-5 h-5" />
+            </div>
+            <div>
+              <h2 className="text-base font-bold text-slate-800 leading-tight">
+                Action Ledger
+              </h2>
+              <p className="text-[9px] font-bold uppercase tracking-wider text-slate-400">
+                Verified History
+              </p>
+            </div>
           </div>
-          <div>
-            <h2 className="text-base font-bold text-slate-800 leading-tight">Action Ledger</h2>
-            <p className="text-[9px] font-bold uppercase tracking-wider text-slate-400">Verified History</p>
-          </div>
+
+          <button
+            onClick={onRefresh}
+            disabled={isRefreshing}
+            className={`ml-auto w-11 h-11 flex items-center justify-center rounded-lg transition-all ${
+              isRefreshing
+                ? 'text-slate-300 cursor-not-allowed'
+                : 'text-slate-400 hover:text-slate-600 hover:bg-slate-100'
+            }`}
+            title="Refresh transactions"
+            aria-label="Refresh transactions"
+          >
+            <RefreshCw className={`w-4 h-4 ${isRefreshing ? 'animate-spin' : ''}`} />
+          </button>
         </div>
 
-        <button 
-          onClick={onRefresh}
-          disabled={isRefreshing}
-          className={`ml-auto w-8 h-8 flex items-center justify-center rounded-lg transition-all ${
-            isRefreshing 
-              ? 'text-slate-300 cursor-not-allowed' 
-              : 'text-slate-400 hover:text-slate-600 hover:bg-slate-100'
-          }`}
-          title="Refresh transactions"
-        >
-          <RefreshCw className={`w-4 h-4 ${isRefreshing ? 'animate-spin' : ''}`} />
-        </button>
-      </div>
-      
-      <div className="flex-1 overflow-y-auto space-y-3 p-3">
-        {groupedTransactions.map((group, groupIndex) => {
-          const dailyTotal = getDailyTotal(group.transactions)
-          const isToday = group.label === 'Today'
-          const isExpanded = isGroupExpanded(group)
+        <div className="flex-1 overflow-y-auto space-y-3 p-3">
+          {groupedTransactions.map((group) => {
+            const dailyTotal = getDailyTotal(group.transactions)
+            const isToday = group.label === 'Today'
+            const isExpanded = isGroupExpanded(group)
 
-          return (
-            <div key={group.date} className="space-y-1.5">
-              {/* Date separator */}
-              <div 
-                className="flex items-center gap-3 px-2 py-1.5 cursor-pointer hover:bg-slate-50 rounded-lg transition-colors select-none"
-                onClick={() => toggleGroup(group.date)}
-              >
-                <div className="flex items-center gap-2 flex-1 min-w-0">
-                  <Calendar className="w-3.5 h-3.5 text-slate-400 shrink-0" />
-                  <span className={`text-xs font-bold truncate ${
-                    isToday ? 'text-blue-600' : 'text-slate-500'
-                  }`}>
-                    {group.label}
-                  </span>
-                  {!isExpanded && (
-                    <span className="text-[10px] font-medium text-slate-400 shrink-0">
-                      ({group.transactions.length} txns)
+            return (
+              <div key={group.date} className="space-y-1.5">
+                <div
+                  className="flex items-center gap-3 px-2 py-1.5 cursor-pointer hover:bg-slate-50 rounded-lg transition-colors select-none"
+                  onClick={() => toggleGroup(group.date)}
+                >
+                  <div className="flex items-center gap-2 flex-1 min-w-0">
+                    <Calendar className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+                    <span
+                      className={`text-xs font-bold truncate ${
+                        isToday ? 'text-blue-600' : 'text-slate-500'
+                      }`}
+                    >
+                      {group.label}
                     </span>
-                  )}
-                </div>
-                <div className="flex items-center gap-2 shrink-0">
-                  <span className="text-[10px] font-medium text-slate-400">
-                    {formatMYR(dailyTotal)}
-                  </span>
-                  <button 
-                    className="w-6 h-6 flex items-center justify-center text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-lg transition-all"
-                    onClick={(e) => {
-                      e.stopPropagation()
-                      toggleGroup(group.date)
-                    }}
-                  >
-                    {isExpanded ? (
-                      <ChevronUp className="w-3.5 h-3.5" />
-                    ) : (
-                      <ChevronDown className="w-3.5 h-3.5" />
+                    {!isExpanded && (
+                      <span className="text-[10px] font-medium text-slate-400 shrink-0">
+                        ({group.transactions.length} txns)
+                      </span>
                     )}
-                  </button>
+                  </div>
+                  <div className="flex items-center gap-2 shrink-0">
+                    <span className="text-[10px] font-medium text-slate-400">
+                      {formatMYR(dailyTotal)}
+                    </span>
+                    <button
+                      className="w-11 h-11 flex items-center justify-center text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-lg transition-all"
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        toggleGroup(group.date)
+                      }}
+                      aria-label={isExpanded ? 'Collapse' : 'Expand'}
+                      aria-expanded={isExpanded}
+                    >
+                      {isExpanded ? (
+                        <ChevronUp className="w-3.5 h-3.5" />
+                      ) : (
+                        <ChevronDown className="w-3.5 h-3.5" />
+                      )}
+                    </button>
+                  </div>
                 </div>
-              </div>
 
-              {/* Transactions for this date */}
-              {isExpanded && (
-                <div className="space-y-1.5 animate-fadeIn">
-                  {group.transactions.map((tx, index) => {
-                    const isIncome = !tx.source_account_id && tx.destination_account_id
-                    const isTransfer = tx.source_account_id && tx.destination_account_id
-                    const isEditingThis = isEditing(tx.id)
-                    const globalIndex = recentTransactions.findIndex(t => t.id === tx.id)
+                {isExpanded && (
+                  <div className="space-y-1.5 animate-fadeIn">
+                    {group.transactions.map((tx) => {
+                      const isIncome = !tx.source_account_id && tx.destination_account_id
+                      const isTransfer = tx.source_account_id && tx.destination_account_id
+                      const isEditingThis = isEditing(tx.id)
+                      const globalIndex = recentTransactions.findIndex((t) => t.id === tx.id)
 
-                    const editIsIncome = !editData.source_account_id && editData.destination_account_id
-                    const editIsExpense = editData.source_account_id && !editData.destination_account_id
-                    const editIsTransfer = editData.source_account_id && editData.destination_account_id
+                      const editIsIncome =
+                        !editData.source_account_id && editData.destination_account_id
+                      const editIsExpense =
+                        editData.source_account_id && !editData.destination_account_id
+                      const editIsTransfer =
+                        editData.source_account_id && editData.destination_account_id
 
-                    return (
-                      <div key={tx.id} className="relative overflow-hidden rounded-xl border border-slate-100 bg-white">
-                        
-                        {/* Inline editor */}
-                        <div className={`grid transition-all duration-300 ease-in-out ${isEditingThis ? 'grid-rows-[1fr] opacity-100 bg-slate-50/50 p-4' : 'grid-rows-[0fr] opacity-0'}`}>
-                          <div className="overflow-hidden space-y-4">
-                            <div className="flex justify-between items-center border-b border-slate-100 pb-2">
-                              <span className="text-[11px] font-bold uppercase tracking-wider text-slate-400 flex items-center gap-1.5">✏️ Editing Mode</span>
-                              <button 
-                                onClick={cancelEdit}
-                                className="w-6 h-6 flex items-center justify-center text-slate-400 hover:text-slate-600 rounded-lg"
-                              >
-                                <X className="w-3.5 h-3.5" />
-                              </button>
-                            </div>
-                            
-                            <div>
-                              <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1.5">Description</label>
-                              <input
-                                type="text"
-                                value={editData.description}
-                                onChange={(e) => {
-                                  setEditData({ ...editData, description: e.target.value })
-                                  setEditErrors({ ...editErrors, description: '' })
-                                }}
-                                onKeyDown={handleKeyDown}
-                                className={`w-full bg-white border ${
-                                  editErrors.description ? 'border-red-300 focus:ring-red-500' : 'border-slate-200 focus:ring-slate-900'
-                                } rounded-xl px-3 py-2.5 text-sm outline-none focus:ring-2 focus:border-transparent transition-all`}
-                                placeholder="Description"
-                              />
-                              {editErrors.description && (
-                                <p className="mt-1 text-[11px] text-red-500 font-medium">{editErrors.description}</p>
-                              )}
-                            </div>
-
-                            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                              <div>
-                                <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1.5">Date</label>
-                                <input
-                                  type="date"
-                                  value={editData.transaction_date}
-                                  onChange={(e) => setEditData({ ...editData, transaction_date: e.target.value })}
-                                  onKeyDown={handleKeyDown}
-                                  className="w-full bg-white border border-slate-200 focus:ring-slate-900 rounded-xl px-3 py-2.5 text-sm outline-none focus:ring-2 focus:border-transparent transition-all"
-                                />
-                              </div>
-
-                              <div>
-                                <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1.5">Amount (RM)</label>
-                                <input
-                                  type="number"
-                                  step="0.01"
-                                  min="0.01"
-                                  value={editData.amount}
-                                  onChange={(e) => {
-                                    setEditData({ ...editData, amount: e.target.value })
-                                    setEditErrors({ ...editErrors, amount: '' })
-                                  }}
-                                  onKeyDown={handleKeyDown}
-                                  className={`w-full bg-white border ${
-                                    editErrors.amount ? 'border-red-300 focus:ring-red-500' : 'border-slate-200 focus:ring-slate-900'
-                                  } rounded-xl px-3 py-2.5 text-sm outline-none focus:ring-2 focus:border-transparent transition-all`}
-                                  placeholder="0.00"
-                                />
-                                {editErrors.amount && (
-                                  <p className="mt-1 text-[11px] text-red-500 font-medium">{editErrors.amount}</p>
-                                )}
-                              </div>
-
-                              <div>
-                                <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1.5">Category</label>
-                                <select
-                                  value={editData.category}
-                                  onChange={(e) => {
-                                    setEditData({ ...editData, category: e.target.value })
-                                    setEditErrors({ ...editErrors, category: '' })
-                                  }}
-                                  onKeyDown={handleKeyDown}
-                                  className={`w-full bg-white border ${
-                                    editErrors.category ? 'border-red-300 focus:ring-red-500' : 'border-slate-200 focus:ring-slate-900'
-                                  } rounded-xl px-3 py-2.5 text-sm outline-none focus:ring-2 focus:border-transparent transition-all`}
-                                >
-                                  <option value="">Select category...</option>
-                                  {mainCategories.map(main => (
-                                    <optgroup key={main.id} label={main.name}>
-                                      {getSubCategories(main.id).map(sub => (
-                                        <option key={sub.id} value={`${main.name} > ${sub.name}`}>{sub.name}</option>
-                                      ))}
-                                      {getSubCategories(main.id).length === 0 && (
-                                        <option value={main.name}>{main.name}</option>
-                                      )}
-                                    </optgroup>
-                                  ))}
-                                </select>
-                                {editErrors.category && (
-                                  <p className="mt-1 text-[11px] text-red-500 font-medium">{editErrors.category}</p>
-                                )}
-                              </div>
-                            </div>
-
-                            <div>
-                              <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1.5">Transaction Type</label>
-                              <div className="flex gap-1.5 bg-slate-200/50 p-1 rounded-xl border border-slate-100">
-                                <button
-                                  type="button"
-                                  onClick={() => {
-                                    setEditData({ 
-                                      ...editData, 
-                                      source_account_id: accounts[0]?.id || '',
-                                      destination_account_id: ''
-                                    })
-                                    setEditErrors({ ...editErrors, accounts: '' })
-                                  }}
-                                  className={`flex-1 py-2 text-xs font-bold rounded-lg transition-all ${
-                                    editIsExpense 
-                                      ? 'bg-red-50 text-red-700 font-bold border border-red-200' 
-                                      : 'text-slate-500 hover:text-slate-700'
-                                  }`}
-                                >
-                                  Expense
-                                </button>
-                                <button
-                                  type="button"
-                                  onClick={() => {
-                                    setEditData({ 
-                                      ...editData, 
-                                      source_account_id: '',
-                                      destination_account_id: accounts[0]?.id || ''
-                                    })
-                                    setEditErrors({ ...editErrors, accounts: '' })
-                                  }}
-                                  className={`flex-1 py-2 text-xs font-bold rounded-lg transition-all ${
-                                    editIsIncome 
-                                      ? 'bg-emerald-50 text-emerald-700 font-bold border border-emerald-200' 
-                                      : 'text-slate-500 hover:text-slate-700'
-                                  }`}
-                                >
-                                  Income
-                                </button>
-                                <button
-                                  type="button"
-                                  onClick={() => {
-                                    setEditData({ 
-                                      ...editData, 
-                                      source_account_id: accounts[0]?.id || '',
-                                      destination_account_id: accounts[1]?.id || accounts[0]?.id || ''
-                                    })
-                                    setEditErrors({ ...editErrors, accounts: '' })
-                                  }}
-                                  className={`flex-1 py-2 text-xs font-bold rounded-lg transition-all ${
-                                    editIsTransfer 
-                                      ? 'bg-blue-50 text-blue-700 font-bold border border-blue-200' 
-                                      : 'text-slate-500 hover:text-slate-700'
-                                  }`}
-                                >
-                                  Transfer
-                                </button>
-                              </div>
-                            </div>
-
-                            <div className="grid grid-cols-2 gap-3">
-                              {editIsExpense || editIsTransfer ? (
-                                <div>
-                                  <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1.5">
-                                    {editIsExpense ? 'Pay From' : 'From'}
-                                  </label>
-                                  <select
-                                    value={editData.source_account_id}
-                                    onChange={(e) => {
-                                      setEditData({ ...editData, source_account_id: e.target.value })
-                                      setEditErrors({ ...editErrors, accounts: '' })
-                                    }}
-                                    className="w-full bg-white border border-slate-200 focus:ring-slate-900 rounded-xl px-3 py-2.5 text-sm outline-none focus:ring-2 focus:border-transparent transition-all"
-                                  >
-                                    {accounts.map(a => (
-                                      <option key={a.id} value={a.id}>{a.account_name}</option>
-                                    ))}
-                                  </select>
-                                </div>
-                              ) : (
-                                <div>
-                                  <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1.5">Source</label>
-                                  <select
-                                    value=""
-                                    disabled
-                                    className="w-full bg-slate-100 border border-slate-200 rounded-xl px-3 py-2.5 text-sm text-slate-400 cursor-not-allowed"
-                                  >
-                                    <option value="">None Required</option>
-                                  </select>
-                                </div>
-                              )}
-
-                              {editIsIncome || editIsTransfer ? (
-                                <div>
-                                  <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1.5">
-                                    {editIsIncome ? 'Deposit To' : 'To'}
-                                  </label>
-                                  <select
-                                    value={editData.destination_account_id}
-                                    onChange={(e) => {
-                                      setEditData({ ...editData, destination_account_id: e.target.value })
-                                      setEditErrors({ ...editErrors, accounts: '' })
-                                    }}
-                                    className="w-full bg-white border border-slate-200 focus:ring-slate-900 rounded-xl px-3 py-2.5 text-sm outline-none focus:ring-2 focus:border-transparent transition-all"
-                                  >
-                                    {accounts.map(a => (
-                                      <option key={a.id} value={a.id}>{a.account_name}</option>
-                                    ))}
-                                  </select>
-                                </div>
-                              ) : (
-                                <div>
-                                  <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1.5">Destination</label>
-                                  <select
-                                    value=""
-                                    disabled
-                                    className="w-full bg-slate-100 border border-slate-200 rounded-xl px-3 py-2.5 text-sm text-slate-400 cursor-not-allowed"
-                                  >
-                                    <option value="">None Required</option>
-                                  </select>
-                                </div>
-                              )}
-                            </div>
-
-                            {editErrors.accounts && (
-                              <p className="text-[11px] text-red-500 font-medium">{editErrors.accounts}</p>
-                            )}
-
-                            <div className="flex gap-2 justify-end pt-2 border-t border-slate-100">
-                              <button
-                                type="button"
-                                onClick={cancelEdit}
-                                className="px-4 py-2.5 text-xs font-semibold text-slate-500 hover:bg-slate-100 rounded-xl transition-all"
-                              >
-                                Cancel
-                              </button>
-                              <button
-                                type="button"
-                                onClick={saveEdit}
-                                className="px-4 py-2.5 text-xs font-bold bg-slate-900 hover:bg-slate-800 text-white rounded-xl transition-all flex items-center justify-center gap-1.5 shadow-md"
-                              >
-                                <Save className="w-3.5 h-3.5" /> Save Changes
-                              </button>
-                            </div>
-                          </div>
-                        </div>
-
-                        {/* Standard row */}
-                        <div 
-                          id={`tx-${globalIndex}`}
-                          className={`flex items-center justify-between p-3.5 hover:bg-slate-50/60 transition-all duration-200 border-b border-slate-50 group last:border-none ${isEditingThis ? 'hidden' : ''}`}
+                      return (
+                        <div
+                          key={tx.id}
+                          className="relative overflow-hidden rounded-xl border border-slate-100 bg-white"
                         >
-                          <div className="flex items-center gap-3.5 min-w-0 flex-1">
-                            <div className={`w-8 h-8 flex items-center justify-center rounded-xl shrink-0 ${
-                              isIncome ? 'bg-emerald-50 text-emerald-600' : 
-                              isTransfer ? 'bg-blue-50 text-blue-600' : 'bg-slate-50 text-slate-600'
-                            }`}>
-                              {isIncome ? 
-                                <ArrowUpRight className="w-4 h-4" /> : 
-                                isTransfer ? 
-                                  <RefreshCw className="w-3.5 h-3.5" /> : 
-                                  <ArrowDownRight className="w-4 h-4" />
-                              }
-                            </div>
-                            <div className="min-w-0 flex-1">
-                              <p className="text-sm font-semibold text-slate-700 truncate">{tx.description}</p>
-                              <p className="text-xs text-slate-400">{tx.category || 'Uncategorized'}</p>
+                          {isEditingThis && (
+                            <div className="bg-slate-50/50 p-4 space-y-4 animate-fadeIn">
+                              <div className="flex justify-between items-center border-b border-slate-100 pb-2">
+                                <span className="text-[11px] font-bold uppercase tracking-wider text-slate-400">
+                                  Editing
+                                </span>
+                                <button
+                                  onClick={cancelEdit}
+                                  className="w-11 h-11 flex items-center justify-center text-slate-400 hover:text-slate-600 rounded-lg"
+                                  aria-label="Cancel editing"
+                                >
+                                  <X className="w-3.5 h-3.5" />
+                                </button>
+                              </div>
 
-                              {/* Account chips — icons removed */}
-                              <div className="flex items-center gap-1.5 mt-1 min-w-0">
-                                {isIncome && (
-                                  <>
-                                    <span className="text-[10px] font-bold text-slate-400 shrink-0">→</span>
-                                    {accountFor(tx.destination_account_id) ? (
-                                      <AccountCard
-                                        account={accountFor(tx.destination_account_id)}
-                                        size="chip"
-                                        showIcon={false}
-                                      />
-                                    ) : (
-                                      <span className="text-[10px] text-slate-400">Unknown</span>
-                                    )}
-                                  </>
-                                )}
-
-                                {isTransfer && (
-                                  <>
-                                    {accountFor(tx.source_account_id) ? (
-                                      <AccountCard
-                                        account={accountFor(tx.source_account_id)}
-                                        size="chip"
-                                        showIcon={false}
-                                      />
-                                    ) : (
-                                      <span className="text-[10px] text-slate-400">Unknown</span>
-                                    )}
-                                    <span className="text-[10px] font-bold text-slate-400 shrink-0">→</span>
-                                    {accountFor(tx.destination_account_id) ? (
-                                      <AccountCard
-                                        account={accountFor(tx.destination_account_id)}
-                                        size="chip"
-                                        showIcon={false}
-                                      />
-                                    ) : (
-                                      <span className="text-[10px] text-slate-400">Unknown</span>
-                                    )}
-                                  </>
-                                )}
-
-                                {!isIncome && !isTransfer && (
-                                  <>
-                                    <span className="text-[10px] font-bold text-slate-400 shrink-0">←</span>
-                                    {accountFor(tx.source_account_id) ? (
-                                      <AccountCard
-                                        account={accountFor(tx.source_account_id)}
-                                        size="chip"
-                                        showIcon={false}
-                                      />
-                                    ) : (
-                                      <span className="text-[10px] text-slate-400">Unknown</span>
-                                    )}
-                                  </>
+                              <div>
+                                <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1.5">
+                                  Description
+                                </label>
+                                <input
+                                  type="text"
+                                  value={editData.description}
+                                  onChange={(e) => {
+                                    setEditData({ ...editData, description: e.target.value })
+                                    setEditErrors({ ...editErrors, description: '' })
+                                  }}
+                                  onKeyDown={handleKeyDown}
+                                  className={`w-full bg-white border ${
+                                    editErrors.description
+                                      ? 'border-red-300 focus:ring-red-500'
+                                      : 'border-slate-200 focus:ring-slate-900'
+                                  } rounded-xl px-3 py-2.5 text-sm outline-none focus:ring-2 focus:border-transparent transition-all`}
+                                  placeholder="Description"
+                                />
+                                {editErrors.description && (
+                                  <p className="mt-1 text-[11px] text-red-500 font-medium">
+                                    {editErrors.description}
+                                  </p>
                                 )}
                               </div>
-                            </div>
-                          </div>
-                          <div className="flex items-center gap-2.5 ml-2 shrink-0">
-                            <span className={`text-sm font-black whitespace-nowrap ${
-                              isIncome ? 'text-emerald-600' : 
-                              isTransfer ? 'text-slate-600' : 'text-slate-800'
-                            }`}>
-                              {isIncome ? '+' : (isTransfer ? '' : '-')}{formatMYR(tx.amount)}
-                            </span>
-                            
-                            <div className="flex items-center md:opacity-0 md:group-hover:opacity-100 focus-within:opacity-100 transition-opacity gap-0.5">
-                              <button 
-                                onClick={() => startEdit(tx)}
-                                className="w-7 h-7 flex items-center justify-center text-slate-400 hover:text-slate-700 hover:bg-slate-100 rounded-lg transition-all"
-                                title="Edit transaction"
-                              >
-                                <Edit2 className="w-3.5 h-3.5" />
-                              </button>
-                              <button 
-                                onClick={() => handleDeleteTransaction(tx.id, tx.description)}
-                                className="w-7 h-7 flex items-center justify-center text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-all"
-                                title="Delete transaction"
-                              >
-                                <Trash2 className="w-3.5 h-3.5" />
-                              </button>
-                            </div>
-                          </div>
-                        </div>
 
-                      </div>
-                    )
-                  })}
-                </div>
-              )}
-            </div>
-          )
-        })}
-      </div>
-    </section>
+                              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                                <div>
+                                  <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1.5">
+                                    Date
+                                  </label>
+                                  <input
+                                    type="date"
+                                    value={editData.transaction_date}
+                                    onChange={(e) =>
+                                      setEditData({ ...editData, transaction_date: e.target.value })
+                                    }
+                                    onKeyDown={handleKeyDown}
+                                    className="w-full bg-white border border-slate-200 focus:ring-slate-900 rounded-xl px-3 py-2.5 text-sm outline-none focus:ring-2 focus:border-transparent transition-all"
+                                  />
+                                </div>
+
+                                <div>
+                                  <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1.5">
+                                    Amount (RM)
+                                  </label>
+                                  <input
+                                    type="number"
+                                    step="0.01"
+                                    min="0.01"
+                                    value={editData.amount}
+                                    onChange={(e) => {
+                                      setEditData({ ...editData, amount: e.target.value })
+                                      setEditErrors({ ...editErrors, amount: '' })
+                                    }}
+                                    onKeyDown={handleKeyDown}
+                                    className={`w-full bg-white border ${
+                                      editErrors.amount
+                                        ? 'border-red-300 focus:ring-red-500'
+                                        : 'border-slate-200 focus:ring-slate-900'
+                                    } rounded-xl px-3 py-2.5 text-sm outline-none focus:ring-2 focus:border-transparent transition-all`}
+                                    placeholder="0.00"
+                                  />
+                                  {editErrors.amount && (
+                                    <p className="mt-1 text-[11px] text-red-500 font-medium">
+                                      {editErrors.amount}
+                                    </p>
+                                  )}
+                                </div>
+
+                                <div>
+                                  <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1.5">
+                                    Category
+                                  </label>
+                                  <select
+                                    value={editData.category}
+                                    onChange={(e) => {
+                                      setEditData({ ...editData, category: e.target.value })
+                                      setEditErrors({ ...editErrors, category: '' })
+                                    }}
+                                    onKeyDown={handleKeyDown}
+                                    className={`w-full bg-white border ${
+                                      editErrors.category
+                                        ? 'border-red-300 focus:ring-red-500'
+                                        : 'border-slate-200 focus:ring-slate-900'
+                                    } rounded-xl px-3 py-2.5 text-sm outline-none focus:ring-2 focus:border-transparent transition-all`}
+                                  >
+                                    <option value="">Select category...</option>
+                                    {mainCategories.map((main) => (
+                                      <optgroup key={main.id} label={main.name}>
+                                        {getSubCategories(main.id).map((sub) => (
+                                          <option
+                                            key={sub.id}
+                                            value={`${main.name} > ${sub.name}`}
+                                          >
+                                            {sub.name}
+                                          </option>
+                                        ))}
+                                        {getSubCategories(main.id).length === 0 && (
+                                          <option value={main.name}>{main.name}</option>
+                                        )}
+                                      </optgroup>
+                                    ))}
+                                  </select>
+                                  {editErrors.category && (
+                                    <p className="mt-1 text-[11px] text-red-500 font-medium">
+                                      {editErrors.category}
+                                    </p>
+                                  )}
+                                </div>
+                              </div>
+
+                              <div>
+                                <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1.5">
+                                  Transaction Type
+                                </label>
+                                <div className="flex gap-1.5 bg-slate-200/50 p-1 rounded-xl border border-slate-100">
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      setEditData({
+                                        ...editData,
+                                        source_account_id: accounts[0]?.id || '',
+                                        destination_account_id: ''
+                                      })
+                                      setEditErrors({ ...editErrors, accounts: '' })
+                                    }}
+                                    className={`flex-1 py-2 text-xs font-bold rounded-lg transition-all ${
+                                      editIsExpense
+                                        ? 'bg-red-50 text-red-700 border border-red-200'
+                                        : 'text-slate-500 hover:text-slate-700'
+                                    }`}
+                                  >
+                                    Expense
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      setEditData({
+                                        ...editData,
+                                        source_account_id: '',
+                                        destination_account_id: accounts[0]?.id || ''
+                                      })
+                                      setEditErrors({ ...editErrors, accounts: '' })
+                                    }}
+                                    className={`flex-1 py-2 text-xs font-bold rounded-lg transition-all ${
+                                      editIsIncome
+                                        ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
+                                        : 'text-slate-500 hover:text-slate-700'
+                                    }`}
+                                  >
+                                    Income
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      setEditData({
+                                        ...editData,
+                                        source_account_id: accounts[0]?.id || '',
+                                        destination_account_id:
+                                          accounts[1]?.id || accounts[0]?.id || ''
+                                      })
+                                      setEditErrors({ ...editErrors, accounts: '' })
+                                    }}
+                                    className={`flex-1 py-2 text-xs font-bold rounded-lg transition-all ${
+                                      editIsTransfer
+                                        ? 'bg-blue-50 text-blue-700 border border-blue-200'
+                                        : 'text-slate-500 hover:text-slate-700'
+                                    }`}
+                                  >
+                                    Transfer
+                                  </button>
+                                </div>
+                              </div>
+
+                              <div className="grid grid-cols-2 gap-3">
+                                {editIsExpense || editIsTransfer ? (
+                                  <div>
+                                    <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1.5">
+                                      {editIsExpense ? 'Pay From' : 'From'}
+                                    </label>
+                                    <select
+                                      value={editData.source_account_id}
+                                      onChange={(e) => {
+                                        setEditData({
+                                          ...editData,
+                                          source_account_id: e.target.value
+                                        })
+                                        setEditErrors({ ...editErrors, accounts: '' })
+                                      }}
+                                      className="w-full bg-white border border-slate-200 focus:ring-slate-900 rounded-xl px-3 py-2.5 text-sm outline-none focus:ring-2 focus:border-transparent transition-all"
+                                    >
+                                      {accounts.map((a) => (
+                                        <option key={a.id} value={a.id}>
+                                          {a.account_name}
+                                        </option>
+                                      ))}
+                                    </select>
+                                  </div>
+                                ) : (
+                                  <div>
+                                    <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1.5">
+                                      Source
+                                    </label>
+                                    <select
+                                      value=""
+                                      disabled
+                                      className="w-full bg-slate-100 border border-slate-200 rounded-xl px-3 py-2.5 text-sm text-slate-400 cursor-not-allowed"
+                                    >
+                                      <option value="">None Required</option>
+                                    </select>
+                                  </div>
+                                )}
+
+                                {editIsIncome || editIsTransfer ? (
+                                  <div>
+                                    <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1.5">
+                                      {editIsIncome ? 'Deposit To' : 'To'}
+                                    </label>
+                                    <select
+                                      value={editData.destination_account_id}
+                                      onChange={(e) => {
+                                        setEditData({
+                                          ...editData,
+                                          destination_account_id: e.target.value
+                                        })
+                                        setEditErrors({ ...editErrors, accounts: '' })
+                                      }}
+                                      className="w-full bg-white border border-slate-200 focus:ring-slate-900 rounded-xl px-3 py-2.5 text-sm outline-none focus:ring-2 focus:border-transparent transition-all"
+                                    >
+                                      {accounts.map((a) => (
+                                        <option key={a.id} value={a.id}>
+                                          {a.account_name}
+                                        </option>
+                                      ))}
+                                    </select>
+                                  </div>
+                                ) : (
+                                  <div>
+                                    <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1.5">
+                                      Destination
+                                    </label>
+                                    <select
+                                      value=""
+                                      disabled
+                                      className="w-full bg-slate-100 border border-slate-200 rounded-xl px-3 py-2.5 text-sm text-slate-400 cursor-not-allowed"
+                                    >
+                                      <option value="">None Required</option>
+                                    </select>
+                                  </div>
+                                )}
+                              </div>
+
+                              {editErrors.accounts && (
+                                <p className="text-[11px] text-red-500 font-medium">
+                                  {editErrors.accounts}
+                                </p>
+                              )}
+
+                              <div className="flex gap-2 justify-end pt-2 border-t border-slate-100">
+                                <button
+                                  type="button"
+                                  onClick={cancelEdit}
+                                  className="px-4 py-2.5 text-xs font-semibold text-slate-500 hover:bg-slate-100 rounded-xl transition-all"
+                                  style={{ minHeight: 44 }}
+                                >
+                                  Cancel
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={saveEdit}
+                                  className="px-4 py-2.5 text-xs font-bold bg-slate-900 hover:bg-slate-800 text-white rounded-xl transition-all flex items-center justify-center gap-1.5 shadow-md"
+                                  style={{ minHeight: 44 }}
+                                >
+                                  <Save className="w-3.5 h-3.5" /> Save Changes
+                                </button>
+                              </div>
+                            </div>
+                          )}
+
+                          {!isEditingThis && (
+                            <div
+                              id={`tx-${globalIndex}`}
+                              className="flex items-center justify-between p-3.5 hover:bg-slate-50/60 transition-all duration-200 border-b border-slate-50 group last:border-none"
+                            >
+                              <div className="flex items-center gap-3.5 min-w-0 flex-1">
+                                <div
+                                  className={`w-8 h-8 flex items-center justify-center rounded-xl shrink-0 ${
+                                    isIncome
+                                      ? 'bg-emerald-50 text-emerald-600'
+                                      : isTransfer
+                                        ? 'bg-blue-50 text-blue-600'
+                                        : 'bg-slate-50 text-slate-600'
+                                  }`}
+                                >
+                                  {isIncome ? (
+                                    <ArrowUpRight className="w-4 h-4" />
+                                  ) : isTransfer ? (
+                                    <RefreshCw className="w-3.5 h-3.5" />
+                                  ) : (
+                                    <ArrowDownRight className="w-4 h-4" />
+                                  )}
+                                </div>
+                                <div className="min-w-0 flex-1">
+                                  <p className="text-sm font-semibold text-slate-700 truncate">
+                                    {tx.description}
+                                  </p>
+                                  <p className="text-xs text-slate-400">
+                                    {tx.category || 'Uncategorized'}
+                                  </p>
+
+                                  <div className="flex items-center gap-1.5 mt-1 min-w-0">
+                                    {isIncome && (
+                                      <>
+                                        <span className="text-[10px] font-bold text-slate-400 shrink-0">
+                                          →
+                                        </span>
+                                        {accountFor(tx.destination_account_id) ? (
+                                          <AccountCard
+                                            account={accountFor(tx.destination_account_id)}
+                                            size="chip"
+                                            showIcon={false}
+                                          />
+                                        ) : (
+                                          <span className="text-[10px] text-slate-400">
+                                            Unknown
+                                          </span>
+                                        )}
+                                      </>
+                                    )}
+
+                                    {isTransfer && (
+                                      <>
+                                        {accountFor(tx.source_account_id) ? (
+                                          <AccountCard
+                                            account={accountFor(tx.source_account_id)}
+                                            size="chip"
+                                            showIcon={false}
+                                          />
+                                        ) : (
+                                          <span className="text-[10px] text-slate-400">
+                                            Unknown
+                                          </span>
+                                        )}
+                                        <span className="text-[10px] font-bold text-slate-400 shrink-0">
+                                          →
+                                        </span>
+                                        {accountFor(tx.destination_account_id) ? (
+                                          <AccountCard
+                                            account={accountFor(tx.destination_account_id)}
+                                            size="chip"
+                                            showIcon={false}
+                                          />
+                                        ) : (
+                                          <span className="text-[10px] text-slate-400">
+                                            Unknown
+                                          </span>
+                                        )}
+                                      </>
+                                    )}
+
+                                    {!isIncome && !isTransfer && (
+                                      <>
+                                        <span className="text-[10px] font-bold text-slate-400 shrink-0">
+                                          ←
+                                        </span>
+                                        {accountFor(tx.source_account_id) ? (
+                                          <AccountCard
+                                            account={accountFor(tx.source_account_id)}
+                                            size="chip"
+                                            showIcon={false}
+                                          />
+                                        ) : (
+                                          <span className="text-[10px] text-slate-400">
+                                            Unknown
+                                          </span>
+                                        )}
+                                      </>
+                                    )}
+                                  </div>
+                                </div>
+                              </div>
+                              <div className="flex items-center gap-2.5 ml-2 shrink-0">
+                                <span
+                                  className={`text-sm font-black whitespace-nowrap ${
+                                    isIncome
+                                      ? 'text-emerald-600'
+                                      : isTransfer
+                                        ? 'text-slate-600'
+                                        : 'text-slate-800'
+                                  }`}
+                                >
+                                  {isIncome ? '+' : isTransfer ? '' : '-'}
+                                  {formatMYR(tx.amount)}
+                                </span>
+
+                                <div className="flex items-center md:opacity-0 md:group-hover:opacity-100 focus-within:opacity-100 transition-opacity gap-0.5">
+                                  <button
+                                    onClick={() => startEdit(tx)}
+                                    className="w-9 h-9 flex items-center justify-center text-slate-400 hover:text-slate-700 hover:bg-slate-100 rounded-lg transition-all"
+                                    title="Edit transaction"
+                                    aria-label="Edit transaction"
+                                  >
+                                    <Edit2 className="w-3.5 h-3.5" />
+                                  </button>
+                                  <button
+                                    onClick={() => setPendingDelete(tx)}
+                                    className="w-9 h-9 flex items-center justify-center text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-all"
+                                    title="Delete transaction"
+                                    aria-label="Delete transaction"
+                                  >
+                                    <Trash2 className="w-3.5 h-3.5" />
+                                  </button>
+                                </div>
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      )
+                    })}
+                  </div>
+                )}
+              </div>
+            )
+          })}
+        </div>
+      </section>
+
+      {pendingDelete && (
+        <ConfirmSheet
+          destructive
+          title={`Delete "${pendingDelete.description || 'transaction'}"?`}
+          message={(() => {
+            const isBill = !!(pendingDelete.metadata && pendingDelete.metadata.commitment_id)
+            return isBill
+              ? 'This is a bill payment. Deleting it marks the bill unpaid. The bill and its other payments stay intact.'
+              : "This can't be undone."
+          })()}
+          confirmLabel="Delete"
+          onConfirm={() => {
+            const tx = pendingDelete
+            setPendingDelete(null)
+            handleDeleteTransaction(tx.id)
+          }}
+          onCancel={() => setPendingDelete(null)}
+        />
+      )}
+    </>
   )
 }

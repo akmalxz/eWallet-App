@@ -1,17 +1,17 @@
 // src/components/analytics/PatternViews.jsx
 import { useState, useMemo } from 'react'
-import { BarChart3, Calendar, ChevronLeft, ChevronRight } from 'lucide-react'
+import { BarChart3, ChevronLeft, ChevronRight } from 'lucide-react'
 import { formatMYR } from '../../utils/formatters'
 import {
-  toMYDate, myWeekdayIndex, WEEKDAY_LABELS, daysInMonth, dayKey
+  toMYDate, myWeekdayIndex, WEEKDAY_LABELS, daysInMonth
 } from '../../utils/dateHelpers'
 import { COLORS, HEATMAP_LEVELS } from '../../utils/analyticsColors'
 import { EmptyState, TransactionDrilldown } from './AnalyticsShared'
 
 // ============================================================
-// 3a. Day-of-week bars
+// Day-of-week bars
 // ============================================================
-const DayOfWeekBars = ({ expenses, accounts }) => {
+const DayOfWeekBars = ({ expenses }) => {
   const [selectedDay, setSelectedDay] = useState(null)
 
   const data = useMemo(() => {
@@ -19,9 +19,8 @@ const DayOfWeekBars = ({ expenses, accounts }) => {
     const counts = [0, 0, 0, 0, 0, 0, 0]
     const dayOccurrences = [0, 0, 0, 0, 0, 0, 0]
 
-    // Count occurrences over the data range
     if (expenses.length === 0) return null
-    const dates = expenses.map(tx => toMYDate(tx.transaction_date).getTime())
+    const dates = expenses.map((tx) => toMYDate(tx.transaction_date).getTime())
     const minD = new Date(Math.min(...dates))
     const maxD = new Date(Math.max(...dates))
     const cursor = new Date(minD)
@@ -33,7 +32,7 @@ const DayOfWeekBars = ({ expenses, accounts }) => {
     const transactionsByDay = Array.from({ length: 7 }, () => [])
     const categoryByDay = Array.from({ length: 7 }, () => ({}))
 
-    expenses.forEach(tx => {
+    expenses.forEach((tx) => {
       const idx = myWeekdayIndex(tx.transaction_date)
       const amt = Number(tx.amount) || 0
       totals[idx] += amt
@@ -56,8 +55,6 @@ const DayOfWeekBars = ({ expenses, accounts }) => {
   }
 
   const maxAvg = Math.max(...data.averages, 1)
-  const selectedTx = selectedDay != null ? data.transactionsByDay[selectedDay] : []
-
   const topCategory = selectedDay != null
     ? Object.entries(data.categoryByDay[selectedDay]).sort((a, b) => b[1] - a[1])[0]
     : null
@@ -80,8 +77,10 @@ const DayOfWeekBars = ({ expenses, accounts }) => {
           return (
             <button
               key={i}
-              onClick={() => setSelectedDay(prev => (prev === i ? null : i))}
+              onClick={() => setSelectedDay((prev) => (prev === i ? null : i))}
               className="flex-1 flex flex-col items-center gap-1.5 group"
+              aria-label={`${WEEKDAY_LABELS[i]}, average ${formatMYR(avg)}`}
+              aria-pressed={isSelected}
             >
               <span className="text-[9px] font-bold text-slate-400">
                 {avg > 0 ? formatMYR(avg).replace('RM', '').trim() : ''}
@@ -122,7 +121,9 @@ const DayOfWeekBars = ({ expenses, accounts }) => {
             </div>
             <button
               onClick={() => setSelectedDay(null)}
-              className="text-xs font-bold text-slate-400 hover:text-slate-700 px-2"
+              className="text-xs font-bold text-slate-400 hover:text-slate-700 px-3 py-2 rounded-lg hover:bg-white transition-colors"
+              style={{ minHeight: 44 }}
+              aria-label="Close day details"
             >
               Close
             </button>
@@ -134,7 +135,7 @@ const DayOfWeekBars = ({ expenses, accounts }) => {
 }
 
 // ============================================================
-// 3b. Calendar heatmap
+// Calendar heatmap
 // ============================================================
 const CalendarHeatmap = ({ expenses, accounts }) => {
   const [cursor, setCursor] = useState(() => new Date())
@@ -145,10 +146,9 @@ const CalendarHeatmap = ({ expenses, accounts }) => {
     const monthIdx = cursor.getMonth()
     const dim = daysInMonth(year, monthIdx)
 
-    // Group expenses by day in this month
     const totalsByDay = {}
     const txByDay = {}
-    expenses.forEach(tx => {
+    expenses.forEach((tx) => {
       const d = toMYDate(tx.transaction_date)
       if (d.getUTCFullYear() === year && d.getUTCMonth() === monthIdx) {
         const key = d.getUTCDate()
@@ -158,8 +158,7 @@ const CalendarHeatmap = ({ expenses, accounts }) => {
       }
     })
 
-    // Compute quantile thresholds (excluding zeros)
-    const nonZero = Object.values(totalsByDay).filter(v => v > 0).sort((a, b) => a - b)
+    const nonZero = Object.values(totalsByDay).filter((v) => v > 0).sort((a, b) => a - b)
     const quantile = (q) => {
       if (nonZero.length === 0) return 0
       const idx = Math.floor(nonZero.length * q)
@@ -175,7 +174,6 @@ const CalendarHeatmap = ({ expenses, accounts }) => {
       return 4
     }
 
-    // Build grid: Mon-first weeks
     const firstDay = new Date(Date.UTC(year, monthIdx, 1))
     const firstDow = firstDay.getUTCDay()
     const leadingBlanks = firstDow === 0 ? 6 : firstDow - 1
@@ -198,10 +196,10 @@ const CalendarHeatmap = ({ expenses, accounts }) => {
     return { cells, monthName }
   }, [cursor, expenses])
 
-  const selectedCell = monthData.cells.find(c => c && c.day === selectedDayKey)
+  const selectedCell = monthData.cells.find((c) => c && c.day === selectedDayKey)
 
   const go = (delta) => {
-    setCursor(c => {
+    setCursor((c) => {
       const n = new Date(c)
       n.setMonth(n.getMonth() + delta)
       return n
@@ -219,14 +217,14 @@ const CalendarHeatmap = ({ expenses, accounts }) => {
         <div className="flex items-center gap-1">
           <button
             onClick={() => go(-1)}
-            className="p-1.5 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-colors"
+            className="w-11 h-11 flex items-center justify-center rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-colors"
             aria-label="Previous month"
           >
             <ChevronLeft className="w-4 h-4" />
           </button>
           <button
             onClick={() => go(1)}
-            className="p-1.5 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-colors"
+            className="w-11 h-11 flex items-center justify-center rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-colors"
             aria-label="Next month"
           >
             <ChevronRight className="w-4 h-4" />
@@ -234,16 +232,17 @@ const CalendarHeatmap = ({ expenses, accounts }) => {
         </div>
       </div>
 
-      {/* Weekday header */}
       <div className="grid grid-cols-7 gap-1 mb-1">
-        {WEEKDAY_LABELS.map(d => (
-          <span key={d} className="text-[9px] font-bold text-slate-400 text-center uppercase tracking-wider">
+        {WEEKDAY_LABELS.map((d) => (
+          <span
+            key={d}
+            className="text-[9px] font-bold text-slate-400 text-center uppercase tracking-wider"
+          >
             {d.slice(0, 1)}
           </span>
         ))}
       </div>
 
-      {/* Grid */}
       <div className="grid grid-cols-7 gap-1">
         {monthData.cells.map((cell, i) => {
           if (!cell) return <div key={`blank-${i}`} />
@@ -260,8 +259,10 @@ const CalendarHeatmap = ({ expenses, accounts }) => {
           return (
             <button
               key={cell.day}
-              onClick={() => !isFuture && setSelectedDayKey(prev => (prev === cell.day ? null : cell.day))}
+              onClick={() => !isFuture && setSelectedDayKey((prev) => (prev === cell.day ? null : cell.day))}
               disabled={isFuture}
+              aria-label={`Day ${cell.day}, ${formatMYR(cell.total)}`}
+              aria-pressed={isSelected}
               className={`aspect-square rounded-lg flex items-center justify-center text-[10px] font-bold transition-all ${
                 isSelected ? 'ring-2 ring-slate-800 ring-offset-1' : ''
               } ${isFuture ? 'opacity-30 cursor-not-allowed' : 'hover:scale-105 cursor-pointer'}`}
@@ -276,7 +277,6 @@ const CalendarHeatmap = ({ expenses, accounts }) => {
         })}
       </div>
 
-      {/* Legend */}
       <div className="flex items-center justify-end gap-1.5 mt-3">
         <span className="text-[9px] text-slate-400 font-semibold">Less</span>
         {HEATMAP_LEVELS.map((c, i) => (
@@ -285,7 +285,6 @@ const CalendarHeatmap = ({ expenses, accounts }) => {
         <span className="text-[9px] text-slate-400 font-semibold">More</span>
       </div>
 
-      {/* Drill-down */}
       {selectedCell && selectedCell.txns.length > 0 && (
         <TransactionDrilldown
           title={`Day ${selectedCell.day}`}
@@ -299,9 +298,6 @@ const CalendarHeatmap = ({ expenses, accounts }) => {
   )
 }
 
-// ============================================================
-// Combined export
-// ============================================================
 export const PatternViews = ({ expenses, accounts }) => (
   <div className="space-y-4">
     <DayOfWeekBars expenses={expenses} accounts={accounts} />

@@ -1,18 +1,17 @@
 // src/components/analytics/MainTrendChart.jsx
-import { useState, useMemo } from 'react'
-import { TrendingUp, Loader2 } from 'lucide-react'
+import { useState, useMemo, useEffect } from 'react'
+import { TrendingUp } from 'lucide-react'
 import {
   ResponsiveContainer, LineChart, Line, XAxis, YAxis,
   CartesianGrid, Tooltip as RechartsTooltip, ReferenceLine
 } from 'recharts'
 import { formatMYR } from '../../utils/formatters'
 import {
-  toMYDate, startOfWeekMY, monthKey, dayKey
+  toMYDate, startOfWeekMY, monthKey
 } from '../../utils/dateHelpers'
 import { COLORS } from '../../utils/analyticsColors'
-import { ChartTooltip, TransactionDrilldown, EmptyState, ChartSkeleton } from './AnalyticsShared'
+import { ChartTooltip, TransactionDrilldown, EmptyState } from './AnalyticsShared'
 
-// Granularity defaults: daily for 3M, weekly for 6M/12M
 const defaultGranularity = (period) => (period === 3 ? 'daily' : 'weekly')
 
 const GRANULARITY_OPTIONS = [
@@ -25,17 +24,15 @@ export const MainTrendChart = ({ expenses, periodMonths, accounts = [] }) => {
   const [granularity, setGranularity] = useState(defaultGranularity(periodMonths))
   const [selectedBucketKey, setSelectedBucketKey] = useState(null)
 
-  // Reset granularity when period changes
-  useMemo(() => setGranularity(defaultGranularity(periodMonths)), [periodMonths])
+  // Reset granularity when the period changes. Was a useMemo side effect.
+  useEffect(() => {
+    setGranularity(defaultGranularity(periodMonths))
+  }, [periodMonths])
 
-  // ============================================================
-  // Build current period buckets + previous period buckets
-  // ============================================================
   const { currentBuckets, previousBuckets, peakBucket, avg, isEmpty } = useMemo(() => {
     const now = new Date()
     const nowMY = toMYDate(now)
 
-    // Determine bucket count + align by position, not date
     let bucketCount, bucketKeyFn, bucketLabelFn, bucketStartFn
 
     if (granularity === 'daily') {
@@ -51,7 +48,6 @@ export const MainTrendChart = ({ expenses, periodMonths, accounts = [] }) => {
       bucketCount = periodMonths * 4
       bucketStartFn = (offset) => {
         const d = new Date(Date.UTC(nowMY.getUTCFullYear(), nowMY.getUTCMonth(), nowMY.getUTCDate() - offset * 7))
-        // Snap to Monday
         const dow = d.getUTCDay()
         const diff = dow === 0 ? -6 : 1 - dow
         d.setUTCDate(d.getUTCDate() + diff)
@@ -61,7 +57,6 @@ export const MainTrendChart = ({ expenses, periodMonths, accounts = [] }) => {
       bucketLabelFn = (d) =>
         d.toLocaleDateString('en-MY', { day: 'numeric', month: 'short', timeZone: 'UTC' })
     } else {
-      // monthly
       bucketCount = periodMonths
       bucketStartFn = (offset) => {
         const d = new Date(Date.UTC(nowMY.getUTCFullYear(), nowMY.getUTCMonth() - offset, 1))
@@ -72,7 +67,6 @@ export const MainTrendChart = ({ expenses, periodMonths, accounts = [] }) => {
         d.toLocaleDateString('en-MY', { month: 'short', timeZone: 'UTC' })
     }
 
-    // Build current buckets (oldest to newest)
     const current = []
     for (let i = bucketCount - 1; i >= 0; i--) {
       const start = bucketStartFn(i)
@@ -85,7 +79,6 @@ export const MainTrendChart = ({ expenses, periodMonths, accounts = [] }) => {
       })
     }
 
-    // Build previous buckets (position-aligned)
     const previous = []
     for (let i = bucketCount - 1; i >= 0; i--) {
       const start = bucketStartFn(i + bucketCount)
@@ -97,18 +90,9 @@ export const MainTrendChart = ({ expenses, periodMonths, accounts = [] }) => {
       })
     }
 
-    // Fill current
-    const currentMap = Object.fromEntries(current.map(b => [b.key, b]))
-    const currentStartMs = current[0]?.startMY?.getTime() ?? 0
-    const previousStartMs = previous[0]
-      ? bucketStartFn(bucketCount * 2 - 1).getTime()
-      : 0
-
-    expenses.forEach(tx => {
+    expenses.forEach((tx) => {
       const txDate = new Date(tx.transaction_date)
-      const ms = txDate.getTime()
 
-      // Determine bucket
       const bucketIdx = (() => {
         if (granularity === 'daily') {
           const daysAgo = Math.floor(
@@ -117,9 +101,9 @@ export const MainTrendChart = ({ expenses, periodMonths, accounts = [] }) => {
           return bucketCount - 1 - daysAgo
         } else if (granularity === 'weekly') {
           const start = startOfWeekMY(txDate)
-          return current.findIndex(b => b.key === bucketKeyFn(toMYDate(start)))
+          return current.findIndex((b) => b.key === bucketKeyFn(toMYDate(start)))
         } else {
-          return current.findIndex(b => b.key === monthKey(txDate))
+          return current.findIndex((b) => b.key === monthKey(txDate))
         }
       })()
 
@@ -127,7 +111,6 @@ export const MainTrendChart = ({ expenses, periodMonths, accounts = [] }) => {
         current[bucketIdx].total += Number(tx.amount) || 0
         current[bucketIdx].transactions.push(tx)
       } else {
-        // Check previous period
         const pIdx = (() => {
           if (granularity === 'daily') {
             const daysAgo = Math.floor(
@@ -136,9 +119,9 @@ export const MainTrendChart = ({ expenses, periodMonths, accounts = [] }) => {
             return bucketCount * 2 - 1 - daysAgo
           } else if (granularity === 'weekly') {
             const start = startOfWeekMY(txDate)
-            return previous.findIndex(b => b.key === bucketKeyFn(toMYDate(start)))
+            return previous.findIndex((b) => b.key === bucketKeyFn(toMYDate(start)))
           } else {
-            return previous.findIndex(b => b.key === monthKey(txDate))
+            return previous.findIndex((b) => b.key === monthKey(txDate))
           }
         })()
         if (pIdx >= 0 && pIdx < previous.length) {
@@ -147,13 +130,12 @@ export const MainTrendChart = ({ expenses, periodMonths, accounts = [] }) => {
       }
     })
 
-    // Merge for chart
     const merged = current.map((b, i) => ({
       ...b,
       previousTotal: previous[i]?.total || 0
     }))
 
-    const nonZero = current.filter(b => b.total > 0)
+    const nonZero = current.filter((b) => b.total > 0)
     const isEmpty = nonZero.length === 0
 
     const peak = current.reduce(
@@ -175,14 +157,13 @@ export const MainTrendChart = ({ expenses, periodMonths, accounts = [] }) => {
   }, [expenses, periodMonths, granularity])
 
   const selectedBucket = selectedBucketKey
-    ? currentBuckets.find(b => b.key === selectedBucketKey)
+    ? currentBuckets.find((b) => b.key === selectedBucketKey)
     : null
 
-  const granularityIndex = GRANULARITY_OPTIONS.findIndex(o => o.id === granularity)
+  const granularityIndex = GRANULARITY_OPTIONS.findIndex((o) => o.id === granularity)
 
   return (
     <section className="bg-white/60 backdrop-blur-xl border border-white/40 rounded-3xl p-5 md:p-6 shadow-sm">
-      {/* Header */}
       <div className="flex flex-wrap items-start justify-between gap-3 mb-4">
         <div>
           <h2 className="text-sm font-bold text-slate-800">Spending Trend</h2>
@@ -194,9 +175,7 @@ export const MainTrendChart = ({ expenses, periodMonths, accounts = [] }) => {
           )}
         </div>
 
-        {/* Granularity toggle — sliding pill, snappy animation */}
-        <div className="relative flex items-center h-8 rounded-lg bg-slate-100/80 border border-slate-200/60 p-0.5">
-          {/* Sliding indicator */}
+        <div className="relative flex items-center h-11 rounded-lg bg-slate-100/80 border border-slate-200/60 p-0.5">
           <div
             className="absolute top-0.5 bottom-0.5 left-0.5 pointer-events-none transition-transform duration-300 ease-[cubic-bezier(0.4,0,0.2,1)]"
             style={{
@@ -207,16 +186,14 @@ export const MainTrendChart = ({ expenses, periodMonths, accounts = [] }) => {
             <div className="h-full w-full rounded-md bg-white shadow-[0_2px_6px_rgba(0,0,0,0.06),inset_0_1px_0_rgba(255,255,255,0.9)]" />
           </div>
 
-          {GRANULARITY_OPTIONS.map(opt => {
+          {GRANULARITY_OPTIONS.map((opt) => {
             const isActive = granularity === opt.id
             return (
               <button
                 key={opt.id}
                 onClick={() => setGranularity(opt.id)}
                 className={`relative z-10 flex-1 px-2.5 h-full rounded-md text-xs font-bold transition-colors duration-200 ${
-                  isActive
-                    ? 'text-slate-800'
-                    : 'text-slate-500 hover:text-slate-700'
+                  isActive ? 'text-slate-800' : 'text-slate-500 hover:text-slate-700'
                 }`}
               >
                 {opt.label}
@@ -240,7 +217,7 @@ export const MainTrendChart = ({ expenses, periodMonths, accounts = [] }) => {
             onClick={(e) => {
               if (e && e.activePayload && e.activePayload.length) {
                 const key = e.activePayload[0].payload.key
-                setSelectedBucketKey(prev => (prev === key ? null : key))
+                setSelectedBucketKey((prev) => (prev === key ? null : key))
               }
             }}
           >
@@ -278,7 +255,6 @@ export const MainTrendChart = ({ expenses, periodMonths, accounts = [] }) => {
               cursor={{ stroke: '#cbd5e1', strokeWidth: 1, strokeDasharray: '3 3' }}
             />
 
-            {/* Average line */}
             {avg > 0 && (
               <ReferenceLine
                 y={avg}
@@ -294,7 +270,6 @@ export const MainTrendChart = ({ expenses, periodMonths, accounts = [] }) => {
               />
             )}
 
-            {/* Previous period */}
             <Line
               type="monotone"
               dataKey="previousTotal"
@@ -305,7 +280,6 @@ export const MainTrendChart = ({ expenses, periodMonths, accounts = [] }) => {
               activeDot={false}
             />
 
-            {/* Current series */}
             <Line
               type="monotone"
               dataKey="total"
@@ -334,12 +308,10 @@ export const MainTrendChart = ({ expenses, periodMonths, accounts = [] }) => {
         </ResponsiveContainer>
       )}
 
-      {/* Drill-down panel */}
       {selectedBucket && (
         <TransactionDrilldown
           title={selectedBucket.label}
           total={selectedBucket.total}
-          buckets={currentBuckets}
           transactions={selectedBucket.transactions}
           accounts={accounts}
           onClose={() => setSelectedBucketKey(null)}

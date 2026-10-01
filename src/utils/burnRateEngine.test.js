@@ -5,6 +5,7 @@ import {
   isCommitmentPayment,
   isRealExpense
 } from './burnRateEngine'
+import { computeCommitmentSchedule } from './commitmentSchedule'
 import {
   nextPayday,
   lastWorkingDayOfMonth,
@@ -37,14 +38,28 @@ const billTx = (amount, date, account = 'acc-a') =>
     metadata: { commitment_id: 'some-id' }
   })
 
-const commitment = (amount, dueDay, account = 'acc-a', lastPaid = null) => ({
-  id: `c-${Math.random()}`,
+// 5th arg `overrides` lets individual tests pin `created_at` so the
+// 3-month carry-over window doesn't inflate their arithmetic.
+const commitment = (amount, dueDay, account = 'acc-a', lastPaid = null, overrides = {}) => ({
+  id: `c-${Math.random().toString(36).slice(2, 8)}`,
   name: 'Bill',
   amount,
   due_day_of_month: dueDay,
   account_id: account,
   is_active: true,
-  last_paid: lastPaid
+  created_at: new Date(Date.UTC(2025, 0, 1)).toISOString(),
+  last_paid: lastPaid,
+  ...overrides
+})
+
+const paid = (commitmentId, year, month) => ({
+  id: `p-${commitmentId}-${year}-${month}`,
+  commitment_id: commitmentId,
+  period_year: year,
+  period_month: month,
+  status: 'paid',
+  transaction_id: 'tx-1',
+  created_at: new Date().toISOString()
 })
 
 // ---------------------------------------------------------------------------
@@ -52,19 +67,16 @@ const commitment = (amount, dueDay, account = 'acc-a', lastPaid = null) => ({
 // ---------------------------------------------------------------------------
 describe('Payday helpers', () => {
   it('returns the last Friday when the month ends on Saturday', () => {
-    // Oct 2026: Oct 31 is Saturday → payday should be Fri Oct 30
     const payday = lastWorkingDayOfMonth(d(2026, 9, 15))
     expect(getDayOfMonthMY(payday)).toBe(30)
   })
 
   it('returns the last Friday when the month ends on Sunday', () => {
-    // May 2026: May 31 is Sunday → payday should be Fri May 29
     const payday = lastWorkingDayOfMonth(d(2026, 4, 15))
     expect(getDayOfMonthMY(payday)).toBe(29)
   })
 
   it('returns the last weekday when the month ends on a weekday', () => {
-    // Nov 2026: Nov 30 is Monday → payday should be Mon Nov 30
     const payday = lastWorkingDayOfMonth(d(2026, 10, 15))
     expect(getDayOfMonthMY(payday)).toBe(30)
   })
@@ -77,7 +89,6 @@ describe('Payday helpers', () => {
   })
 })
 
-// Small helper so the rollover test reads clearly
 const toMYMonth = (input) => {
   const shifted = new Date(input.getTime() + 8 * 60 * 60 * 1000)
   return shifted.getUTCMonth()
@@ -120,6 +131,10 @@ describe('Classification', () => {
 // Phase 5 — Core scenarios
 // ---------------------------------------------------------------------------
 describe('computeBurnRate', () => {
+  // Pin the creation to the first of the current month so the 3-month
+  // carry-over window produces exactly one bill period in each test.
+  const THIS_MONTH_START = d(2026, 9, 1).toISOString()
+
   it('handles no data — empty expenses and no commitments', () => {
     const result = computeBurnRate({
       accounts: [ACC_A],
@@ -138,7 +153,9 @@ describe('computeBurnRate', () => {
     const result = computeBurnRate({
       accounts: [ACC_A],
       expenses: [],
-      commitments: [commitment(100, 20)],
+      commitments: [
+        commitment(100, 20, 'acc-a', null, { created_at: THIS_MONTH_START })
+      ],
       scopeAccountId: 'all',
       now: d(2026, 9, 15)
     })
@@ -153,8 +170,8 @@ describe('computeBurnRate', () => {
       accounts: [ACC_A],
       expenses: [everydayTx(300, now)],
       commitments: [
-        commitment(100, 20),
-        commitment(50, 5)
+        commitment(100, 20, 'acc-a', null, { created_at: THIS_MONTH_START }),
+        commitment(50, 5, 'acc-a', null, { created_at: THIS_MONTH_START })
       ],
       scopeAccountId: 'all',
       now
@@ -169,10 +186,13 @@ describe('computeBurnRate', () => {
     const result = computeBurnRate({
       accounts: [ACC_A],
       expenses: [everydayTx(100, now)],
-      commitments: [commitment(50, 31)],
+      commitments: [
+        commitment(50, 31, 'acc-a', null, { created_at: THIS_MONTH_START })
+      ],
       scopeAccountId: 'all',
       now
     })
+    // Oct 31 > Oct 30 payday → excluded.
     expect(result.billsBeforePayday).toBe(0)
   })
 
@@ -181,21 +201,24 @@ describe('computeBurnRate', () => {
     const result = computeBurnRate({
       accounts: [ACC_A],
       expenses: [everydayTx(100, now)],
-      commitments: [commitment(50, 30)],
+      commitments: [
+        commitment(50, 30, 'acc-a', null, { created_at: THIS_MONTH_START })
+      ],
       scopeAccountId: 'all',
       now
     })
+    // Oct 30 == payday → included.
     expect(result.billsBeforePayday).toBe(50)
   })
 
   it('excludes a bill already paid this month', () => {
     const now = d(2026, 9, 15)
+    const c1 = commitment(50, 20, 'acc-a', null, { created_at: THIS_MONTH_START })
     const result = computeBurnRate({
       accounts: [ACC_A],
       expenses: [everydayTx(100, now)],
-      commitments: [
-        commitment(50, 20, 'acc-a', d(2026, 9, 20).toISOString())
-      ],
+      commitments: [c1],
+      payments: [paid(c1.id, 2026, 10)],
       scopeAccountId: 'all',
       now
     })
@@ -203,15 +226,21 @@ describe('computeBurnRate', () => {
   })
 
   it('clamps a bill due on the 31st in February', () => {
-    const now = d(2026, 1, 15)
+    // Feb 2025 — Feb 28 2025 is a Friday, so payday is Feb 28. A bill due on
+    // day 31 clamps to Feb 28, which lands exactly on payday and is included.
+    const now = d(2025, 1, 15)  // Feb 15 2025
     const result = computeBurnRate({
       accounts: [ACC_A],
       expenses: [everydayTx(100, now)],
-      commitments: [commitment(50, 31)],
+      commitments: [
+        commitment(50, 31, 'acc-a', null, {
+          created_at: d(2025, 1, 1).toISOString()
+        })
+      ],
       scopeAccountId: 'all',
       now
     })
-    expect(result.billsBeforePayday).toBe(0)
+    expect(result.billsBeforePayday).toBe(50)
   })
 
   it('flags bills_exceed_balance when freeMoney is negative', () => {
@@ -219,7 +248,9 @@ describe('computeBurnRate', () => {
     const result = computeBurnRate({
       accounts: [{ ...ACC_A, balance: 50 }],
       expenses: [everydayTx(100, now)],
-      commitments: [commitment(200, 20)],
+      commitments: [
+        commitment(200, 20, 'acc-a', null, { created_at: THIS_MONTH_START })
+      ],
       scopeAccountId: 'all',
       now
     })
@@ -303,7 +334,6 @@ describe('computeBurnRate', () => {
   })
 
   it('does not flag at_risk when runway equals daysToPayday exactly', () => {
-    const now = d(2026, 9, 1)
     const expenses = Array.from({ length: 15 }, (_, i) =>
       everydayTx(1000 / 15, d(2026, 9, i + 1))
     )
@@ -315,5 +345,76 @@ describe('computeBurnRate', () => {
       now: d(2026, 9, 15)
     })
     expect(result.runsOutBeforePayday).toBe(false)
+  })
+})
+
+// ---------------------------------------------------------------------------
+// P3 consistency — schedule total must match engine's billsBeforePayday
+// ---------------------------------------------------------------------------
+describe('P3 consistency', () => {
+  it('radar total and burn rate bills match for identical data', () => {
+    const now = d(2026, 9, 15)
+    const payday = new Date(Date.UTC(2026, 9, 30) - (8 * 60 * 60 * 1000))  // Oct 30
+
+    const commitments = [
+      commitment(100, 20),
+      commitment(50, 5),
+      commitment(75, 31)
+    ]
+
+    const accounts = [{ ...ACC_A, balance: 1000 }]
+
+    const engine = computeBurnRate({
+      accounts,
+      expenses: [everydayTx(100, now)],
+      commitments,
+      payments: [],
+      scopeAccountId: 'all',
+      now
+    })
+
+    const schedule = computeCommitmentSchedule({
+      commitments,
+      payments: [],
+      accounts,
+      scopeAccountId: 'all',
+      now,
+      horizon: payday
+    })
+
+    expect(engine.billsBeforePayday).toBe(schedule.total)
+  })
+
+  it('both match when some bills are paid', () => {
+    const now = d(2026, 9, 15)
+    const payday = new Date(Date.UTC(2026, 9, 30) - (8 * 60 * 60 * 1000))
+
+    const commitments = [commitment(100, 20), commitment(50, 25)]
+
+    const payments = [
+      paid(commitments[0].id, 2026, 10)  // Oct payment for c1
+    ]
+
+    const accounts = [{ ...ACC_A, balance: 1000 }]
+
+    const engine = computeBurnRate({
+      accounts,
+      expenses: [everydayTx(100, now)],
+      commitments,
+      payments,
+      scopeAccountId: 'all',
+      now
+    })
+
+    const schedule = computeCommitmentSchedule({
+      commitments,
+      payments,
+      accounts,
+      scopeAccountId: 'all',
+      now,
+      horizon: payday
+    })
+
+    expect(engine.billsBeforePayday).toBe(schedule.total)
   })
 })

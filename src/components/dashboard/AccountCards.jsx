@@ -32,6 +32,7 @@ export const AccountCards = ({
         <button
           onClick={onAddAccount}
           className="inline-flex items-center justify-center gap-2 px-4 py-2 bg-slate-900 hover:bg-slate-800 text-white text-sm font-medium rounded-xl transition-colors"
+          style={{ minHeight: 44 }}
         >
           <Plus className="w-4 h-4" /> Add Account
         </button>
@@ -39,18 +40,18 @@ export const AccountCards = ({
     )
   }
 
-  const expandedIndex = accounts.findIndex(acc => acc.id === expandedId)
+  const expandedIndex = accounts.findIndex((acc) => acc.id === expandedId)
 
   return (
     <div className="relative">
-      {/* Header with balance toggle */}
       <div className="flex items-center justify-between mb-4">
         <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">
           {accounts.length} Accounts
         </span>
         <button
           onClick={toggleBalances}
-          className="flex items-center justify-center gap-1.5 text-xs text-slate-400 hover:text-slate-600 transition-colors p-1.5 rounded-lg hover:bg-slate-100"
+          className="flex items-center justify-center gap-1.5 text-xs text-slate-400 hover:text-slate-600 transition-colors px-3 py-2 rounded-lg hover:bg-slate-100"
+          style={{ minHeight: 44 }}
         >
           {showBalances ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
           <span>{showBalances ? 'Hide' : 'Show'} balances</span>
@@ -62,18 +63,14 @@ export const AccountCards = ({
           const isExpanded = expandedId === acc.id
           const isPinned = !!acc.is_pinned
           const classLabel =
-            classifications.find(c => c.key_name === acc.classification)?.label
-            || 'Account'
+            classifications.find((c) => c.key_name === acc.classification)?.label ||
+            'Account'
 
-          // Can only reorder within the same pin group
           const canMoveUp =
-            index > 0 &&
-            !!accounts[index - 1].is_pinned === isPinned
+            index > 0 && !!accounts[index - 1].is_pinned === isPinned
           const canMoveDown =
-            index < accounts.length - 1 &&
-            !!accounts[index + 1].is_pinned === isPinned
+            index < accounts.length - 1 && !!accounts[index + 1].is_pinned === isPinned
 
-          // Mobile wallet stack positioning
           let mobileTranslateY = index * -110
           if (expandedIndex !== -1 && index > expandedIndex) {
             mobileTranslateY += 85
@@ -86,9 +83,10 @@ export const AccountCards = ({
               style={{
                 transform: `translateY(${mobileTranslateY}px)`,
                 zIndex: isExpanded ? 30 : index + 1,
-                marginBottom: index === accounts.length - 1
-                  ? `${(accounts.length - 1) * -110 + (isExpanded ? 85 : 0)}px`
-                  : '0px'
+                marginBottom:
+                  index === accounts.length - 1
+                    ? `${(accounts.length - 1) * -110 + (isExpanded ? 85 : 0)}px`
+                    : '0px'
               }}
             >
               <AccountCard

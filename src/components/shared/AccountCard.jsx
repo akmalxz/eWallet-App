@@ -53,7 +53,7 @@ export const AccountCard = memo(function AccountCard({
   const firstLetter = (data.account_name || '?').trim().charAt(0).toUpperCase() || '?'
 
   // ------------------------------------------------------------
-  // DOT — legends and tight spaces
+  // DOT
   // ------------------------------------------------------------
   if (size === 'dot') {
     return (
@@ -66,8 +66,7 @@ export const AccountCard = memo(function AccountCard({
   }
 
   // ------------------------------------------------------------
-  // CHIP — inline labels for transaction rows, selectors, filters
-  // When `showIcon` is false, renders a plain colored pill with the name only.
+  // CHIP
   // ------------------------------------------------------------
   if (size === 'chip') {
     return (
@@ -97,7 +96,7 @@ export const AccountCard = memo(function AccountCard({
   }
 
   // ------------------------------------------------------------
-  // FULL CARD — dashboard, accounts view, editor preview
+  // FULL CARD
   // ------------------------------------------------------------
   const hasPattern = data.pattern && data.pattern !== 'none'
   const patternSvg = hasPattern ? getPatternSvg(data.pattern, theme.tone) : 'none'
@@ -115,7 +114,6 @@ export const AccountCard = memo(function AccountCard({
         borderColor: 'rgba(255,255,255,0.3)'
       }}
     >
-      {/* Depth overlay */}
       <div
         className="absolute inset-0 pointer-events-none"
         style={{
@@ -123,7 +121,6 @@ export const AccountCard = memo(function AccountCard({
         }}
       />
 
-      {/* Pattern overlay */}
       {hasPattern && (
         <div
           className="absolute inset-0 pointer-events-none"
@@ -137,7 +134,6 @@ export const AccountCard = memo(function AccountCard({
         />
       )}
 
-      {/* Main content */}
       <div className="relative p-4 md:p-5 flex-1 flex flex-col justify-between">
         <div>
           <div className="flex items-center justify-between mb-3">
@@ -168,13 +164,13 @@ export const AccountCard = memo(function AccountCard({
               {onTogglePin && (
                 <button
                   onClick={(e) => { e.stopPropagation(); onTogglePin(data) }}
-                  className={`flex items-center justify-center p-1.5 rounded-full transition-all duration-300 ${
+                  className={`flex items-center justify-center w-11 h-11 rounded-full transition-all duration-300 ${
                     isPinned ? 'ring-2 ring-white/60 shadow-lg' : ''
                   }`}
                   style={{
                     background: isPinned ? 'rgba(255,255,255,0.45)' : 'rgba(255,255,255,0.15)'
                   }}
-                  aria-label={isPinned ? 'Unpin account' : 'Pin account to top'}
+                  aria-label={isPinned ? `Unpin ${data.account_name}` : `Pin ${data.account_name} to top`}
                   title={isPinned ? 'Unpin' : 'Pin to top'}
                 >
                   <Pin
@@ -192,9 +188,10 @@ export const AccountCard = memo(function AccountCard({
               {onToggleExpand && (
                 <button
                   onClick={(e) => { e.stopPropagation(); onToggleExpand() }}
-                  className="flex items-center justify-center p-1.5 rounded-full transition-all duration-300"
+                  className="flex items-center justify-center w-11 h-11 rounded-full transition-all duration-300"
                   style={{ background: 'rgba(255,255,255,0.15)' }}
-                  aria-label={isExpanded ? 'Collapse card' : 'Expand card'}
+                  aria-label={isExpanded ? `Collapse ${data.account_name}` : `Expand ${data.account_name}`}
+                  aria-expanded={isExpanded}
                 >
                   {isExpanded ? (
                     <ChevronUp className="w-4 h-4" style={{ color: textColor }} />
@@ -217,7 +214,6 @@ export const AccountCard = memo(function AccountCard({
           </div>
         </div>
 
-        {/* Expanded panel */}
         {onToggleExpand && (
           <div className={`grid transition-all duration-300 ease-in-out ${isExpanded ? 'grid-rows-[1fr] opacity-100 mt-4' : 'grid-rows-[0fr] opacity-0 mt-0'}`}>
             <div className="overflow-hidden">
@@ -227,16 +223,16 @@ export const AccountCard = memo(function AccountCard({
               >
                 <div className="flex flex-col sm:flex-row gap-2">
                   <button
-                    className="flex-1 text-xs font-medium py-2.5 rounded-xl transition-colors flex items-center justify-center gap-1.5"
-                    style={{ background: 'rgba(255,255,255,0.22)', color: textColor }}
+                    className="flex-1 text-xs font-medium py-3 rounded-xl transition-colors flex items-center justify-center gap-1.5"
+                    style={{ background: 'rgba(255,255,255,0.22)', color: textColor, minHeight: 44 }}
                     onClick={(e) => { e.stopPropagation(); onLogTransaction?.(data) }}
                   >
                     <Plus className="w-3.5 h-3.5" />
                     Transaction
                   </button>
                   <button
-                    className="flex-1 text-xs font-medium py-2.5 rounded-xl transition-colors flex items-center justify-center gap-1.5"
-                    style={{ background: 'rgba(255,255,255,0.1)', color: textColor }}
+                    className="flex-1 text-xs font-medium py-3 rounded-xl transition-colors flex items-center justify-center gap-1.5"
+                    style={{ background: 'rgba(255,255,255,0.1)', color: textColor, minHeight: 44 }}
                     onClick={(e) => { e.stopPropagation(); onManageAccount?.(data) }}
                   >
                     <Settings className="w-3.5 h-3.5" />
@@ -249,13 +245,14 @@ export const AccountCard = memo(function AccountCard({
                     <button
                       onClick={(e) => { e.stopPropagation(); onMoveAccount(data.id, 'up') }}
                       disabled={!canMoveUp}
-                      className="flex items-center justify-center gap-1.5 py-2 rounded-xl text-[11px] font-semibold transition-colors"
+                      className="flex items-center justify-center gap-1.5 py-3 rounded-xl text-[11px] font-semibold transition-colors"
                       style={{
                         background: canMoveUp ? 'rgba(255,255,255,0.1)' : 'rgba(255,255,255,0.04)',
                         color: canMoveUp
                           ? textColor
                           : (theme.tone === 'light' ? 'rgba(255,255,255,0.3)' : 'rgba(15,23,42,0.3)'),
-                        cursor: canMoveUp ? 'pointer' : 'not-allowed'
+                        cursor: canMoveUp ? 'pointer' : 'not-allowed',
+                        minHeight: 44
                       }}
                       aria-label={canMoveUp ? `Move ${data.account_name} earlier` : 'Cannot move earlier'}
                     >
@@ -268,13 +265,14 @@ export const AccountCard = memo(function AccountCard({
                     <button
                       onClick={(e) => { e.stopPropagation(); onMoveAccount(data.id, 'down') }}
                       disabled={!canMoveDown}
-                      className="flex items-center justify-center gap-1.5 py-2 rounded-xl text-[11px] font-semibold transition-colors"
+                      className="flex items-center justify-center gap-1.5 py-3 rounded-xl text-[11px] font-semibold transition-colors"
                       style={{
                         background: canMoveDown ? 'rgba(255,255,255,0.1)' : 'rgba(255,255,255,0.04)',
                         color: canMoveDown
                           ? textColor
                           : (theme.tone === 'light' ? 'rgba(255,255,255,0.3)' : 'rgba(15,23,42,0.3)'),
-                        cursor: canMoveDown ? 'pointer' : 'not-allowed'
+                        cursor: canMoveDown ? 'pointer' : 'not-allowed',
+                        minHeight: 44
                       }}
                       aria-label={canMoveDown ? `Move ${data.account_name} later` : 'Cannot move later'}
                     >

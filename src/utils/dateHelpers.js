@@ -2,7 +2,7 @@
 export const MY_TZ_OFFSET_MS = 8 * 60 * 60 * 1000
 
 // ===========================================================================
-// Existing helpers
+// Core MY-aware helpers
 // ===========================================================================
 export const toMYDate = (input) => {
   const d = input instanceof Date ? input : new Date(input)
@@ -41,6 +41,10 @@ export const monthKey = (input) => {
 export const dayKey = (input) => {
   const d = toMYDate(input)
   return `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, '0')}-${String(d.getUTCDate()).padStart(2, '0')}`
+}
+
+export const myNoonISO = (dateString) => {
+  return new Date(`${dateString}T12:00:00+08:00`).toISOString()
 }
 
 export const monthLabel = (year, monthIdx) =>
@@ -83,45 +87,37 @@ export const getDayOfMonthMY = (input = new Date()) => {
   return toMYDate(input).getUTCDate()
 }
 
-export const getCommitmentTiming = (dueDay, now = new Date()) => {
-  const nowMY = toMYDate(now)
-  const year = nowMY.getUTCFullYear()
-  const monthIdx = nowMY.getUTCMonth()
-  const todayDate = nowMY.getUTCDate()
-  const lastDay = new Date(Date.UTC(year, monthIdx + 1, 0)).getUTCDate()
-  const effectiveDueDay = Math.min(dueDay, lastDay)
-
-  if (effectiveDueDay === todayDate) {
-    return { kind: 'today', days: 0, effectiveDueDay }
-  }
-  if (effectiveDueDay < todayDate) {
-    return { kind: 'overdue', days: todayDate - effectiveDueDay, effectiveDueDay }
-  }
-  return { kind: 'upcoming', days: effectiveDueDay - todayDate, effectiveDueDay }
+/**
+ * P3.7 — now uses its argument, not the current date.
+ * Returns a short month label from a MY-local date (e.g. "Oct").
+ */
+export const monthShortName = (input = new Date()) => {
+  const d = toMYDate(input)
+  return new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), 1)).toLocaleString(
+    'en-MY',
+    { month: 'short', timeZone: 'UTC' }
+  )
 }
 
-export const monthShortName = (now = new Date()) =>
-  new Date().toLocaleString('en-MY', { month: 'short' })
-
-
-// ===========================================================================
-// PHASE 1 — Burn rate date helpers
-// All take `now` as an input, so they're testable with fixed dates.
-// ===========================================================================
-
 /**
- * Is the given MY-local date a weekend (Sat or Sun)?
+ * Full month name and year (e.g. "September 2026").
  */
+export const monthFullName = (input = new Date()) => {
+  const d = toMYDate(input)
+  return new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), 1)).toLocaleString(
+    'en-MY',
+    { month: 'long', year: 'numeric', timeZone: 'UTC' }
+  )
+}
+
+// ===========================================================================
+// Payday helpers
+// ===========================================================================
 const isWeekendMY = (d) => {
-  const dow = toMYDate(d).getUTCDay() // 0=Sun, 6=Sat
+  const dow = toMYDate(d).getUTCDay()
   return dow === 0 || dow === 6
 }
 
-/**
- * Last working day of the month containing `input`.
- * Holiday hook: pass `isHoliday(date)` to skip specific dates.
- * By default, weekends are skipped and no holidays are excluded.
- */
 export const lastWorkingDayOfMonth = (input, isHoliday = () => false) => {
   const d = toMYDate(input)
   const year = d.getUTCFullYear()
@@ -136,15 +132,9 @@ export const lastWorkingDayOfMonth = (input, isHoliday = () => false) => {
     }
     day--
   }
-  // Fallback: shouldn't happen
   return new Date(Date.UTC(year, monthIdx, lastDay) - MY_TZ_OFFSET_MS)
 }
 
-/**
- * Next payday on or after `input`. Payday = last working day of the month.
- * If today is on or before this month's payday, returns this month's payday.
- * Otherwise returns next month's.
- */
 export const nextPayday = (input = new Date(), isHoliday = () => false) => {
   const d = toMYDate(input)
   const year = d.getUTCFullYear()
@@ -152,25 +142,16 @@ export const nextPayday = (input = new Date(), isHoliday = () => false) => {
   const todayKey = dayKey(d)
 
   const thisMonthPayday = lastWorkingDayOfMonth(input, isHoliday)
-  if (dayKey(thisMonthPayday) >= todayKey) {
-    return thisMonthPayday
-  }
+  if (dayKey(thisMonthPayday) >= todayKey) return thisMonthPayday
 
   const nextMonthSeed = new Date(Date.UTC(year, monthIdx + 1, 1))
   return lastWorkingDayOfMonth(nextMonthSeed, isHoliday)
 }
 
-/**
- * Is today the payday?
- */
 export const isTodayPayday = (input = new Date(), isHoliday = () => false) => {
   return dayKey(input) === dayKey(nextPayday(input, isHoliday))
 }
 
-/**
- * Whole calendar days between two MY-local dates. Ignores time of day.
- * Returns b - a. Positive if b is after a.
- */
 export const daysBetweenMY = (a, b) => {
   const aMY = toMYDate(a)
   const bMY = toMYDate(b)
@@ -187,66 +168,4 @@ export const dueDateForMonth = (dueDay, year, monthIdx) => {
   const lastDay = new Date(Date.UTC(year, monthIdx + 1, 0)).getUTCDate()
   const effectiveDay = Math.min(dueDay, lastDay)
   return new Date(Date.UTC(year, monthIdx, effectiveDay) - MY_TZ_OFFSET_MS)
-}
-
-/**
- * Next due occurrence on or after `now`.
- */
-export const nextDueOccurrence = (dueDay, now = new Date()) => {
-  const d = toMYDate(now)
-  const year = d.getUTCFullYear()
-  const monthIdx = d.getUTCMonth()
-
-  const thisMonthDue = dueDateForMonth(dueDay, year, monthIdx)
-  if (dayKey(thisMonthDue) >= dayKey(now)) {
-    return thisMonthDue
-  }
-  return dueDateForMonth(dueDay, year, monthIdx + 1)
-}
-
-/**
- * All unpaid occurrences between start-of-this-month and payday (inclusive
- * of both ends). Includes overdue occurrences from this month.
- *
- * Returns an array of Date objects, ordered from earliest to latest.
- */
-export const occurrencesUntil = (dueDay, now = new Date(), payday = null) => {
-  const paydayFinal = payday || nextPayday(now)
-  const paydayKey = dayKey(paydayFinal)
-  const d = toMYDate(now)
-  const year = d.getUTCFullYear()
-  const monthIdx = d.getUTCMonth()
-
-  const occurrences = []
-  // Check this month, next month, and one after (max safety)
-  for (let i = 0; i <= 2; i++) {
-    const occDate = dueDateForMonth(dueDay, year, monthIdx + i)
-    const occKey = dayKey(occDate)
-    if (occKey <= paydayKey) {
-      occurrences.push(occDate)
-    }
-  }
-  return occurrences
-}
-
-/**
- * Is a commitment paid for the month containing `occurrenceDate`?
- * Shared by the commitments radar and the burn rate engine.
- */
-export const isOccurrencePaid = (commitment, occurrenceDate = new Date()) => {
-  if (!commitment?.last_paid) return false
-  const paid = new Date(commitment.last_paid)
-  const occ = toMYDate(occurrenceDate)
-  return (
-    paid.getFullYear() === occ.getUTCFullYear() &&
-    paid.getMonth() === occ.getUTCMonth()
-  )
-}
-
-/**
- * Backward-compatible wrapper — the radar still calls this.
- */
-export const isPaidThisMonth = (lastPaidISO, now = new Date()) => {
-  if (!lastPaidISO) return false
-  return isOccurrencePaid({ last_paid: lastPaidISO }, now)
 }

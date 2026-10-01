@@ -6,6 +6,7 @@ export const useTransactions = (user, showToast) => {
   const [accounts, setAccounts] = useState([])
   const [recentTransactions, setRecentTransactions] = useState([])
   const [commitments, setCommitments] = useState([])
+  const [commitmentPayments, setCommitmentPayments] = useState([])
   const [monthlyExpenses, setMonthlyExpenses] = useState([])
   const [categories, setCategories] = useState([])
   const [classifications, setClassifications] = useState([])
@@ -25,15 +26,14 @@ export const useTransactions = (user, showToast) => {
       // ============================================================
       // FIRE ALL INDEPENDENT FETCHES IN PARALLEL
       // ============================================================
-      // These six queries don't depend on each other. Only the
-      // seeding logic below depends on their results, and that runs
-      // after this batch resolves.
-      // ============================================================
       const startOfLastMonth = new Date(
         new Date().getFullYear(),
         new Date().getMonth() - 1,
         1
       ).toISOString()
+
+      // Payments: fetch the last ~13 months. Simpler filter: year >= last year.
+      const minPaymentYear = new Date().getFullYear() - 1
 
       const [
         accResult,
@@ -41,7 +41,8 @@ export const useTransactions = (user, showToast) => {
         classResult,
         txResult,
         commResult,
-        monthResult
+        monthResult,
+        paymentResult
       ] = await Promise.all([
         supabase
           .from('v_account_balances')
@@ -76,13 +77,19 @@ export const useTransactions = (user, showToast) => {
 
         supabase
           .from('transactions')
-          .select('id, amount, source_account_id, destination_account_id, category, transaction_date, needs_review')
+          .select('id, amount, source_account_id, destination_account_id, category, transaction_date, needs_review, metadata')
           .eq('user_id', user.id)
           .is('destination_account_id', null)
-          .gte('transaction_date', startOfLastMonth)
+          .gte('transaction_date', startOfLastMonth),
+
+        supabase
+          .from('commitments_payments')
+          .select('id, commitment_id, period_year, period_month, status, transaction_id, created_at')
+          .eq('user_id', user.id)
+          .gte('period_year', minPaymentYear)
       ])
 
-      // Surface any hard errors early
+      // Surface hard errors early
       if (accResult.error) throw accResult.error
       if (catResult.error) throw catResult.error
       if (txResult.error) throw txResult.error
@@ -98,8 +105,6 @@ export const useTransactions = (user, showToast) => {
 
       // ============================================================
       // SEEDING — ACCOUNTS
-      // Runs only if the user has zero accounts. Sequential because
-      // we need the inserted rows before refetching.
       // ============================================================
       if (normalizedAccounts.length === 0) {
         const defaultAccounts = [
@@ -205,14 +210,17 @@ export const useTransactions = (user, showToast) => {
       setClassifications(finalClassifications)
 
       // ============================================================
-      // TRANSACTIONS, COMMITMENTS, MONTHLY EXPENSES
-      // These were already fetched in parallel above.
+      // TRANSACTIONS, COMMITMENTS, MONTHLY EXPENSES, PAYMENTS
       // ============================================================
       setRecentTransactions(txResult.data || [])
       setCommitments(commResult.data || [])
 
       if (!monthResult.error) {
         setMonthlyExpenses(monthResult.data || [])
+      }
+
+      if (!paymentResult.error) {
+        setCommitmentPayments(paymentResult.data || [])
       }
 
     } catch (error) {
@@ -227,6 +235,7 @@ export const useTransactions = (user, showToast) => {
     accounts,
     recentTransactions,
     commitments,
+    commitmentPayments,
     monthlyExpenses,
     categories,
     classifications,
@@ -235,6 +244,7 @@ export const useTransactions = (user, showToast) => {
     setAccounts,
     setRecentTransactions,
     setCommitments,
+    setCommitmentPayments,
     setMonthlyExpenses,
     setCategories,
     setClassifications,

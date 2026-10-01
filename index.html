@@ -20,7 +20,8 @@
     <link rel="manifest" href="/site.webmanifest" />
 
     <!-- Theming -->
-    <meta name="theme-color" content="#0f172a" />
+    <meta name="theme-color" media="(prefers-color-scheme: light)" content="#f8fafc">
+    <meta name="theme-color" media="(prefers-color-scheme: dark)"  content="#0a0f1c">
 
     <!-- Prevent phone-number auto-detection messing with numbers -->
     <meta name="format-detection" content="telephone=no" />
@@ -28,6 +29,18 @@
     <title>FlowState</title>
   </head>
   <body>
+    <script>
+      (function () {
+        try {
+          var p = localStorage.getItem('theme') || 'system';
+          var r = p === 'system'
+            ? (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light')
+            : p;
+          document.documentElement.classList.toggle('dark', r === 'dark');
+          document.documentElement.style.colorScheme = r;
+        } catch (e) {}
+      })();
+    </script>
     <div id="root"></div>
     <script type="module" src="/src/main.jsx"></script>
   </body>

@@ -2,12 +2,15 @@
 import { useState } from 'react'
 import { supabase } from '../../lib/supabaseClient'
 import {
-  Plus, Trash2, Edit2, Archive, ArchiveRestore, AlertTriangle,
-  Wallet, ChevronDown, ChevronUp, Pause
+  Plus, Trash2, Edit2, Archive, ArchiveRestore,
+  Wallet, ChevronDown, ChevronUp, ArrowRight
 } from 'lucide-react'
 import { ModalWrapper } from './ModalWrapper'
 import { AccountCard } from '../shared/AccountCard'
 import { AccountEditorModal } from './AccountEditorModal'
+import { ConfirmSheet } from '../shared/ConfirmSheet'
+import { Sheet } from '../shared/Sheet'
+import { formatMYR } from '../../utils/formatters'
 
 export const BankAccountsModal = ({
   user,
@@ -17,22 +20,20 @@ export const BankAccountsModal = ({
   fetchAllData,
   showToast
 }) => {
-  // Editor state — undefined (closed) | null (new) | object (edit)
   const [editorAccount, setEditorAccount] = useState(undefined)
 
-  // Delete / archive flows
   const [pendingDelete, setPendingDelete] = useState(null)
   const [pendingArchive, setPendingArchive] = useState(null)
-  const [commitmentWarning, setCommitmentWarning] = useState(null)
+  const [moveWarning, setMoveWarning] = useState(null)
+  const [moveTargets, setMoveTargets] = useState({}) // commitmentId → accountId
 
   const [showArchived, setShowArchived] = useState(false)
   const [saving, setSaving] = useState(false)
 
   const isEditorOpen = editorAccount !== undefined
 
-  // Split the list
-  const activeAccounts = accounts.filter(a => !a.is_archived)
-  const archivedAccounts = accounts.filter(a => a.is_archived)
+  const activeAccounts = accounts.filter((a) => !a.is_archived)
+  const archivedAccounts = accounts.filter((a) => a.is_archived)
 
   const openNewEditor = () => setEditorAccount(null)
   const openEditEditor = (acc) => setEditorAccount(acc)
@@ -44,10 +45,10 @@ export const BankAccountsModal = ({
   }
 
   // ----------------------------------------------------------
-  // Remove flow — decides between Delete and Archive
+  // Remove flow
   // ----------------------------------------------------------
   const handleRemoveClick = async (acc) => {
-    const [txRes, cmtRes, activeCmtRes] = await Promise.all([
+    const [txRes, cmtRes, activeBillsRes] = await Promise.all([
       supabase
         .from('transactions')
         .select('id', { count: 'exact', head: true })
@@ -56,32 +57,40 @@ export const BankAccountsModal = ({
         .from('commitments')
         .select('id', { count: 'exact', head: true })
         .eq('account_id', acc.id),
+      // Fetch the full rows so we can show a Move sheet
       supabase
         .from('commitments')
-        .select('id', { count: 'exact', head: true })
+        .select('id, name, amount, due_day_of_month, account_id')
         .eq('account_id', acc.id)
         .eq('is_active', true)
+        .order('due_day_of_month', { ascending: true })
     ])
 
     const txCount = txRes.count || 0
     const cmtCount = cmtRes.count || 0
-    const activeCmtCount = activeCmtRes.count || 0
+    const activeBills = activeBillsRes.data || []
 
-    const counts = { txCount, cmtCount, activeCmtCount }
-
-    // No history at all → safe to delete
+    // No history → safe to delete
     if (txCount === 0 && cmtCount === 0) {
-      setPendingDelete({ ...acc, ...counts })
+      setPendingDelete(acc)
       return
     }
 
-    // Has history → archive, but first check for ACTIVE commitments
-    if (activeCmtCount > 0) {
-      setCommitmentWarning({ ...acc, ...counts })
+    // Active bills → offer to move them
+    if (activeBills.length > 0) {
+      const defaultTarget =
+        accounts.find((a) => a.id !== acc.id && !a.is_archived)?.id || ''
+      const initialTargets = {}
+      activeBills.forEach((b) => {
+        initialTargets[b.id] = defaultTarget
+      })
+      setMoveTargets(initialTargets)
+      setMoveWarning({ account: acc, bills: activeBills, txCount, cmtCount })
       return
     }
 
-    setPendingArchive({ ...acc, ...counts })
+    // Has history but no active bills → just archive
+    setPendingArchive({ ...acc, txCount, cmtCount })
   }
 
   const confirmDelete = async () => {
@@ -109,24 +118,101 @@ export const BankAccountsModal = ({
     }
   }
 
+  const archiveAccount = async (accId) => {
+    const { data, error } = await supabase
+      .from('accounts')
+      .update({ is_archived: true, is_pinned: false })
+      .eq('id', accId)
+      .select()
+
+    if (error) throw error
+    if (!data || data.length === 0) {
+      throw new Error('Archive failed — no rows affected. Check RLS on accounts.')
+    }
+  }
+
   const confirmArchive = async () => {
     if (!pendingArchive) return
     setSaving(true)
     try {
-      // Clear pin so a hidden pin doesn't conflict with the single-pin rule
-      const { data, error } = await supabase
-        .from('accounts')
-        .update({ is_archived: true, is_pinned: false })
-        .eq('id', pendingArchive.id)
-        .select()
-
-      if (error) throw error
-      if (!data || data.length === 0) {
-        throw new Error('Archive failed — no rows affected. Check RLS on accounts.')
-      }
-
+      await archiveAccount(pendingArchive.id)
       showToast('Account archived', 'success')
       setPendingArchive(null)
+      fetchAllData()
+    } catch (error) {
+      showToast('Error archiving account: ' + error.message, 'error')
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  // ----------------------------------------------------------
+  // Move bills + archive (3a)
+  // ----------------------------------------------------------
+  const handleMoveAndArchive = async () => {
+    if (!moveWarning) return
+
+    const { account, bills } = moveWarning
+
+    // Every bill needs a target account
+    const missing = bills.find((b) => !moveTargets[b.id])
+    if (missing) {
+      showToast(`Choose a destination for "${missing.name}"`, 'warning')
+      return
+    }
+
+    // Guard: destination can't be the account being archived
+    const toSelf = bills.find((b) => moveTargets[b.id] === account.id)
+    if (toSelf) {
+      showToast(`"${toSelf.name}" can't stay on the account being archived`, 'warning')
+      return
+    }
+
+    setSaving(true)
+    try {
+      // Group bills by destination so we can batch updates
+      const byTarget = new Map()
+      for (const bill of bills) {
+        const target = moveTargets[bill.id]
+        if (!byTarget.has(target)) byTarget.set(target, [])
+        byTarget.get(target).push(bill.id)
+      }
+
+      for (const [targetId, billIds] of byTarget.entries()) {
+        const { error } = await supabase
+          .from('commitments')
+          .update({ account_id: targetId })
+          .in('id', billIds)
+        if (error) throw error
+      }
+
+      await archiveAccount(account.id)
+
+      showToast(
+        `Moved ${bills.length} bill${bills.length === 1 ? '' : 's'} and archived ${account.account_name}`,
+        'success'
+      )
+      setMoveWarning(null)
+      setMoveTargets({})
+      fetchAllData()
+    } catch (error) {
+      showToast('Error moving bills: ' + error.message, 'error')
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  const handleArchiveAnyway = async () => {
+    if (!moveWarning) return
+    setSaving(true)
+    try {
+      await archiveAccount(moveWarning.account.id)
+      showToast(
+        `Account archived. ${moveWarning.bills.length} bill${moveWarning.bills.length === 1 ? '' : 's'} now need a new account.`,
+        'success'
+      )
+      setMoveWarning(null)
+      setMoveTargets({})
       fetchAllData()
     } catch (error) {
       showToast('Error archiving account: ' + error.message, 'error')
@@ -158,16 +244,18 @@ export const BankAccountsModal = ({
     }
   }
 
+  // Destination options for the Move sheet — never the account being archived
+  const moveDestinations = moveWarning
+    ? accounts.filter((a) => a.id !== moveWarning.account.id && !a.is_archived)
+    : []
+
   // ----------------------------------------------------------
   // Render
   // ----------------------------------------------------------
   return (
     <>
       <ModalWrapper title="Bank Accounts" closeModal={closeModal}>
-
         <div className="space-y-3">
-
-          {/* ================ EMPTY STATE ================ */}
           {activeAccounts.length === 0 && archivedAccounts.length === 0 && (
             <div className="text-center py-8 px-4">
               <div className="w-14 h-14 bg-slate-100 rounded-2xl flex items-center justify-center mx-auto mb-3 text-slate-400">
@@ -187,13 +275,12 @@ export const BankAccountsModal = ({
             </div>
           )}
 
-          {/* ================ ACTIVE LIST ================ */}
           {activeAccounts.length > 0 && (
             <div className="space-y-2">
-              {activeAccounts.map(acc => {
+              {activeAccounts.map((acc) => {
                 const classLabel =
-                  classifications.find(c => c.key_name === acc.classification)?.label
-                  || acc.classification
+                  classifications.find((c) => c.key_name === acc.classification)?.label ||
+                  acc.classification
 
                 return (
                   <div
@@ -207,22 +294,20 @@ export const BankAccountsModal = ({
                       aria-label={`Edit ${acc.account_name}`}
                     >
                       <AccountCard account={acc} size="chip" />
-                      <span className="text-xs text-slate-400 truncate">
-                        {classLabel}
-                      </span>
+                      <span className="text-xs text-slate-400 truncate">{classLabel}</span>
                     </button>
 
                     <div className="flex items-center gap-1 shrink-0">
                       <button
                         onClick={() => openEditEditor(acc)}
-                        className="inline-flex h-10 w-10 items-center justify-center rounded-lg text-slate-400 hover:bg-blue-50 hover:text-blue-600 transition-colors"
+                        className="inline-flex h-11 w-11 items-center justify-center rounded-lg text-slate-400 hover:bg-blue-50 hover:text-blue-600 transition-colors"
                         aria-label={`Edit ${acc.account_name}`}
                       >
                         <Edit2 className="h-4 w-4" />
                       </button>
                       <button
                         onClick={() => handleRemoveClick(acc)}
-                        className="inline-flex h-10 w-10 items-center justify-center rounded-lg text-red-400 hover:bg-red-50 hover:text-red-600 transition-colors"
+                        className="inline-flex h-11 w-11 items-center justify-center rounded-lg text-red-400 hover:bg-red-50 hover:text-red-600 transition-colors"
                         aria-label={`Remove ${acc.account_name}`}
                         title="Delete or archive"
                       >
@@ -235,7 +320,6 @@ export const BankAccountsModal = ({
             </div>
           )}
 
-          {/* ================ ADD BUTTON ================ */}
           {(activeAccounts.length > 0 || archivedAccounts.length > 0) && (
             <button
               onClick={openNewEditor}
@@ -246,11 +330,10 @@ export const BankAccountsModal = ({
             </button>
           )}
 
-          {/* ================ ARCHIVED SECTION ================ */}
           {archivedAccounts.length > 0 && (
             <div>
               <button
-                onClick={() => setShowArchived(s => !s)}
+                onClick={() => setShowArchived((s) => !s)}
                 className="w-full flex items-center justify-between p-3 bg-white hover:bg-slate-50 border border-slate-100 rounded-xl transition-colors"
                 style={{ minHeight: 44 }}
                 aria-expanded={showArchived}
@@ -259,16 +342,16 @@ export const BankAccountsModal = ({
                   <Archive className="w-3.5 h-3.5 text-slate-400" />
                   Archived ({archivedAccounts.length})
                 </span>
-                {showArchived
-                  ? <ChevronUp className="w-4 h-4 text-slate-400" />
-                  : <ChevronDown className="w-4 h-4 text-slate-400" />}
+                {showArchived ? (
+                  <ChevronUp className="w-4 h-4 text-slate-400" />
+                ) : (
+                  <ChevronDown className="w-4 h-4 text-slate-400" />
+                )}
               </button>
 
-              <div className={`grid transition-all duration-300 ease-in-out ${
-                showArchived ? 'grid-rows-[1fr] opacity-100 mt-2' : 'grid-rows-[0fr] opacity-0'
-              }`}>
-                <div className="overflow-hidden space-y-1.5">
-                  {archivedAccounts.map(acc => (
+              {showArchived && (
+                <div className="mt-2 space-y-1.5 animate-fadeIn">
+                  {archivedAccounts.map((acc) => (
                     <div
                       key={acc.id}
                       className="flex items-center justify-between gap-2 p-2 bg-slate-50/50 border border-slate-100 rounded-xl opacity-75"
@@ -281,7 +364,7 @@ export const BankAccountsModal = ({
                         <button
                           onClick={() => handleRestore(acc)}
                           disabled={saving}
-                          className="inline-flex h-10 w-10 items-center justify-center rounded-lg text-slate-400 hover:bg-emerald-50 hover:text-emerald-600 transition-colors disabled:opacity-50"
+                          className="inline-flex h-11 w-11 items-center justify-center rounded-lg text-slate-400 hover:bg-emerald-50 hover:text-emerald-600 transition-colors disabled:opacity-50"
                           aria-label={`Restore ${acc.account_name}`}
                           title="Restore"
                         >
@@ -289,7 +372,7 @@ export const BankAccountsModal = ({
                         </button>
                         <button
                           onClick={() => handleRemoveClick(acc)}
-                          className="inline-flex h-10 w-10 items-center justify-center rounded-lg text-red-400 hover:bg-red-50 hover:text-red-600 transition-colors"
+                          className="inline-flex h-11 w-11 items-center justify-center rounded-lg text-red-400 hover:bg-red-50 hover:text-red-600 transition-colors"
                           aria-label={`Remove ${acc.account_name}`}
                           title="Delete"
                         >
@@ -299,14 +382,12 @@ export const BankAccountsModal = ({
                     </div>
                   ))}
                 </div>
-              </div>
+              )}
             </div>
           )}
-
         </div>
       </ModalWrapper>
 
-      {/* ================ EDITOR ================ */}
       {isEditorOpen && (
         <AccountEditorModal
           user={user}
@@ -319,151 +400,148 @@ export const BankAccountsModal = ({
         />
       )}
 
-      {/* ================ DELETE CONFIRMATION ================ */}
       {pendingDelete && (
-        <div
-          className="fixed inset-0 z-[130] flex items-end md:items-center justify-center bg-slate-900/40 backdrop-blur-sm p-4"
-          onClick={() => !saving && setPendingDelete(null)}
-        >
-          <div
-            className="w-full md:max-w-sm bg-white rounded-3xl shadow-2xl p-5 space-y-4"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="flex items-start gap-3">
-              <div className="w-10 h-10 rounded-full bg-red-50 flex items-center justify-center shrink-0">
-                <AlertTriangle className="w-5 h-5 text-red-500" />
-              </div>
-              <div>
-                <p className="text-sm font-bold text-slate-800">
-                  Delete "{pendingDelete.account_name}"?
-                </p>
-                <p className="text-xs text-slate-500 mt-1 leading-relaxed">
-                  This can't be undone. The account has no transactions or
-                  commitments, so it's safe to remove.
-                </p>
-              </div>
-            </div>
-            <div className="flex gap-2">
-              <button
-                onClick={() => setPendingDelete(null)}
-                disabled={saving}
-                className="flex-1 py-3 rounded-xl text-sm font-semibold text-slate-600 bg-slate-100 hover:bg-slate-200 transition-colors disabled:opacity-50"
-                style={{ minHeight: 44 }}
-              >
-                Cancel
-              </button>
-              <button
-                onClick={confirmDelete}
-                disabled={saving}
-                className="flex-1 py-3 rounded-xl text-sm font-bold text-white bg-red-500 hover:bg-red-600 transition-colors disabled:opacity-50"
-                style={{ minHeight: 44 }}
-              >
-                {saving ? 'Deleting…' : 'Delete'}
-              </button>
-            </div>
-          </div>
-        </div>
+        <ConfirmSheet
+          destructive
+          saving={saving}
+          title={`Delete "${pendingDelete.account_name}"?`}
+          message="This can't be undone. The account has no transactions or bills, so it's safe to remove."
+          confirmLabel="Delete"
+          onConfirm={confirmDelete}
+          onCancel={() => setPendingDelete(null)}
+        />
       )}
 
-      {/* ================ ARCHIVE CONFIRMATION ================ */}
       {pendingArchive && (
-        <div
-          className="fixed inset-0 z-[130] flex items-end md:items-center justify-center bg-slate-900/40 backdrop-blur-sm p-4"
-          onClick={() => !saving && setPendingArchive(null)}
-        >
-          <div
-            className="w-full md:max-w-sm bg-white rounded-3xl shadow-2xl p-5 space-y-4"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="flex items-start gap-3">
-              <div className="w-10 h-10 rounded-full bg-amber-50 flex items-center justify-center shrink-0">
-                <Archive className="w-5 h-5 text-amber-500" />
-              </div>
-              <div>
-                <p className="text-sm font-bold text-slate-800">
-                  Archive "{pendingArchive.account_name}"?
-                </p>
-                <p className="text-xs text-slate-500 mt-1 leading-relaxed">
-                  This account has{' '}
-                  {pendingArchive.txCount > 0 && (
-                    <strong>
-                      {pendingArchive.txCount} transaction{pendingArchive.txCount === 1 ? '' : 's'}
-                    </strong>
-                  )}
-                  {pendingArchive.txCount > 0 && pendingArchive.cmtCount > 0 && ' and '}
-                  {pendingArchive.cmtCount > 0 && (
-                    <strong>
-                      {pendingArchive.cmtCount} commitment{pendingArchive.cmtCount === 1 ? '' : 's'}
-                    </strong>
-                  )}
-                  . Archiving hides it from the dashboard and selectors, but
-                  keeps all its history and analytics intact.
-                </p>
-              </div>
-            </div>
-            <div className="flex gap-2">
-              <button
-                onClick={() => setPendingArchive(null)}
-                disabled={saving}
-                className="flex-1 py-3 rounded-xl text-sm font-semibold text-slate-600 bg-slate-100 hover:bg-slate-200 transition-colors disabled:opacity-50"
-                style={{ minHeight: 44 }}
-              >
-                Cancel
-              </button>
-              <button
-                onClick={confirmArchive}
-                disabled={saving}
-                className="flex-1 py-3 rounded-xl text-sm font-bold text-white bg-slate-900 hover:bg-slate-800 transition-colors disabled:opacity-50"
-                style={{ minHeight: 44 }}
-              >
-                {saving ? 'Archiving…' : 'Archive'}
-              </button>
-            </div>
-          </div>
-        </div>
+        <ConfirmSheet
+          destructive={false}
+          saving={saving}
+          title={`Archive "${pendingArchive.account_name}"?`}
+          message={(() => {
+            const parts = []
+            if (pendingArchive.txCount > 0) {
+              parts.push(
+                `${pendingArchive.txCount} transaction${pendingArchive.txCount === 1 ? '' : 's'}`
+              )
+            }
+            if (pendingArchive.cmtCount > 0) {
+              parts.push(
+                `${pendingArchive.cmtCount} bill${pendingArchive.cmtCount === 1 ? '' : 's'}`
+              )
+            }
+            return `This account has ${parts.join(' and ')}. Archiving hides it from the dashboard and selectors, but keeps all its history and analytics intact.`
+          })()}
+          confirmLabel="Archive"
+          onConfirm={confirmArchive}
+          onCancel={() => setPendingArchive(null)}
+        />
       )}
 
-      {/* ================ COMMITMENT WARNING ================ */}
-      {commitmentWarning && (
-        <div
-          className="fixed inset-0 z-[130] flex items-end md:items-center justify-center bg-slate-900/40 backdrop-blur-sm p-4"
-          onClick={() => setCommitmentWarning(null)}
+      {/* ============ MOVE BILLS + ARCHIVE (3a) ============ */}
+      {moveWarning && (
+        <Sheet
+          title={`Archive "${moveWarning.account.account_name}"?`}
+          onClose={() => {
+            if (!saving) {
+              setMoveWarning(null)
+              setMoveTargets({})
+            }
+          }}
+          saving={saving}
+          maxWidth="md:max-w-lg"
         >
-          <div
-            className="w-full md:max-w-sm bg-white rounded-3xl shadow-2xl p-5 space-y-4"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="flex items-start gap-3">
-              <div className="w-10 h-10 rounded-full bg-amber-50 flex items-center justify-center shrink-0">
-                <Pause className="w-5 h-5 text-amber-500" />
+          <p className="text-xs text-slate-500 leading-relaxed">
+            This account has{' '}
+            <strong className="text-slate-700">
+              {moveWarning.bills.length} active bill
+              {moveWarning.bills.length === 1 ? '' : 's'}
+            </strong>
+            . Choose where to move {moveWarning.bills.length === 1 ? 'it' : 'them'} before
+            archiving, or archive anyway and fix them later.
+          </p>
+
+          <div className="space-y-2">
+            {moveWarning.bills.map((bill) => (
+              <div
+                key={bill.id}
+                className="bg-slate-50 border border-slate-100 rounded-xl p-3 space-y-2"
+              >
+                <div className="flex items-center justify-between gap-3">
+                  <div className="min-w-0">
+                    <p className="text-sm font-bold text-slate-800 truncate">{bill.name}</p>
+                    <p className="text-[11px] text-slate-400">
+                      {formatMYR(bill.amount)} · due day {bill.due_day_of_month}
+                    </p>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-2">
+                  <ArrowRight className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+                  <select
+                    value={moveTargets[bill.id] || ''}
+                    onChange={(e) =>
+                      setMoveTargets((prev) => ({ ...prev, [bill.id]: e.target.value }))
+                    }
+                    disabled={saving}
+                    aria-label={`New account for ${bill.name}`}
+                    className="flex-1 bg-white border border-slate-200 rounded-lg py-2 px-3 text-xs outline-none focus:border-blue-500 disabled:opacity-50"
+                  >
+                    <option value="">Select account…</option>
+                    {moveDestinations.map((a) => (
+                      <option key={a.id} value={a.id}>
+                        {a.account_name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
               </div>
-              <div>
-                <p className="text-sm font-bold text-slate-800">
-                  Pause commitments first
-                </p>
-                <p className="text-xs text-slate-500 mt-1 leading-relaxed">
-                  "{commitmentWarning.account_name}" has{' '}
-                  <strong>
-                    {commitmentWarning.activeCmtCount} active commitment
-                    {commitmentWarning.activeCmtCount === 1 ? '' : 's'}
-                  </strong>
-                  . Pause or move those commitments before archiving, so they
-                  don't quietly disappear from your radar.
-                </p>
-                <p className="text-xs text-slate-500 mt-2 leading-relaxed">
-                  You can pause them in Profile → Monthly Commitments.
-                </p>
-              </div>
+            ))}
+          </div>
+
+          {moveDestinations.length === 0 && (
+            <div className="bg-amber-50 border border-amber-200 rounded-xl p-3">
+              <p className="text-xs text-amber-800 leading-relaxed">
+                You have no other active accounts to move bills to. Add a new account first,
+                or archive anyway and fix the bills from the radar.
+              </p>
             </div>
+          )}
+
+          <div className="flex flex-col gap-2 pt-1">
             <button
-              onClick={() => setCommitmentWarning(null)}
-              className="w-full py-3 rounded-xl text-sm font-bold text-white bg-slate-900 hover:bg-slate-800 transition-colors"
+              type="button"
+              onClick={handleMoveAndArchive}
+              disabled={saving || moveDestinations.length === 0}
+              className="w-full py-3 rounded-xl text-sm font-bold bg-slate-900 hover:bg-slate-800 text-white transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
               style={{ minHeight: 44 }}
             >
-              Got it
+              {saving ? 'Moving…' : 'Move bills & archive'}
+            </button>
+
+            <button
+              type="button"
+              onClick={handleArchiveAnyway}
+              disabled={saving}
+              className="w-full py-3 rounded-xl text-xs font-semibold text-amber-700 bg-amber-50 hover:bg-amber-100 border border-amber-200 transition-colors disabled:opacity-50"
+              style={{ minHeight: 44 }}
+            >
+              Archive anyway, fix bills later
+            </button>
+
+            <button
+              type="button"
+              onClick={() => {
+                setMoveWarning(null)
+                setMoveTargets({})
+              }}
+              disabled={saving}
+              className="w-full py-3 rounded-xl text-xs font-semibold text-slate-500 hover:bg-slate-100 transition-colors disabled:opacity-50"
+              style={{ minHeight: 44 }}
+            >
+              Cancel
             </button>
           </div>
-        </div>
+        </Sheet>
       )}
     </>
   )
