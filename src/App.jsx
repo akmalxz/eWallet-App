@@ -33,8 +33,9 @@ import { useTransactions } from './hooks/useTransactions'
 
 // Utils
 import { TransactionParser } from './utils/nlpParser'
-import { getDaysInMonthMY, getDayOfMonthMY, monthKey, toMYDate } from './utils/dateHelpers'
+import { getDayOfMonthMY, monthKey, toMYDate } from './utils/dateHelpers'
 import { rollUpToMain, getCategoryColor, OTHER_COLOR } from './utils/categoryColors'
+import { computeBurnRate } from './utils/burnRateEngine'
 
 const ICON_MAP = { Landmark, Wallet, Activity, PiggyBank, Database }
 
@@ -514,91 +515,18 @@ export default function App() {
 
   // ============================================
   // BURN RATE ENGINE
+  // All logic lives in `burnRateEngine.js` — this memo just wires the
+  // data in and returns the result object the widget expects.
   // ============================================
   const velocityStats = useMemo(() => {
-    const now = new Date()
-    const monthDays = getDaysInMonthMY(now)
-    const dayOfMonth = getDayOfMonthMY(now)
-
-    const daysPassed = dayOfMonth
-    const daysRemaining = monthDays - dayOfMonth
-
-    const isAll = homeAccountId === 'all'
-    const scopedAccounts = isAll
-      ? accounts
-      : accounts.filter(a => a.id === homeAccountId)
-    const accountIds = new Set(scopedAccounts.map(a => a.id))
-
-    const currentBalance = scopedAccounts.reduce((s, a) => s + (a.balance || 0), 0)
-
-    const scopedExpenses = (monthlyExpenses || []).filter(
-      tx => accountIds.has(tx.source_account_id)
-    )
-
-    const thisKey = monthKey(now)
-    const lastDate = new Date(now.getFullYear(), now.getMonth() - 1, 1)
-    const lastKey = monthKey(lastDate)
-    const lastMonthDays = getDaysInMonthMY(lastDate)
-
-    let thisMonthTotal = 0
-    let lastMonthSamePeriod = 0
-    let lastMonthFullTotal = 0
-
-    scopedExpenses.forEach(tx => {
-      const k = monthKey(tx.transaction_date)
-      const d = toMYDate(tx.transaction_date)
-      const amt = Number(tx.amount) || 0
-      if (k === thisKey) thisMonthTotal += amt
-      if (k === lastKey) {
-        lastMonthFullTotal += amt
-        if (d.getUTCDate() <= dayOfMonth) lastMonthSamePeriod += amt
-      }
+    return computeBurnRate({
+      accounts,
+      expenses: monthlyExpenses || [],
+      commitments,
+      scopeAccountId: homeAccountId,
+      now: new Date()
     })
-
-    const rawDailyAvg = daysPassed > 0 ? thisMonthTotal / daysPassed : 0
-
-    const lastDailyAvg = daysPassed > 0 ? lastMonthSamePeriod / daysPassed : 0
-    const spendingTrend = lastDailyAvg > 0
-      ? ((rawDailyAvg - lastDailyAvg) / lastDailyAvg) * 100
-      : 0
-
-    const isEarlyMonth = dayOfMonth <= 3
-    const lastMonthDailyAvg = lastMonthDays > 0 ? lastMonthFullTotal / lastMonthDays : 0
-    const averageDailySpend = isEarlyMonth && lastMonthDailyAvg > 0
-      ? (rawDailyAvg * dayOfMonth + lastMonthDailyAvg * (3 - dayOfMonth)) / 3
-      : rawDailyAvg
-
-    const dailyBudget = daysRemaining > 0 ? currentBalance / daysRemaining : 0
-
-    const projectedRunwayDays = averageDailySpend > 0
-      ? Math.floor(currentBalance / averageDailySpend)
-      : 999
-
-    const runoutDayOfMonth = dayOfMonth + projectedRunwayDays
-    const runoutBeforeMonthEnd = projectedRunwayDays < 999 && runoutDayOfMonth <= monthDays
-    const projectedRunoutDate = runoutBeforeMonthEnd
-      ? new Date(now.getFullYear(), now.getMonth(), runoutDayOfMonth)
-      : null
-
-    const isSafe = projectedRunwayDays >= daysRemaining || averageDailySpend === 0
-
-    return {
-      currentBalance,
-      totalSpentThisMonth: thisMonthTotal,
-      averageDailySpend,
-      projectedRunwayDays,
-      daysRemaining,
-      daysPassed,
-      monthLength: monthDays,
-      isSafe,
-      dailyBudget,
-      spendingTrend,
-      isEarlyMonth,
-      projectedRunoutDate,
-      runoutBeforeMonthEnd,
-      accountLabel: isAll ? 'All accounts' : (scopedAccounts[0]?.account_name || 'Account')
-    }
-  }, [accounts, monthlyExpenses, homeAccountId])
+  }, [accounts, monthlyExpenses, commitments, homeAccountId])
 
   // ============================================
   // CASH FLOW ENGINE
