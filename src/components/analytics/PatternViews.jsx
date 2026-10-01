@@ -9,6 +9,26 @@ import { COLORS, HEATMAP_LEVELS } from '../../utils/analyticsColors'
 import { EmptyState, TransactionDrilldown } from './AnalyticsShared'
 
 // ============================================================
+// Helpers
+// ============================================================
+
+// Compact axis label: 1.2k / 150 / 12.50 — no currency prefix,
+// no dependence on the device locale.
+const compactValue = (n) => {
+  const abs = Math.abs(n)
+  if (abs >= 1000) return `${(n / 1000).toFixed(1)}k`
+  if (abs >= 100) return n.toFixed(0)
+  return n.toFixed(2)
+}
+
+// A MY-shifted Date's UTC components already represent Malaysia time,
+// so read the weekday directly instead of re-shifting via myWeekdayIndex.
+const weekdayFromShifted = (shiftedDate) => {
+  const js = shiftedDate.getUTCDay()
+  return js === 0 ? 6 : js - 1
+}
+
+// ============================================================
 // Day-of-week bars
 // ============================================================
 const DayOfWeekBars = ({ expenses }) => {
@@ -20,13 +40,32 @@ const DayOfWeekBars = ({ expenses }) => {
     const dayOccurrences = [0, 0, 0, 0, 0, 0, 0]
 
     if (expenses.length === 0) return null
-    const dates = expenses.map((tx) => toMYDate(tx.transaction_date).getTime())
-    const minD = new Date(Math.min(...dates))
-    const maxD = new Date(Math.max(...dates))
-    const cursor = new Date(minD)
-    while (cursor <= maxD) {
-      dayOccurrences[myWeekdayIndex(cursor)]++
-      cursor.setDate(cursor.getDate() + 1)
+
+    // MY-shifted ms for every transaction
+    const shiftedMs = expenses.map((tx) => toMYDate(tx.transaction_date).getTime())
+    const minMs = Math.min(...shiftedMs)
+    const maxMs = Math.max(...shiftedMs)
+
+    // Count occurrences of each weekday across [minDate, maxDate] in MY.
+    // Iterate over discrete calendar days, not continuous time, so a range
+    // that crosses a MY midnight still counts both endpoints.
+    const minDate = new Date(minMs)
+    const maxDate = new Date(maxMs)
+    const startDay = new Date(Date.UTC(
+      minDate.getUTCFullYear(),
+      minDate.getUTCMonth(),
+      minDate.getUTCDate()
+    ))
+    const endDay = new Date(Date.UTC(
+      maxDate.getUTCFullYear(),
+      maxDate.getUTCMonth(),
+      maxDate.getUTCDate()
+    ))
+
+    const cursor = new Date(startDay)
+    while (cursor.getTime() <= endDay.getTime()) {
+      dayOccurrences[weekdayFromShifted(cursor)]++
+      cursor.setUTCDate(cursor.getUTCDate() + 1)
     }
 
     const transactionsByDay = Array.from({ length: 7 }, () => [])
@@ -71,31 +110,49 @@ const DayOfWeekBars = ({ expenses }) => {
 
       <div className="flex items-end justify-between gap-1.5 h-40">
         {data.averages.map((avg, i) => {
-          const h = maxAvg > 0 ? (avg / maxAvg) * 100 : 0
-          const isPeak = i === data.peakIdx
+          const pct = maxAvg > 0 ? (avg / maxAvg) * 100 : 0
+          const isEmpty = avg === 0
+          const isPeak = i === data.peakIdx && !isEmpty
           const isSelected = selectedDay === i
+
+          const barColor = isEmpty
+            ? COLORS.zero
+            : isPeak
+              ? COLORS.accent
+              : COLORS.current
+
+          // Empty days get a small neutral sliver so the column doesn't look
+          // broken, but reads clearly as "nothing here".
+          const heightPct = isEmpty ? 3 : Math.max(pct, 6)
+
           return (
             <button
               key={i}
               onClick={() => setSelectedDay((prev) => (prev === i ? null : i))}
-              className="flex-1 flex flex-col items-center gap-1.5 group"
+              className="flex-1 h-full flex flex-col items-center gap-1.5 group"
               aria-label={`${WEEKDAY_LABELS[i]}, average ${formatMYR(avg)}`}
               aria-pressed={isSelected}
             >
-              <span className="text-[9px] font-bold text-slate-400">
-                {avg > 0 ? formatMYR(avg).replace('RM', '').trim() : ''}
+              <span className="text-[9px] font-bold text-slate-400 shrink-0">
+                {isEmpty ? '' : compactValue(avg)}
               </span>
-              <div
-                className={`w-full rounded-t-lg transition-all ${
-                  isSelected ? 'ring-2 ring-slate-400' : ''
-                }`}
-                style={{
-                  height: `${Math.max(h, 3)}%`,
-                  backgroundColor: isPeak ? COLORS.up : COLORS.current,
-                  opacity: isSelected ? 1 : 0.85
-                }}
-              />
-              <span className="text-[10px] font-bold text-slate-500">
+
+              {/* Bar area — has a definite height because the button is h-full
+                  and this is flex-1. Bar anchors to the bottom via flex-end. */}
+              <div className="flex-1 w-full flex items-end">
+                <div
+                  className={`w-full rounded-t-lg transition-all ${
+                    isSelected ? 'ring-2 ring-slate-400' : ''
+                  }`}
+                  style={{
+                    height: `${heightPct}%`,
+                    backgroundColor: barColor,
+                    opacity: isSelected ? 1 : 0.85
+                  }}
+                />
+              </div>
+
+              <span className="text-[10px] font-bold text-slate-500 shrink-0">
                 {WEEKDAY_LABELS[i]}
               </span>
             </button>
@@ -111,7 +168,8 @@ const DayOfWeekBars = ({ expenses }) => {
                 {WEEKDAY_LABELS[selectedDay]}s
               </p>
               <p className="text-base font-black text-slate-800 mt-0.5">
-                {formatMYR(data.averages[selectedDay])} avg · {data.counts[selectedDay]} txns
+                {formatMYR(data.averages[selectedDay])} avg ·{' '}
+                {data.counts[selectedDay]} txns total
               </p>
               {topCategory && (
                 <p className="text-xs text-slate-500 mt-1">
@@ -142,8 +200,11 @@ const CalendarHeatmap = ({ expenses, accounts }) => {
   const [selectedDayKey, setSelectedDayKey] = useState(null)
 
   const monthData = useMemo(() => {
-    const year = cursor.getFullYear()
-    const monthIdx = cursor.getMonth()
+    // Read year/month through MY so a device near midnight doesn't shift
+    // the visible month.
+    const cursorMY = toMYDate(cursor)
+    const year = cursorMY.getUTCFullYear()
+    const monthIdx = cursorMY.getUTCMonth()
     const dim = daysInMonth(year, monthIdx)
 
     const totalsByDay = {}
@@ -198,9 +259,12 @@ const CalendarHeatmap = ({ expenses, accounts }) => {
 
   const selectedCell = monthData.cells.find((c) => c && c.day === selectedDayKey)
 
+  // Normalize to day 1 before stepping months, so navigating away from a
+  // 31-day month and back doesn't leave us stuck on the 28th/30th.
   const go = (delta) => {
     setCursor((c) => {
       const n = new Date(c)
+      n.setDate(1)
       n.setMonth(n.getMonth() + delta)
       return n
     })
@@ -259,7 +323,9 @@ const CalendarHeatmap = ({ expenses, accounts }) => {
           return (
             <button
               key={cell.day}
-              onClick={() => !isFuture && setSelectedDayKey((prev) => (prev === cell.day ? null : cell.day))}
+              onClick={() =>
+                !isFuture && setSelectedDayKey((prev) => (prev === cell.day ? null : cell.day))
+              }
               disabled={isFuture}
               aria-label={`Day ${cell.day}, ${formatMYR(cell.total)}`}
               aria-pressed={isSelected}
