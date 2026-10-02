@@ -33,8 +33,15 @@ export default function Auth() {
   }
 
   return (
-    <div className="min-h-screen bg-slate-50 flex flex-col justify-center items-center p-4">
-      <div className="max-w-md w-full bg-white rounded-3xl shadow-sm border border-slate-100 p-6 md:p-8">
+    <div className="min-h-dvh bg-slate-50 flex flex-col justify-center items-center px-safe py-safe">
+      <div
+        className="w-full bg-white rounded-3xl shadow-sm border border-slate-100 p-6 md:p-8"
+        style={{
+          maxWidth: '28rem',
+          marginLeft: 'max(1rem, env(safe-area-inset-left, 0px))',
+          marginRight: 'max(1rem, env(safe-area-inset-right, 0px))'
+        }}
+      >
         <div className="flex flex-col items-center mb-8">
           <div className="bg-slate-900 p-3 rounded-2xl mb-4 shadow-md">
             <Activity className="text-white w-6 h-6" />
@@ -85,6 +92,7 @@ export default function Auth() {
                 onClick={() => setShowPassword(!showPassword)}
                 className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 transition-colors"
                 tabIndex="-1"
+                aria-label={showPassword ? 'Hide password' : 'Show password'}
               >
                 {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
               </button>

@@ -22,7 +22,7 @@ export const Header = ({ user, profile, currentView, setCurrentView, supabase })
     dashboard: `${getGreeting()}, ${firstName}`,
     log: 'Manual Entry',
     transactions: 'Ledger & Verification',
-    commitments: 'Bills',                 // ← was 'Subscriptions'
+    commitments: 'Bills',
     network: 'My Network',
     split: 'Split Bill',
     analytics: 'Analytics',
@@ -33,8 +33,7 @@ export const Header = ({ user, profile, currentView, setCurrentView, supabase })
 
   return (
     <header
-      className="bg-gradient-to-b from-slate-50 via-slate-50/80 to-transparent backdrop-blur-xl border-none sticky top-0 z-20"
-      style={{ paddingTop: 'env(safe-area-inset-top, 20px)' }}
+      className="bg-gradient-to-b from-slate-50 via-slate-50/80 to-transparent backdrop-blur-xl border-none sticky top-0 z-20 pt-safe px-safe"
     >
       <div className="max-w-6xl mx-auto px-3 py-2 md:py-3">
         <div className="flex items-center justify-between gap-2">
@@ -61,6 +60,7 @@ export const Header = ({ user, profile, currentView, setCurrentView, supabase })
               onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
               className="p-2 text-slate-500 hover:text-slate-700 rounded-lg transition-colors"
               aria-label="Toggle menu"
+              style={{ minHeight: 44, minWidth: 44 }}
             >
               {isMobileMenuOpen ? <X className="w-4 h-4" /> : <Menu className="w-4 h-4" />}
             </button>
@@ -96,6 +96,7 @@ export const Header = ({ user, profile, currentView, setCurrentView, supabase })
                 setIsMobileMenuOpen(false)
               }}
               className="w-full flex items-center gap-3 px-3 py-2.5 text-sm text-slate-700 hover:bg-slate-50 rounded-lg transition-colors"
+              style={{ minHeight: 44 }}
             >
               <Settings className="w-4 h-4 text-slate-400" />
               Settings
@@ -106,6 +107,7 @@ export const Header = ({ user, profile, currentView, setCurrentView, supabase })
                 setIsMobileMenuOpen(false)
               }}
               className="w-full flex items-center gap-3 px-3 py-2.5 text-sm text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+              style={{ minHeight: 44 }}
             >
               <LogOut className="w-4 h-4" />
               Sign Out

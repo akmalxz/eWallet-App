@@ -145,6 +145,7 @@ export const AccountDropdown = ({
               aria-label={label}
               onKeyDown={handleListKeyDown}
               className="flex-1 overflow-y-auto p-2 space-y-1 focus:outline-none"
+              style={{ paddingBottom: 'max(0.5rem, env(safe-area-inset-bottom, 0px))' }}
             >
               {options.map((acc, idx) => {
                 const isSelected = acc.id === value

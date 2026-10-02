@@ -1,8 +1,8 @@
 // src/components/dashboard/BurnRateWidget.jsx
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import {
   TrendingUp, TrendingDown, AlertCircle, ChevronDown, ChevronUp,
-  Coffee, Check, ArrowRight, HelpCircle, PartyPopper, X
+  Coffee, Check, ArrowRight, HelpCircle, PartyPopper
 } from 'lucide-react'
 import { formatMYR } from '../../utils/formatters'
 import { COLORS } from '../../utils/analyticsColors'
@@ -18,76 +18,22 @@ const compactMYR = (n) => {
 const formatDate = (d) =>
   d?.toLocaleDateString('en-MY', { day: 'numeric', month: 'short' })
 
-// ---------------------------------------------------------------------------
-// Help sheet — plain-language explanation
-// ---------------------------------------------------------------------------
-const HelpSheet = ({ onClose }) => (
-  <div
-    className="fixed inset-0 z-[60] flex items-end md:items-center justify-center bg-slate-900/40 backdrop-blur-sm p-4 animate-in fade-in duration-200"
-    onClick={onClose}
-  >
-    <div
-      className="w-full md:max-w-md bg-white rounded-3xl shadow-2xl overflow-hidden animate-in slide-in-from-bottom-4 md:zoom-in-95 duration-300"
-      onClick={e => e.stopPropagation()}
-    >
-      <div className="flex items-center justify-between px-5 py-4 border-b border-slate-100">
-        <h3 className="text-base font-bold text-slate-800">How this is calculated</h3>
-        <button
-          onClick={onClose}
-          className="w-9 h-9 rounded-full flex items-center justify-center text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-colors"
-          aria-label="Close help"
-        >
-          <X className="w-4 h-4" />
-        </button>
-      </div>
-      <div className="px-5 py-5 space-y-4 text-sm text-slate-600 leading-relaxed">
-        <div>
-          <p className="font-bold text-slate-800 mb-1">Everyday spending only</p>
-          <p className="text-xs">
-            Only your normal day-to-day purchases count toward the daily average.
-            Bills and subscriptions are kept separate, because they're paid once
-            a month, not daily.
-          </p>
-        </div>
-        <div>
-          <p className="font-bold text-slate-800 mb-1">Bills are subtracted first</p>
-          <p className="text-xs">
-            We look at the balance, subtract every bill that's still unpaid
-            before your next payday, and the remainder is your "free money" for
-            everyday spending.
-          </p>
-        </div>
-        <div>
-          <p className="font-bold text-slate-800 mb-1">Runway is counted to payday</p>
-          <p className="text-xs">
-            Your runway is how many days your free money lasts at your current
-            daily pace. If it lasts past payday, you're on track. If it runs out
-            earlier, you'll see an alert.
-          </p>
-        </div>
-        <div>
-          <p className="font-bold text-slate-800 mb-1">Payday</p>
-          <p className="text-xs">
-            Your payday is the last working day of the month. Weekends are
-            skipped, but public holidays are not yet handled.
-          </p>
-        </div>
-      </div>
-    </div>
-  </div>
-)
-
-// ---------------------------------------------------------------------------
-// Widget
-// ---------------------------------------------------------------------------
-export const BurnRateWidget = ({ velocityStats, onSeeTrends }) => {
+export const BurnRateWidget = ({ velocityStats, onSeeTrends, onOpenHelp }) => {
   const [showDetails, setShowDetails] = useState(() => {
     try { return localStorage.getItem('burnRateExpanded') === 'true' } catch { return false }
   })
-  const [showHelp, setShowHelp] = useState(false)
+  const detailsRef = useRef(null)
 
   useEffect(() => {
     try { localStorage.setItem('burnRateExpanded', String(showDetails)) } catch {}
+  }, [showDetails])
+
+  // Keep collapsed details non-focusable
+  useEffect(() => {
+    const el = detailsRef.current
+    if (!el) return
+    if (showDetails) el.removeAttribute('inert')
+    else el.setAttribute('inert', '')
   }, [showDetails])
 
   const {
@@ -123,9 +69,6 @@ export const BurnRateWidget = ({ velocityStats, onSeeTrends }) => {
   const isInfiniteRunway = runwayDays === 9999 || runwayDays > 365
   const freeMoneyNegative = freeMoney < 0
 
-  // ============================================================
-  // Status badge
-  // ============================================================
   const statusBadge = (() => {
     switch (status) {
       case 'payday_today':
@@ -146,9 +89,6 @@ export const BurnRateWidget = ({ velocityStats, onSeeTrends }) => {
 
   const StatusIcon = statusBadge.icon
 
-  // ============================================================
-  // Accent strip color
-  // ============================================================
   const accent = (() => {
     if (status === 'no_data') return 'bg-slate-200'
     if (status === 'bills_exceed_balance' || status === 'at_risk') return 'bg-red-500'
@@ -156,9 +96,6 @@ export const BurnRateWidget = ({ velocityStats, onSeeTrends }) => {
     return 'bg-emerald-500'
   })()
 
-  // ============================================================
-  // Timeline bar
-  // ============================================================
   const runwayPercent = daysToPayday > 0
     ? Math.min(100, (runwayDays / daysToPayday) * 100)
     : 100
@@ -185,9 +122,6 @@ export const BurnRateWidget = ({ velocityStats, onSeeTrends }) => {
     return 'linear-gradient(to right, #f59e0b, #f97316)'
   })()
 
-  // ============================================================
-  // Advice — one at a time
-  // ============================================================
   const advice = (() => {
     if (status === 'bills_exceed_balance') {
       return {
@@ -224,9 +158,6 @@ export const BurnRateWidget = ({ velocityStats, onSeeTrends }) => {
     return null
   })()
 
-  // ============================================================
-  // Render
-  // ============================================================
   return (
     <div className="relative flex flex-col h-full">
       <div className={`absolute top-0 left-0 right-0 h-1 rounded-full ${accent}`} />
@@ -239,8 +170,9 @@ export const BurnRateWidget = ({ velocityStats, onSeeTrends }) => {
         </div>
         <div className="flex items-center gap-1.5 shrink-0">
           <button
-            onClick={() => setShowHelp(true)}
-            className="w-8 h-8 flex items-center justify-center rounded-full text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-colors"
+            onClick={onOpenHelp}
+            disabled={!onOpenHelp}
+            className="w-11 h-11 flex items-center justify-center rounded-full text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-colors disabled:opacity-50"
             aria-label="How this is calculated"
             title="How this is calculated"
           >
@@ -268,7 +200,6 @@ export const BurnRateWidget = ({ velocityStats, onSeeTrends }) => {
         </div>
       ) : (
         <>
-          {/* Three top numbers */}
           <div className="grid grid-cols-3 gap-2.5 mb-4">
             <div className="bg-white p-3 rounded-xl border border-slate-100 shadow-sm text-center">
               <p className="text-[11px] text-slate-400 uppercase font-bold tracking-wider mb-1">Free money</p>
@@ -293,7 +224,6 @@ export const BurnRateWidget = ({ velocityStats, onSeeTrends }) => {
             </div>
           </div>
 
-          {/* Trend line */}
           {hasEverydayData && Math.abs(spendingTrend) > 5 && (
             <div className="flex items-center gap-2 text-xs mb-4 px-1">
               <div className={`flex items-center justify-center shrink-0 ${spendingTrend > 0 ? 'text-red-500' : 'text-emerald-500'}`}>
@@ -309,7 +239,6 @@ export const BurnRateWidget = ({ velocityStats, onSeeTrends }) => {
             </div>
           )}
 
-          {/* Runway timeline or empty state */}
           {hasEverydayData ? (
             <div className="mb-3">
               <div className="relative w-full bg-slate-100 rounded-full h-3">
@@ -338,7 +267,6 @@ export const BurnRateWidget = ({ velocityStats, onSeeTrends }) => {
                 <span>Payday · {formatDate(payday)}</span>
               </div>
 
-              {/* Plain sentence */}
               {runsOutBeforePayday && runoutDate ? (
                 <p className="text-xs text-slate-500 mt-3 leading-relaxed">
                   At this pace, your money runs out on{' '}
@@ -365,38 +293,37 @@ export const BurnRateWidget = ({ velocityStats, onSeeTrends }) => {
         </>
       )}
 
-      {/* Review note */}
       {reviewCount > 0 && (
         <p className="text-[10px] text-slate-400 mt-3 px-1">
           Includes {reviewCount} item{reviewCount === 1 ? '' : 's'} waiting for review
         </p>
       )}
 
-      {/* Expand toggle */}
       {hasEverydayData && status !== 'payday_today' && (
         <button
           onClick={() => setShowDetails(!showDetails)}
           className="w-full flex items-center justify-center gap-1.5 mt-4 pt-3 border-t border-slate-100 text-xs font-semibold text-slate-500 hover:text-slate-700 transition-colors"
           style={{ minHeight: 44 }}
           aria-expanded={showDetails}
+          aria-controls="burn-rate-details"
         >
           <span>{showDetails ? 'Fewer details' : 'More details'}</span>
           {showDetails ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
         </button>
       )}
 
-      {/* Details panel */}
       {hasEverydayData && status !== 'payday_today' && (
-        <div className={`grid transition-all duration-300 ease-in-out ${showDetails ? 'grid-rows-[1fr] opacity-100 mt-4' : 'grid-rows-[0fr] opacity-0'}`}>
+        <div
+          id="burn-rate-details"
+          ref={detailsRef}
+          className={`grid transition-all duration-300 ease-in-out ${showDetails ? 'grid-rows-[1fr] opacity-100 mt-4' : 'grid-rows-[0fr] opacity-0'}`}
+        >
           <div className="overflow-hidden space-y-3">
-
-            {/* Balance */}
             <div className="bg-slate-50/60 p-3.5 rounded-xl border border-slate-100">
               <p className="text-[11px] text-slate-400 uppercase font-bold tracking-wider">Balance</p>
               <p className="text-sm font-black text-slate-700 mt-1">{formatMYR(balance)}</p>
             </div>
 
-            {/* Bills before payday */}
             <div className="bg-slate-50/60 p-3.5 rounded-xl border border-slate-100">
               <div className="flex items-center justify-between mb-1">
                 <p className="text-[11px] text-slate-400 uppercase font-bold tracking-wider">Bills before payday</p>
@@ -409,7 +336,6 @@ export const BurnRateWidget = ({ velocityStats, onSeeTrends }) => {
               <p className="text-sm font-black text-slate-700">− {formatMYR(billsBeforePayday)}</p>
             </div>
 
-            {/* Free money */}
             <div className="bg-slate-50/60 p-3.5 rounded-xl border border-slate-100">
               <p className="text-[11px] text-slate-400 uppercase font-bold tracking-wider">Free money</p>
               <p className={`text-base font-black mt-1 ${freeMoneyNegative ? 'text-red-500' : 'text-slate-800'}`}>
@@ -420,7 +346,6 @@ export const BurnRateWidget = ({ velocityStats, onSeeTrends }) => {
               </p>
             </div>
 
-            {/* Safe daily spend */}
             <div className="bg-slate-50/60 p-3.5 rounded-xl border border-slate-100">
               <p className="text-[11px] text-slate-400 uppercase font-bold tracking-wider">Safe daily spend</p>
               <p className="text-sm font-black text-slate-700 mt-1">
@@ -431,7 +356,6 @@ export const BurnRateWidget = ({ velocityStats, onSeeTrends }) => {
               </p>
             </div>
 
-            {/* Your daily average */}
             <div className="bg-slate-50/60 p-3.5 rounded-xl border border-slate-100">
               <p className="text-[11px] text-slate-400 uppercase font-bold tracking-wider">Your daily average</p>
               <p className={`text-sm font-black mt-1 ${safeDailySpend > 0 && dailyAverage > safeDailySpend ? 'text-red-500' : 'text-emerald-500'}`}>
@@ -439,7 +363,6 @@ export const BurnRateWidget = ({ velocityStats, onSeeTrends }) => {
               </p>
             </div>
 
-            {/* Expected balance at payday */}
             <div className="bg-slate-50/60 p-3.5 rounded-xl border border-slate-100 flex items-center justify-between gap-3">
               <div>
                 <p className="text-[11px] text-slate-400 uppercase font-bold tracking-wider">Expected balance at payday</p>
@@ -456,7 +379,6 @@ export const BurnRateWidget = ({ velocityStats, onSeeTrends }) => {
               </div>
             </div>
 
-            {/* Advice card */}
             {advice && (
               <div className={`rounded-xl p-3.5 flex items-start gap-2.5 border ${
                 advice.type === 'risk' ? 'bg-red-50/60 border-red-200/60'
@@ -481,12 +403,10 @@ export const BurnRateWidget = ({ velocityStats, onSeeTrends }) => {
                 </div>
               </div>
             )}
-
           </div>
         </div>
       )}
 
-      {/* See trends link */}
       {onSeeTrends && (
         <button
           onClick={onSeeTrends}
@@ -496,9 +416,6 @@ export const BurnRateWidget = ({ velocityStats, onSeeTrends }) => {
           See trends <ArrowRight className="w-3.5 h-3.5" />
         </button>
       )}
-
-      {/* Help sheet */}
-      {showHelp && <HelpSheet onClose={() => setShowHelp(false)} />}
     </div>
   )
 }

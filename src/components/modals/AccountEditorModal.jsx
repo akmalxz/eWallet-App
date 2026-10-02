@@ -192,7 +192,7 @@ export const AccountEditorModal = ({
           <button
             onClick={onClose}
             disabled={saving}
-            className="inline-flex h-9 w-9 items-center justify-center rounded-full text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-colors disabled:opacity-50"
+            className="inline-flex h-11 w-11 items-center justify-center rounded-full text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-colors disabled:opacity-50"
             aria-label="Close editor"
           >
             <X className="h-4 w-4" />
@@ -320,7 +320,10 @@ export const AccountEditorModal = ({
         </div>
 
         {/* ================= FOOTER ================= */}
-        <div className="px-5 py-4 border-t border-slate-100 bg-white shrink-0 space-y-2">
+        <div
+          className="px-5 pt-4 border-t border-slate-100 bg-white shrink-0 space-y-2"
+          style={{ paddingBottom: 'max(1rem, env(safe-area-inset-bottom, 0px))' }}
+        >
           <button
             type="button"
             onClick={handleReset}

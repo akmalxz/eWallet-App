@@ -288,3 +288,52 @@ html, body, #root {
     margin-bottom: 0px !important;
   }
 }
+
+/* ============================================
+   SAFE-AREA (iOS notch, Dynamic Island, home indicator)
+   Requires viewport-fit=cover in index.html — already set.
+   ============================================ */
+
+/* Single-edge padding helpers */
+.pt-safe { padding-top: env(safe-area-inset-top, 0px); }
+.pb-safe { padding-bottom: env(safe-area-inset-bottom, 0px); }
+.pl-safe { padding-left: env(safe-area-inset-left, 0px); }
+.pr-safe { padding-right: env(safe-area-inset-right, 0px); }
+.px-safe {
+  padding-left: env(safe-area-inset-left, 0px);
+  padding-right: env(safe-area-inset-right, 0px);
+}
+.py-safe {
+  padding-top: env(safe-area-inset-top, 0px);
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+.p-safe {
+  padding:
+    env(safe-area-inset-top, 0px)
+    env(safe-area-inset-right, 0px)
+    env(safe-area-inset-bottom, 0px)
+    env(safe-area-inset-left, 0px);
+}
+
+/* Combined helpers — base spacing that never drops below the safe inset */
+.pb-safe-4 { padding-bottom: max(1rem, env(safe-area-inset-bottom, 0px)); }
+.pt-safe-4 { padding-top:    max(1rem, env(safe-area-inset-top, 0px)); }
+.pb-safe-6 { padding-bottom: max(1.5rem, env(safe-area-inset-bottom, 0px)); }
+
+/* Floors for viewport-height — see App.jsx and Auth.jsx */
+.min-h-dvh { min-height: 100dvh; }
+.min-h-svh { min-height: 100svh; }
+
+/* Root layout padding — mobile reserves space for the floating nav bar,
+   desktop just needs breathing room. Applied on App's root wrapper. */
+.app-shell {
+  padding-bottom: calc(7rem + env(safe-area-inset-bottom, 0px));
+}
+@media (min-width: 768px) {
+  .app-shell {
+    padding-bottom: 3rem;
+  }
+}
+
+/* Prevent body scroll bounce under a fixed nav on iOS */
+html, body { overscroll-behavior-y: none; }

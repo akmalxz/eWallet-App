@@ -17,6 +17,7 @@ import { NavigationBar } from './components/layouts/NavigationBar'
 import { AccountCards } from './components/dashboard/AccountCards'
 import { BurnRateWidget } from './components/dashboard/BurnRateWidget'
 import { CashFlowHeatmap } from './components/dashboard/CashFlowHeatmap'
+import { BurnRateHelpSheet } from './components/dashboard/BurnRateHelpSheet'
 
 // Pages
 import { LogItemPage } from './pages/LogItemPage'
@@ -361,6 +362,7 @@ export default function App() {
   // ============================================
   const [radarAccountId, setRadarAccountId] = useState('')
   const [homeAccountId, setHomeAccountId] = useState('all')
+  const [showBurnRateHelp, setShowBurnRateHelp] = useState(false)
 
   const activeRadarId = radarAccountId || accounts[0]?.id
 
@@ -500,7 +502,7 @@ export default function App() {
   if (!isAuthenticated) return <Auth />
   if (error)
     return (
-      <div className="min-h-screen bg-slate-50 flex items-center justify-center p-4">
+      <div className="min-h-dvh bg-slate-50 flex items-center justify-center p-4 px-safe py-safe">
         <div className="bg-white rounded-2xl shadow-sm border border-red-200 p-8 max-w-md w-full text-center">
           <AlertTriangle className="w-12 h-12 text-red-500 mx-auto mb-4" />
           <h2 className="text-xl font-bold text-slate-900 mb-2">Connection Error</h2>
@@ -516,11 +518,14 @@ export default function App() {
     )
 
   return (
-    <div
-      className="min-h-screen bg-gradient-to-b from-slate-50 to-slate-100 font-sans text-slate-900 md:pb-12"
-      style={{ paddingBottom: 'calc(7rem + env(safe-area-inset-bottom, 20px))' }}
-    >
-      <div className="fixed top-4 right-4 z-50 space-y-2">
+    <div className="app-shell min-h-dvh bg-gradient-to-b from-slate-50 to-slate-100 font-sans text-slate-900">
+      <div
+        className="fixed right-4 z-50 space-y-2 max-w-[calc(100vw-2rem)]"
+        style={{
+          top: 'calc(1rem + env(safe-area-inset-top, 0px))',
+          right: 'max(1rem, env(safe-area-inset-right, 0px))'
+        }}
+      >
         {toasts.map((toast) => (
           <ToastNotification
             key={toast.id}
@@ -635,6 +640,7 @@ export default function App() {
                   <BurnRateWidget
                     velocityStats={velocityStats}
                     onSeeTrends={() => handleSeeTrends('overview')}
+                    onOpenHelp={() => setShowBurnRateHelp(true)}
                   />
                 </div>
                 <div className="p-4 md:p-5">
@@ -751,6 +757,10 @@ export default function App() {
           />
         )}
       </main>
+
+      {showBurnRateHelp && (
+        <BurnRateHelpSheet onClose={() => setShowBurnRateHelp(false)} />
+      )}
     </div>
   )
 }
