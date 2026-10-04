@@ -1,11 +1,12 @@
 // src/pages/NetworkPage.jsx
-import { useState, useEffect, useCallback } from 'react'
+import { useState } from 'react'
 import {
-  Search, UserPlus, UserCheck, UserX, Users,
+  Search, UserPlus, UserCheck, UserX, Users, Send,
   Loader2, Check, X, AlertCircle, ChevronLeft
 } from 'lucide-react'
 import { supabase } from '../lib/supabaseClient'
 import { ConfirmSheet } from '../components/shared/ConfirmSheet'
+import { useFriendRequests } from '../hooks/useFriendRequests'
 
 export function NetworkPage({
   user,
@@ -14,84 +15,27 @@ export function NetworkPage({
   onGoToProfile,
   onBack
 }) {
+  const {
+    requests: pendingRequests,
+    sentRequests,
+    friends,
+    friendships,
+    loading,
+    accept: acceptRequest,
+    decline: declineRequest,
+    cancel: cancelRequest,
+    removeFriend,
+    refresh
+  } = useFriendRequests(user, showToast)
+
   const [searchTerm, setSearchTerm] = useState('')
   const [searchResults, setSearchResults] = useState([])
   const [searching, setSearching] = useState(false)
-
-  const [friendships, setFriendships] = useState([])
-  const [pendingRequests, setPendingRequests] = useState([])
-  const [friends, setFriends] = useState([])
-  const [loading, setLoading] = useState(true)
-
   const [actionInFlight, setActionInFlight] = useState(null)
   const [pendingRemove, setPendingRemove] = useState(null)
   // Shape: { friendshipId, name }
 
   const hasUsername = !!profile?.username?.trim()
-
-  // ----------------------------------------------------------
-  // Load friendships + profiles
-  // ----------------------------------------------------------
-  const fetchNetworkData = useCallback(async () => {
-    if (!user) return
-    setLoading(true)
-
-    try {
-      const { data: fsData, error: fsError } = await supabase
-        .from('friendships')
-        .select('*')
-        .or(`requester_id.eq.${user.id},addressee_id.eq.${user.id}`)
-
-      if (fsError) throw fsError
-
-      const list = fsData || []
-
-      const otherIds = new Set()
-      list.forEach(f => {
-        if (f.requester_id !== user.id) otherIds.add(f.requester_id)
-        if (f.addressee_id !== user.id) otherIds.add(f.addressee_id)
-      })
-
-      let profileMap = {}
-      if (otherIds.size > 0) {
-        const { data: profileData, error: pError } = await supabase.rpc(
-          'get_profiles_by_ids',
-          { user_ids: [...otherIds] }
-        )
-
-        if (pError) throw pError
-        profileMap = Object.fromEntries(
-          (profileData || []).map(p => [p.id, p])
-        )
-      }
-
-      const enriched = list.map(f => {
-        const otherId = f.requester_id === user.id ? f.addressee_id : f.requester_id
-        const friendProfile = profileMap[otherId] || null
-
-        return {
-          ...f,
-          other_user: friendProfile
-        }
-      })
-
-      setFriendships(enriched)
-      setPendingRequests(
-        enriched.filter(
-          f => f.status === 'pending' && f.addressee_id === user.id
-        )
-      )
-      setFriends(enriched.filter(f => f.status === 'accepted'))
-    } catch (err) {
-      showToast('Failed to load network: ' + err.message, 'error')
-    } finally {
-      setLoading(false)
-    }
-  }, [user, showToast])
-
-  useEffect(() => {
-    fetchNetworkData()
-  }, [fetchNetworkData])
 
   // ----------------------------------------------------------
   // Search users (RPC)
@@ -147,7 +91,8 @@ export function NetworkPage({
       )
 
       setSearchResults(prev => prev.filter(u => u.id !== targetUser.id))
-      await fetchNetworkData()
+      // Immediate local update — realtime will also fire (idempotent)
+      await refresh()
     } catch (err) {
       showToast('Failed to send request: ' + err.message, 'error')
     } finally {
@@ -156,60 +101,43 @@ export function NetworkPage({
   }
 
   // ----------------------------------------------------------
-  // Accept request
+  // Accept / decline / cancel / remove
   // ----------------------------------------------------------
   const handleAccept = async (friendshipId) => {
     setActionInFlight(friendshipId)
-
     try {
-      const { error } = await supabase
-        .from('friendships')
-        .update({ status: 'accepted' })
-        .eq('id', friendshipId)
-
-      if (error) throw error
-
-      showToast('Friend request accepted!', 'success')
-      await fetchNetworkData()
-    } catch (err) {
-      showToast('Failed to accept: ' + err.message, 'error')
+      await acceptRequest(friendshipId)
     } finally {
       setActionInFlight(null)
     }
   }
 
-  // ----------------------------------------------------------
-  // Remove / decline
-  // ----------------------------------------------------------
-  // Performs the removal — no confirmation inside this function.
-  // Callers decide whether to route through the ConfirmSheet first.
-  const performRemove = async (friendshipId, isPending = false) => {
+  const handleDecline = async (friendshipId) => {
     setActionInFlight(friendshipId)
-
     try {
-      const { error } = await supabase
-        .from('friendships')
-        .delete()
-        .eq('id', friendshipId)
-
-      if (error) throw error
-
-      showToast(isPending ? 'Request declined' : 'Friend removed', 'success')
-      await fetchNetworkData()
-    } catch (err) {
-      showToast('Failed: ' + err.message, 'error')
+      await declineRequest(friendshipId)
     } finally {
       setActionInFlight(null)
     }
   }
 
-  // Confirms then removes — used by the friend list Remove button
-  const confirmRemove = async () => {
+  const handleCancel = async (friendshipId) => {
+    setActionInFlight(friendshipId)
+    try {
+      await cancelRequest(friendshipId)
+    } finally {
+      setActionInFlight(null)
+    }
+  }
+
+  const handleConfirmRemove = async () => {
     if (!pendingRemove) return
     const id = pendingRemove.friendshipId
+    setActionInFlight(id)
     try {
-      await performRemove(id, false)
+      await removeFriend(id)
     } finally {
+      setActionInFlight(null)
       setPendingRemove(null)
     }
   }
@@ -388,7 +316,7 @@ export function NetworkPage({
           )}
         </section>
 
-        {/* PENDING REQUESTS */}
+        {/* PENDING REQUESTS (incoming) */}
         {pendingRequests.length > 0 && (
           <section className="bg-surface/60 backdrop-blur-xl border border-line/50 rounded-3xl p-5 shadow-sm">
             <div className="flex items-center gap-3 mb-4">
@@ -437,7 +365,7 @@ export function NetworkPage({
                         Accept
                       </button>
                       <button
-                        onClick={() => performRemove(req.id, true)}
+                        onClick={() => handleDecline(req.id)}
                         disabled={isBusy}
                         className="inline-flex items-center gap-1.5 bg-surface hover:bg-danger-soft text-danger border border-danger-border text-xs font-bold px-3 py-1.5 rounded-lg transition-colors disabled:opacity-50"
                       >
@@ -445,6 +373,61 @@ export function NetworkPage({
                         Decline
                       </button>
                     </div>
+                  </div>
+                )
+              })}
+            </div>
+          </section>
+        )}
+
+        {/* SENT REQUESTS (outgoing) */}
+        {sentRequests.length > 0 && (
+          <section className="bg-surface/60 backdrop-blur-xl border border-line/50 rounded-3xl p-5 shadow-sm">
+            <div className="flex items-center gap-3 mb-4">
+              <div className="p-2.5 rounded-xl bg-surface-2 text-fg-muted border border-line">
+                <Send className="w-5 h-5" />
+              </div>
+              <span className="font-bold text-base text-fg">
+                Sent Requests
+              </span>
+              <span className="text-[10px] font-black px-2 py-0.5 rounded-full bg-surface-3 text-fg-muted">
+                {sentRequests.length}
+              </span>
+            </div>
+
+            <div className="space-y-2">
+              {sentRequests.map(req => {
+                const isBusy = actionInFlight === req.id
+
+                return (
+                  <div
+                    key={req.id}
+                    className="flex items-center justify-between p-3 bg-surface-2/50 border border-line rounded-xl gap-3"
+                  >
+                    <div className="min-w-0 flex-1">
+                      <p className="text-sm font-bold text-fg truncate">
+                        {displayName(req.other_user)}
+                      </p>
+                      {req.other_user?.username && (
+                        <p className="text-xs text-fg-muted truncate">
+                          @{req.other_user.username}
+                        </p>
+                      )}
+                    </div>
+
+                    <button
+                      onClick={() => handleCancel(req.id)}
+                      disabled={isBusy}
+                      className="shrink-0 inline-flex items-center gap-1.5 text-xs font-bold text-fg-subtle hover:text-danger hover:bg-danger-soft px-2.5 py-1.5 rounded-lg transition-colors disabled:opacity-50"
+                      aria-label={`Cancel request to ${displayName(req.other_user)}`}
+                    >
+                      {isBusy ? (
+                        <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                      ) : (
+                        <X className="w-3.5 h-3.5" />
+                      )}
+                      Cancel
+                    </button>
                   </div>
                 )
               })}
@@ -529,7 +512,7 @@ export function NetworkPage({
           title={`Remove "${pendingRemove.name}"?`}
           message="You'll need to send a new friend request to reconnect."
           confirmLabel="Remove"
-          onConfirm={confirmRemove}
+          onConfirm={handleConfirmRemove}
           onCancel={() => setPendingRemove(null)}
         />
       )}

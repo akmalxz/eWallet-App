@@ -1,13 +1,17 @@
 // src/components/layouts/Header.jsx
 import { useState, useEffect } from 'react'
-import { Settings, LogOut, Menu, X, SunMoon } from 'lucide-react'
+import { Settings, LogOut, Menu, X, SunMoon, Bell } from 'lucide-react'
 import { ThemeToggle } from '../shared/ThemeToggle'
+import { NotificationBell } from '../notifications/NotificationBell'
+import { useFriendRequests } from '../../hooks/useFriendRequests'
 
 export const Header = ({ user, profile, currentView, setCurrentView, supabase }) => {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
 
+  // Read-only consumption: Header never mutates friendships.
+  const { count: requestCount } = useFriendRequests(user)
+
   // Close the mobile menu whenever the viewport crosses into desktop.
-  // Prevents a stale-open menu reappearing when resizing or rotating back.
   useEffect(() => {
     if (typeof window === 'undefined') return
     const mq = window.matchMedia('(min-width: 768px)')
@@ -47,8 +51,9 @@ export const Header = ({ user, profile, currentView, setCurrentView, supabase })
   const mobileTitle = viewTitles[currentView] || 'FlowState'
   const desktopTitle = greetingLine
 
-  // Sign-out with error visibility. supabase.auth.signOut() can fail on
-  // network error or expired session — we log so it isn't silently lost.
+  const hasPendingRequests = requestCount > 0
+  const badgeText = requestCount > 9 ? '9+' : requestCount
+
   const handleSignOut = async () => {
     try {
       const { error } = await supabase.auth.signOut()
@@ -58,9 +63,13 @@ export const Header = ({ user, profile, currentView, setCurrentView, supabase })
     }
   }
 
+  const handleOpenNotifications = () => {
+    setCurrentView('network')
+    setIsMobileMenuOpen(false)
+  }
+
   return (
     <header className="sticky top-0 z-20 pt-safe px-safe bg-page">
-      {/* Solid content bar */}
       <div className="relative bg-page">
         <div className="max-w-6xl mx-auto px-3 py-2 md:py-3">
           <div className="flex items-center justify-between gap-2">
@@ -82,24 +91,40 @@ export const Header = ({ user, profile, currentView, setCurrentView, supabase })
               </h1>
             </button>
 
-            {/* Mobile: menu button only */}
+            {/* Mobile: menu button with red dot when requests pending */}
             <div className="flex items-center gap-1 md:hidden shrink-0">
               <button
                 onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-                className="flex items-center justify-center w-11 h-11 p-0 text-fg-subtle hover:text-fg-muted rounded-lg transition-colors"
-                aria-label="Toggle menu"
+                className="relative flex items-center justify-center w-11 h-11 p-0 text-fg-subtle hover:text-fg-muted rounded-lg transition-colors"
+                aria-label={
+                  hasPendingRequests
+                    ? `Toggle menu, ${requestCount} pending request${requestCount === 1 ? '' : 's'}`
+                    : 'Toggle menu'
+                }
               >
                 {isMobileMenuOpen ? (
                   <X className="w-4 h-4" />
                 ) : (
                   <Menu className="w-4 h-4" />
                 )}
+
+                {hasPendingRequests && !isMobileMenuOpen && (
+                  <span
+                    className="absolute top-2 right-2 w-2 h-2 rounded-full bg-danger-solid pointer-events-none"
+                    aria-hidden="true"
+                  />
+                )}
               </button>
             </div>
 
-            {/* Desktop: theme toggle + settings + sign out */}
-            <div className="hidden md:flex items-center gap-2">
-              <ThemeToggle />
+            {/* Desktop: bell + theme + settings + sign out */}
+            <div className="hidden md:flex items-center gap-1">
+              <NotificationBell
+                count={requestCount}
+                active={currentView === 'network'}
+                onOpen={() => setCurrentView('network')}
+              />
+              <ThemeToggle className="ml-1" />
               <button
                 onClick={() => setCurrentView('profile')}
                 className={`p-2.5 rounded-full transition-colors ${
@@ -125,6 +150,23 @@ export const Header = ({ user, profile, currentView, setCurrentView, supabase })
 
           {isMobileMenuOpen && (
             <div className="mt-2 bg-surface/95 backdrop-blur-md rounded-xl shadow-lg border border-line p-2 space-y-1 md:hidden animate-in slide-in-from-top-2 duration-200">
+
+              {/* Notifications row — badge mirrors desktop bell count */}
+              <button
+                onClick={handleOpenNotifications}
+                className="w-full flex items-center justify-between gap-3 px-3 py-2.5 text-sm text-fg-muted hover:bg-surface-2 rounded-lg transition-colors"
+                style={{ minHeight: 44 }}
+              >
+                <div className="flex items-center gap-3">
+                  <Bell className="w-4 h-4 text-fg-subtle" />
+                  Notifications
+                </div>
+                {hasPendingRequests && (
+                  <span className="min-w-[20px] h-5 px-1.5 rounded-full bg-danger-solid text-white text-[10px] font-bold leading-none flex items-center justify-center">
+                    {badgeText}
+                  </span>
+                )}
+              </button>
 
               {/* Theme row */}
               <div className="w-full flex items-center justify-between gap-3 px-3 py-2">
