@@ -1,4 +1,4 @@
-// src/utils/burnRateEngine.js
+// src/utils/analytics/burnRateEngine.js
 import {
   toMYDate,
   monthKey,
@@ -7,9 +7,9 @@ import {
   nextPayday,
   isTodayPayday,
   daysBetweenMY
-} from './dateHelpers'
-import { resolveAccountScope } from './accountScope'
-import { computeCommitmentSchedule } from './commitmentSchedule'
+} from '../dateHelpers'
+import { resolveAccountScope } from '../accounts/accountScope'
+import { computeCommitmentSchedule } from '../commitments/commitmentSchedule'
 
 // ===========================================================================
 // Named thresholds (Phase 5)

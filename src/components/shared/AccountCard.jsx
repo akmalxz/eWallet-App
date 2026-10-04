@@ -5,7 +5,7 @@ import {
   CreditCard, Settings, Pin
 } from 'lucide-react'
 import { formatMYR } from '../../utils/formatters'
-import { getColorTheme, getIcon, getPattern } from '../../utils/themeRegistry'
+import { getColorTheme, getIcon, getPattern } from '../../utils/theme/themeRegistry'
 
 // ---------------------------------------------------------------------------
 // Pattern SVG cache — one data URI per (patternKey, tone) combo.

@@ -1,12 +1,12 @@
-// src/utils/commitmentSchedule.js
+// src/utils/commitments/commitmentSchedule.js
 import {
   toMYDate,
   dayKey,
   dueDateForMonth,
   daysBetweenMY
-} from './dateHelpers'
+} from '../dateHelpers'
 import { isPeriodHandled } from './commitmentPayments'
-import { resolveAccountScope } from './accountScope'
+import { resolveAccountScope } from '../accounts/accountScope'
 
 // How many calendar months back to look for unpaid periods
 const CARRY_OVER_MONTHS = 3

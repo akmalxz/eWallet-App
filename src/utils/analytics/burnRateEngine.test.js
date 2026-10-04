@@ -1,16 +1,16 @@
-// src/utils/burnRateEngine.test.js
+// src/utils/analytics/burnRateEngine.test.js
 import { describe, it, expect } from 'vitest'
 import {
   computeBurnRate,
   isCommitmentPayment,
   isRealExpense
 } from './burnRateEngine'
-import { computeCommitmentSchedule } from './commitmentSchedule'
+import { computeCommitmentSchedule } from '../commitments/commitmentSchedule'
 import {
   nextPayday,
   lastWorkingDayOfMonth,
   getDayOfMonthMY
-} from './dateHelpers'
+} from '../dateHelpers'
 
 // Helper: build a MY-local date from components
 const d = (year, monthIdx, day) => new Date(Date.UTC(year, monthIdx, day, 4, 0, 0))

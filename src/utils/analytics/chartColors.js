@@ -1,4 +1,4 @@
-// src/utils/analyticsColors.js
+// src/utils/analytics/chartColors.js
 
 // ============================================================
 // LEGACY EXPORTS — kept for backwards compatibility.

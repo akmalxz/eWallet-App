@@ -1,4 +1,4 @@
-// src/utils/categoryColors.js
+// src/utils/analytics/categoryColors.js
 
 // Stable color per main category name. Same category always same color.
 const KNOWN = {

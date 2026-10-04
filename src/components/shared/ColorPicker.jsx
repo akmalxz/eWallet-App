@@ -1,6 +1,6 @@
 // src/components/shared/ColorPicker.jsx
 import { Check } from 'lucide-react'
-import { COLOR_THEMES } from '../../utils/themeRegistry'
+import { COLOR_THEMES } from '../../utils/theme/themeRegistry'
 
 // ===========================================================================
 // ColorPicker

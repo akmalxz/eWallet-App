@@ -1,4 +1,4 @@
-// src/utils/themeRegistry.js
+// src/utils/theme/themeRegistry.js
 import {
   Landmark, Building2, Wallet, CreditCard, Smartphone,
   PiggyBank, Lock, Coins, Banknote,

@@ -1,6 +1,6 @@
 // src/components/shared/IconPicker.jsx
 import { Check } from 'lucide-react'
-import { getIconsByCategory, getColorTheme } from '../../utils/themeRegistry'
+import { getIconsByCategory, getColorTheme } from '../../utils/theme/themeRegistry'
 
 export const IconPicker = ({
   value,

@@ -36,9 +36,9 @@ import { useCommitments } from './hooks/useCommitments'
 // Utils
 import { TransactionParser } from './utils/nlpParser'
 import { getDayOfMonthMY, monthKey, toMYDate } from './utils/dateHelpers'
-import { rollUpToMain, getCategoryColor, OTHER_COLOR } from './utils/categoryColors'
-import { computeBurnRate } from './utils/burnRateEngine'
-import { computeCommitmentSchedule } from './utils/commitmentSchedule'
+import { rollUpToMain, getCategoryColor, OTHER_COLOR } from './utils/analytics/categoryColors'
+import { computeBurnRate } from './utils/analytics/burnRateEngine'
+import { computeCommitmentSchedule } from './utils/commitments/commitmentSchedule'
 
 const ICON_MAP = { Landmark, Wallet, Activity, PiggyBank, Database }
 

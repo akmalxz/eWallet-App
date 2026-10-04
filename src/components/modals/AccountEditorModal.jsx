@@ -8,7 +8,7 @@ import { AccountCard } from '../shared/AccountCard'
 import { ColorPicker } from '../shared/ColorPicker'
 import { PatternPicker } from '../shared/PatternPicker'
 import { IconPicker } from '../shared/IconPicker'
-import { COLOR_THEMES, PATTERNS, ICONS } from '../../utils/themeRegistry'
+import { COLOR_THEMES, PATTERNS, ICONS } from '../../utils/theme/themeRegistry'
 
 const NAME_MAX = 30
 

@@ -5,8 +5,8 @@ import {
   Coffee, Check, ArrowRight, HelpCircle, PartyPopper
 } from 'lucide-react'
 import { formatMYR } from '../../utils/formatters'
-import { COLORS } from '../../utils/analyticsColors'
-import { CRITICAL_RUNWAY_DAYS, NEAR_PAYDAY_DAYS } from '../../utils/burnRateEngine'
+import { COLORS } from '../../utils/analytics/chartColors'
+import { CRITICAL_RUNWAY_DAYS, NEAR_PAYDAY_DAYS } from '../../utils/analytics/burnRateEngine'
 
 const compactMYR = (n) => {
   const abs = Math.abs(n || 0)

@@ -1,7 +1,7 @@
-// src/utils/commitmentSchedule.test.js
+// src/utils/commitments/commitmentSchedule.test.js
 import { describe, it, expect } from 'vitest'
 import { computeCommitmentSchedule } from './commitmentSchedule'
-import { toMYDate } from './dateHelpers'
+import { toMYDate } from '../dateHelpers'
 
 // ---------------------------------------------------------------------------
 // Fixtures

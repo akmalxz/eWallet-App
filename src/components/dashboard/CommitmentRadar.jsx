@@ -7,7 +7,7 @@ import {
 } from 'lucide-react'
 import { formatMYR } from '../../utils/formatters'
 import { monthShortName, toMYDate } from '../../utils/dateHelpers'
-import { isPeriodPaid, isPeriodSkipped } from '../../utils/commitmentPayments'
+import { isPeriodPaid, isPeriodSkipped } from '../../utils/commitments/commitmentPayments'
 import { MarkPaidSheet } from './MarkPaidSheet'
 import { CommitmentFormSheet } from '../commitments/CommitmentFormSheet'
 import { ConfirmSheet } from '../shared/ConfirmSheet'

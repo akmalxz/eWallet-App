@@ -1,4 +1,4 @@
-// src/utils/accountScope.js
+// src/utils/accounts/accountScope.js
 
 /**
  * Resolve which accounts are in scope for a given scope id.

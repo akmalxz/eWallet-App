@@ -1,6 +1,6 @@
 // src/hooks/useChartTheme.js
 import { useEffect, useState } from 'react'
-import { CHART_THEMES } from '../utils/analyticsColors'
+import { CHART_THEMES } from '../utils/analytics/chartColors'
 
 /**
  * Returns the active theme's chart color palette.

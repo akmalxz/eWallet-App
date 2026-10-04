@@ -1,6 +1,6 @@
 // src/components/shared/PatternPicker.jsx
 import { Check } from 'lucide-react'
-import { PATTERNS, getColorTheme } from '../../utils/themeRegistry'
+import { PATTERNS, getColorTheme } from '../../utils/theme/themeRegistry'
 
 // ---------------------------------------------------------------------------
 // Same caching strategy as AccountCard. Generation is done once per

@@ -1,4 +1,4 @@
-// src/utils/accountUtils.js
+// src/utils/accounts/accountUtils.js
 /**
  * Normalize account data from the view to have consistent 'id' field
  */

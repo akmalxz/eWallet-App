@@ -1,5 +1,5 @@
-// src/utils/commitmentPayments.js
-import { toMYDate } from './dateHelpers'
+// src/utils/commitments/commitmentPayments.js
+import { toMYDate } from '../dateHelpers'
 
 // A period is (year, month). Payment status comes from commitments_payments.
 
