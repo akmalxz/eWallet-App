@@ -28,7 +28,7 @@ export function ThemeToggle({ className = '' }) {
             aria-label={label}
             title={label}
             onClick={() => setPreference(value)}
-            className={`flex items-center justify-center w-8 h-8 p-0 rounded-full transition-colors ${
+            className={`no-min-tap flex items-center justify-center w-8 h-8 p-0 rounded-full transition-colors ${
               active
                 ? 'bg-surface text-fg shadow-sm'
                 : 'text-fg-subtle hover:text-fg'

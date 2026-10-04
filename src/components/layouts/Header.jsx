@@ -1,10 +1,22 @@
 // src/components/layouts/Header.jsx
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Settings, LogOut, Menu, X, SunMoon } from 'lucide-react'
 import { ThemeToggle } from '../shared/ThemeToggle'
 
 export const Header = ({ user, profile, currentView, setCurrentView, supabase }) => {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
+
+  // Close the mobile menu whenever the viewport crosses into desktop.
+  // Prevents a stale-open menu reappearing when resizing or rotating back.
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+    const mq = window.matchMedia('(min-width: 768px)')
+    const handler = (e) => {
+      if (e.matches) setIsMobileMenuOpen(false)
+    }
+    mq.addEventListener('change', handler)
+    return () => mq.removeEventListener('change', handler)
+  }, [])
 
   const getGreeting = () => {
     const hour = new Date().getHours()
@@ -19,7 +31,6 @@ export const Header = ({ user, profile, currentView, setCurrentView, supabase })
     user?.email?.split('@')[0] ||
     'there'
 
-  // Computed once, reused in both titles
   const greetingLine = `${getGreeting()}, ${firstName}`
 
   const viewTitles = {
@@ -33,10 +44,19 @@ export const Header = ({ user, profile, currentView, setCurrentView, supabase })
     profile: 'Profile & Settings'
   }
 
-  // Mobile: page name (the only orientation cue, since pages hide their H1 on mobile)
   const mobileTitle = viewTitles[currentView] || 'FlowState'
-  // Desktop: always the greeting
   const desktopTitle = greetingLine
+
+  // Sign-out with error visibility. supabase.auth.signOut() can fail on
+  // network error or expired session — we log so it isn't silently lost.
+  const handleSignOut = async () => {
+    try {
+      const { error } = await supabase.auth.signOut()
+      if (error) throw error
+    } catch (err) {
+      console.error('Sign out failed:', err?.message || err)
+    }
+  }
 
   return (
     <header className="sticky top-0 z-20 pt-safe px-safe">
@@ -93,7 +113,7 @@ export const Header = ({ user, profile, currentView, setCurrentView, supabase })
                 <Settings className="w-4 h-4" />
               </button>
               <button
-                onClick={() => supabase.auth.signOut()}
+                onClick={handleSignOut}
                 className="p-2.5 text-fg-subtle hover:bg-danger-soft hover:text-danger rounded-full transition-colors ml-1"
                 title="Sign out"
                 aria-label="Sign out"
@@ -129,7 +149,7 @@ export const Header = ({ user, profile, currentView, setCurrentView, supabase })
 
               <button
                 onClick={() => {
-                  supabase.auth.signOut()
+                  handleSignOut()
                   setIsMobileMenuOpen(false)
                 }}
                 className="w-full flex items-center gap-3 px-3 py-2.5 text-sm text-danger hover:bg-danger-soft rounded-lg transition-colors"
