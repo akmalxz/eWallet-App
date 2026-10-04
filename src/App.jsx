@@ -5,6 +5,7 @@ import { AlertTriangle } from 'lucide-react'
 
 // Components
 import Auth from './components/Auth'
+import ResetPassword from './components/ResetPassword'
 import { ToastNotification } from './components/shared/Toast'
 import { LoadingSpinner } from './components/shared/LoadingSpinner'
 import { Header } from './components/layouts/Header'
@@ -35,6 +36,23 @@ const AnalyticsPage = lazy(() =>
 
 export default function App() {
   const { user, profile, refreshProfile, isAuthenticated, isAuthLoading } = useAuth()
+
+  // ============================================
+  // PASSWORD RECOVERY MODE
+  // When the user clicks the reset link in their email, Supabase fires
+  // a PASSWORD_RECOVERY auth event. We show the reset form instead of the
+  // app so the user can immediately set a new password.
+  // ============================================
+  const [isRecovery, setIsRecovery] = useState(false)
+
+  useEffect(() => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event) => {
+      if (event === 'PASSWORD_RECOVERY') {
+        setIsRecovery(true)
+      }
+    })
+    return () => subscription.unsubscribe()
+  }, [])
 
   // ============================================
   // TOASTS
@@ -129,6 +147,18 @@ export default function App() {
   // RENDER
   // ============================================
   if (isAuthLoading) return <LoadingSpinner message="Loading secure vault..." />
+
+  if (isRecovery) {
+    return (
+      <ResetPassword
+        onDone={async () => {
+          setIsRecovery(false)
+          await supabase.auth.signOut()
+        }}
+      />
+    )
+  }
+
   if (!isAuthenticated) return <Auth />
 
   if (error)
