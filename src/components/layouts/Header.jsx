@@ -8,10 +8,8 @@ import { useFriendRequests } from '../../hooks/useFriendRequests'
 export const Header = ({ user, profile, currentView, setCurrentView, supabase }) => {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
 
-  // Read-only consumption: Header never mutates friendships.
   const { count: requestCount } = useFriendRequests(user)
 
-  // Close the mobile menu whenever the viewport crosses into desktop.
   useEffect(() => {
     if (typeof window === 'undefined') return
     const mq = window.matchMedia('(min-width: 768px)')
@@ -117,7 +115,7 @@ export const Header = ({ user, profile, currentView, setCurrentView, supabase })
               </button>
             </div>
 
-            {/* Desktop: bell + theme + settings + sign out */}
+            {/* Desktop controls */}
             <div className="hidden md:flex items-center gap-1">
               <NotificationBell
                 count={requestCount}
@@ -147,11 +145,17 @@ export const Header = ({ user, profile, currentView, setCurrentView, supabase })
               </button>
             </div>
           </div>
+        </div>
 
-          {isMobileMenuOpen && (
-            <div className="mt-2 bg-surface/95 backdrop-blur-md rounded-xl shadow-lg border border-line p-2 space-y-1 md:hidden animate-in slide-in-from-top-2 duration-200">
+        {/* Mobile menu — absolutely positioned so it overlays page content
+            instead of pushing it down. Top-full anchors it just below the
+            header content row; the outer wrapper spans full width while
+            mx-3 gives it matching gutters. z-10 keeps it above the scrim. */}
+        {isMobileMenuOpen && (
+          <div className="absolute left-0 right-0 top-full z-10 md:hidden pointer-events-none">
+            <div className="mx-3 mt-1 pointer-events-auto bg-surface/95 backdrop-blur-md rounded-xl shadow-lg border border-line p-2 space-y-1 animate-in slide-in-from-top-2 duration-200">
 
-              {/* Notifications row — badge mirrors desktop bell count */}
+              {/* Notifications row */}
               <button
                 onClick={handleOpenNotifications}
                 className="w-full flex items-center justify-between gap-3 px-3 py-2.5 text-sm text-fg-muted hover:bg-surface-2 rounded-lg transition-colors"
@@ -202,8 +206,8 @@ export const Header = ({ user, profile, currentView, setCurrentView, supabase })
               </button>
 
             </div>
-          )}
-        </div>
+          </div>
+        )}
       </div>
 
       {/* Scrim strip below the content bar */}

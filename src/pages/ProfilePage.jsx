@@ -12,6 +12,7 @@ import { IncomeCategoriesModal } from '../components/modals/IncomeCategoriesModa
 import { ExpenseCategoriesModal } from '../components/modals/ExpenseCategoriesModal'
 import { AutomationModal } from '../components/modals/AutomationModal'
 import { PersonalDetailsModal } from '../components/modals/PersonalDetailsModal'
+import { AppFooter } from '../components/shared/AppFooter'
 
 
 // ============================================================
@@ -259,6 +260,8 @@ export function ProfilePage({
           showToast={showToast}
         />
       )}
+
+      <AppFooter user={user} showToast={showToast} />
 
     </div>
   )
