@@ -3,7 +3,8 @@ import { useState, useMemo } from 'react'
 import { supabase } from '../lib/supabaseClient'
 import {
   Activity, Mail, Lock, CheckCircle, AlertCircle,
-  Eye, EyeOff, Loader2, ArrowLeft, ShieldCheck
+  Eye, EyeOff, Loader2, ShieldCheck
+  // ArrowLeft — re-enable when forgot-password is restored
 } from 'lucide-react'
 
 // ============================================================
@@ -30,7 +31,6 @@ function scorePassword(pw) {
     { id: 'nosimple', label: 'Not a commonly used password',      ok: !BLOCKLIST.has(pw.toLowerCase()) }
   ]
 
-  // Score: length is 60% of the weight, variety 25%, blocklist 15%
   let score = 0
   if (pw.length >= MIN_LENGTH) score += 1
   if (pw.length >= 12) score += 1
@@ -38,7 +38,6 @@ function scorePassword(pw) {
   if (checks[2].ok) score += 1
   if (checks[3].ok) score += 1
 
-  // Cap at 4; label from score
   const capped = Math.min(score, 4)
   const labels = ['Too short', 'Weak', 'Fair', 'Strong', 'Very strong']
   const colors = ['text-danger', 'text-danger', 'text-warning', 'text-success', 'text-success']
@@ -62,7 +61,9 @@ export default function Auth() {
   const [password, setPassword] = useState('')
   const [confirmPassword, setConfirmPassword] = useState('')
   const [isSignUp, setIsSignUp] = useState(false)
-  const [isForgot, setIsForgot] = useState(false)
+  // TEMPORARILY DISABLED — Forgot password. Re-enable when SMTP is set up.
+  // const [isForgot, setIsForgot] = useState(false)
+  const isForgot = false
   const [status, setStatus] = useState({ type: '', message: '' })
   const [showPassword, setShowPassword] = useState(false)
 
@@ -71,7 +72,7 @@ export default function Auth() {
   const passwordsMatch = !isSignUp || (confirmPassword.length > 0 && password === confirmPassword)
   const canSubmit = (() => {
     if (loading) return false
-    if (isForgot) return !!email          // forgot only needs an email
+    if (isForgot) return !!email
     if (!email || !password) return false
     if (isSignUp) {
       return strength.score >= 2 && passwordsMatch && strength.checks[0].ok && strength.checks[3].ok
@@ -110,7 +111,6 @@ export default function Auth() {
         })
         if (error) throw error
 
-        // Honest message based on whether a session was returned
         const needsConfirmation = !data.session
         setStatus({
           type: 'success',
@@ -122,7 +122,6 @@ export default function Auth() {
       } else {
         const { error } = await supabase.auth.signInWithPassword({ email, password })
         if (error) throw error
-        // Auth state listener in useAuth will flip the app to the dashboard
       }
     } catch (error) {
       setStatus({ type: 'error', message: friendlyError(error) })
@@ -132,29 +131,31 @@ export default function Auth() {
   }
 
   // ----------------------------------------------------------
-  // FORGOT PASSWORD
+  // FORGOT PASSWORD — TEMPORARILY DISABLED
+  // Re-enable along with the "Forgot password?" link in the
+  // password block, and restore the isForgot state above.
   // ----------------------------------------------------------
-  const handleForgot = async (e) => {
-    e.preventDefault()
-    setLoading(true)
-    setStatus({ type: '', message: '' })
-
-    try {
-      const { error } = await supabase.auth.resetPasswordForEmail(email, {
-        redirectTo: `${window.location.origin}/reset-password`
-      })
-      if (error) throw error
-
-      setStatus({
-        type: 'success',
-        message: 'Reset link sent. Check your inbox.'
-      })
-    } catch (error) {
-      setStatus({ type: 'error', message: friendlyError(error) })
-    } finally {
-      setLoading(false)
-    }
-  }
+  // const handleForgot = async (e) => {
+  //   e.preventDefault()
+  //   setLoading(true)
+  //   setStatus({ type: '', message: '' })
+  //
+  //   try {
+  //     const { error } = await supabase.auth.resetPasswordForEmail(email, {
+  //       redirectTo: `${window.location.origin}/reset-password`
+  //     })
+  //     if (error) throw error
+  //
+  //     setStatus({
+  //       type: 'success',
+  //       message: 'Reset link sent. Check your inbox.'
+  //     })
+  //   } catch (error) {
+  //     setStatus({ type: 'error', message: friendlyError(error) })
+  //   } finally {
+  //     setLoading(false)
+  //   }
+  // }
 
   // ----------------------------------------------------------
   // Friendly error mapping
@@ -202,7 +203,7 @@ export default function Auth() {
           </p>
         </div>
 
-        {/* Forgot back button */}
+        {/* TEMPORARILY DISABLED — Back to login button (only shown in forgot mode)
         {isForgot && (
           <button
             type="button"
@@ -215,9 +216,10 @@ export default function Auth() {
             <ArrowLeft className="w-3.5 h-3.5" /> Back to login
           </button>
         )}
+        */}
 
         {/* Form */}
-        <form onSubmit={isForgot ? handleForgot : handleAuth} className="space-y-4">
+        <form onSubmit={handleAuth} className="space-y-4">
 
           {/* EMAIL */}
           <div>
@@ -246,7 +248,7 @@ export default function Auth() {
             </div>
           </div>
 
-          {/* PASSWORD — hidden on forgot-password view */}
+          {/* PASSWORD */}
           {!isForgot && (
             <div>
               <div className="flex items-center justify-between mb-1">
@@ -256,6 +258,8 @@ export default function Auth() {
                 >
                   Password
                 </label>
+
+                {/* TEMPORARILY DISABLED — Forgot password link
                 {!isSignUp && (
                   <button
                     type="button"
@@ -268,6 +272,7 @@ export default function Auth() {
                     Forgot password?
                   </button>
                 )}
+                */}
               </div>
               <div className="relative">
                 <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
@@ -301,7 +306,6 @@ export default function Auth() {
           {/* STRENGTH METER — signup only */}
           {isSignUp && password.length > 0 && (
             <div className="space-y-2">
-              {/* Bar */}
               <div className="flex gap-1">
                 {[0, 1, 2, 3].map((i) => (
                   <div
@@ -313,12 +317,10 @@ export default function Auth() {
                 ))}
               </div>
 
-              {/* Label */}
               <div className="flex items-center justify-between text-xs">
                 <span className={`font-bold ${strength.color}`}>{strength.label}</span>
               </div>
 
-              {/* Checklist */}
               <ul className="space-y-1 pt-1">
                 {strength.checks.map((c) => (
                   <li key={c.id} className="flex items-center gap-2 text-[11px]">
@@ -382,29 +384,25 @@ export default function Auth() {
             {loading && <Loader2 className="w-4 h-4 animate-spin" />}
             {loading
               ? 'Please wait…'
-              : isForgot
-                ? 'Send reset link'
-                : isSignUp
-                  ? 'Create Account'
-                  : 'Log In'}
+              : isSignUp
+                ? 'Create Account'
+                : 'Log In'}
           </button>
         </form>
 
-        {/* Toggle sign-in / sign-up — hidden on forgot */}
-        {!isForgot && (
-          <div className="mt-6 text-center">
-            <button
-              onClick={() => {
-                setIsSignUp(!isSignUp)
-                resetForm()
-              }}
-              className="text-sm text-fg-muted hover:text-fg transition-colors"
-              type="button"
-            >
-              {isSignUp ? 'Already have an account? Log in' : "Don't have an account? Sign up"}
-            </button>
-          </div>
-        )}
+        {/* Toggle sign-in / sign-up */}
+        <div className="mt-6 text-center">
+          <button
+            onClick={() => {
+              setIsSignUp(!isSignUp)
+              resetForm()
+            }}
+            className="text-sm text-fg-muted hover:text-fg transition-colors"
+            type="button"
+          >
+            {isSignUp ? 'Already have an account? Log in' : "Don't have an account? Sign up"}
+          </button>
+        </div>
 
         {/* STATUS */}
         {status.message && (
