@@ -59,7 +59,7 @@ export const Header = ({ user, profile, currentView, setCurrentView, supabase })
   }
 
   return (
-    <header className="sticky top-0 z-20 pt-safe px-safe">
+    <header className="sticky top-0 z-20 pt-safe px-safe bg-page">
       {/* Solid content bar */}
       <div className="relative bg-page">
         <div className="max-w-6xl mx-auto px-3 py-2 md:py-3">
