@@ -24,14 +24,14 @@ export const ConfirmSheet = ({
     <Sheet onClose={onCancel} saving={saving} maxWidth="md:max-w-sm">
       <div className="flex items-start gap-3">
         {destructive && (
-          <div className="w-10 h-10 rounded-full bg-red-50 flex items-center justify-center shrink-0">
-            <AlertTriangle className="w-5 h-5 text-red-500" />
+          <div className="w-10 h-10 rounded-full bg-danger-soft flex items-center justify-center shrink-0">
+            <AlertTriangle className="w-5 h-5 text-danger" />
           </div>
         )}
         <div className="min-w-0">
-          <h3 className="text-sm font-bold text-slate-800">{title}</h3>
+          <h3 className="text-sm font-bold text-fg">{title}</h3>
           {message && (
-            <p className="text-xs text-slate-500 mt-1 leading-relaxed">{message}</p>
+            <p className="text-xs text-fg-muted mt-1 leading-relaxed">{message}</p>
           )}
         </div>
       </div>
@@ -42,7 +42,7 @@ export const ConfirmSheet = ({
           type="button"
           onClick={onCancel}
           disabled={saving}
-          className="flex-1 py-3 rounded-xl text-sm font-semibold text-slate-600 bg-slate-100 hover:bg-slate-200 transition-colors disabled:opacity-50"
+          className="flex-1 py-3 rounded-xl text-sm font-semibold text-fg-muted bg-surface-2 hover:bg-surface-3 transition-colors disabled:opacity-50"
           style={{ minHeight: 44 }}
         >
           {cancelLabel}
@@ -52,7 +52,9 @@ export const ConfirmSheet = ({
           onClick={onConfirm}
           disabled={saving}
           className={`flex-1 py-3 rounded-xl text-sm font-bold text-white transition-colors disabled:opacity-50 ${
-            destructive ? 'bg-red-500 hover:bg-red-600' : 'bg-slate-900 hover:bg-slate-800'
+            destructive
+              ? 'bg-danger-solid hover:bg-danger-solid-hover'
+              : 'bg-brand-solid hover:bg-brand-solid-hover'
           }`}
           style={{ minHeight: 44 }}
         >

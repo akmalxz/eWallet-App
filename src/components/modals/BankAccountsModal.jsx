@@ -10,6 +10,7 @@ import { AccountCard } from '../shared/AccountCard'
 import { AccountEditorModal } from './AccountEditorModal'
 import { ConfirmSheet } from '../shared/ConfirmSheet'
 import { Sheet } from '../shared/Sheet'
+import { AccountDropdown } from '../shared/AccountDropdown'
 import { formatMYR } from '../../utils/formatters'
 
 export const BankAccountsModal = ({
@@ -252,22 +253,22 @@ export const BankAccountsModal = ({
   // ----------------------------------------------------------
   // Render
   // ----------------------------------------------------------
-  return (
+    return (
     <>
       <ModalWrapper title="Bank Accounts" closeModal={closeModal}>
         <div className="space-y-3">
           {activeAccounts.length === 0 && archivedAccounts.length === 0 && (
             <div className="text-center py-8 px-4">
-              <div className="w-14 h-14 bg-slate-100 rounded-2xl flex items-center justify-center mx-auto mb-3 text-slate-400">
+              <div className="w-14 h-14 bg-surface-2 rounded-2xl flex items-center justify-center mx-auto mb-3 text-fg-subtle">
                 <Wallet className="w-6 h-6" />
               </div>
-              <p className="text-sm font-bold text-slate-700">No accounts yet</p>
-              <p className="text-xs text-slate-400 mt-1 max-w-[220px] mx-auto leading-relaxed">
+              <p className="text-sm font-bold text-fg">No accounts yet</p>
+              <p className="text-xs text-fg-subtle mt-1 max-w-[220px] mx-auto leading-relaxed">
                 Add your first bank or wallet account to start tracking.
               </p>
               <button
                 onClick={openNewEditor}
-                className="mt-4 inline-flex items-center gap-2 px-4 py-2.5 bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold rounded-xl transition-colors"
+                className="mt-4 inline-flex items-center gap-2 px-4 py-2.5 bg-brand-solid hover:bg-brand-solid-hover text-white text-xs font-bold rounded-xl transition-colors"
                 style={{ minHeight: 44 }}
               >
                 <Plus className="w-4 h-4" /> Add Account
@@ -285,29 +286,29 @@ export const BankAccountsModal = ({
                 return (
                   <div
                     key={acc.id}
-                    className="flex items-center justify-between gap-2 p-2 bg-white/60 border border-white/60 rounded-xl"
+                    className="flex items-center justify-between gap-2 p-2 bg-surface-2 border border-line rounded-xl"
                   >
                     <button
                       type="button"
                       onClick={() => openEditEditor(acc)}
-                      className="flex items-center gap-2 min-w-0 flex-1 text-left rounded-lg px-1 py-1 hover:bg-white transition-colors"
+                      className="flex items-center gap-2 min-w-0 flex-1 text-left rounded-lg px-1 py-1 hover:bg-surface transition-colors"
                       aria-label={`Edit ${acc.account_name}`}
                     >
                       <AccountCard account={acc} size="chip" />
-                      <span className="text-xs text-slate-400 truncate">{classLabel}</span>
+                      <span className="text-xs text-fg-subtle truncate">{classLabel}</span>
                     </button>
 
                     <div className="flex items-center gap-1 shrink-0">
                       <button
                         onClick={() => openEditEditor(acc)}
-                        className="inline-flex h-11 w-11 items-center justify-center rounded-lg text-slate-400 hover:bg-blue-50 hover:text-blue-600 transition-colors"
+                        className="inline-flex h-11 w-11 items-center justify-center rounded-lg text-fg-subtle hover:bg-brand-soft hover:text-brand transition-colors"
                         aria-label={`Edit ${acc.account_name}`}
                       >
                         <Edit2 className="h-4 w-4" />
                       </button>
                       <button
                         onClick={() => handleRemoveClick(acc)}
-                        className="inline-flex h-11 w-11 items-center justify-center rounded-lg text-red-400 hover:bg-red-50 hover:text-red-600 transition-colors"
+                        className="inline-flex h-11 w-11 items-center justify-center rounded-lg text-danger/70 hover:bg-danger-soft hover:text-danger transition-colors"
                         aria-label={`Remove ${acc.account_name}`}
                         title="Delete or archive"
                       >
@@ -323,7 +324,7 @@ export const BankAccountsModal = ({
           {(activeAccounts.length > 0 || archivedAccounts.length > 0) && (
             <button
               onClick={openNewEditor}
-              className="w-full flex items-center justify-center gap-2 py-3 rounded-xl text-xs font-bold transition-colors shadow-sm border bg-slate-900 text-white border-slate-900 hover:bg-slate-800"
+              className="w-full flex items-center justify-center gap-2 py-3 rounded-xl text-xs font-bold transition-colors shadow-sm border bg-brand-solid text-white border-brand-solid hover:bg-brand-solid-hover"
               style={{ minHeight: 44 }}
             >
               <Plus className="w-4 h-4" /> Add Account
@@ -334,18 +335,18 @@ export const BankAccountsModal = ({
             <div>
               <button
                 onClick={() => setShowArchived((s) => !s)}
-                className="w-full flex items-center justify-between p-3 bg-white hover:bg-slate-50 border border-slate-100 rounded-xl transition-colors"
+                className="w-full flex items-center justify-between p-3 bg-surface hover:bg-surface-2 border border-line rounded-xl transition-colors"
                 style={{ minHeight: 44 }}
                 aria-expanded={showArchived}
               >
-                <span className="text-[10px] text-slate-500 uppercase font-bold tracking-wider flex items-center gap-1.5">
-                  <Archive className="w-3.5 h-3.5 text-slate-400" />
+                <span className="text-[10px] text-fg-muted uppercase font-bold tracking-wider flex items-center gap-1.5">
+                  <Archive className="w-3.5 h-3.5 text-fg-subtle" />
                   Archived ({archivedAccounts.length})
                 </span>
                 {showArchived ? (
-                  <ChevronUp className="w-4 h-4 text-slate-400" />
+                  <ChevronUp className="w-4 h-4 text-fg-subtle" />
                 ) : (
-                  <ChevronDown className="w-4 h-4 text-slate-400" />
+                  <ChevronDown className="w-4 h-4 text-fg-subtle" />
                 )}
               </button>
 
@@ -354,7 +355,7 @@ export const BankAccountsModal = ({
                   {archivedAccounts.map((acc) => (
                     <div
                       key={acc.id}
-                      className="flex items-center justify-between gap-2 p-2 bg-slate-50/50 border border-slate-100 rounded-xl opacity-75"
+                      className="flex items-center justify-between gap-2 p-2 bg-surface-2/50 border border-line/60 rounded-xl opacity-75"
                     >
                       <div className="flex items-center gap-2 min-w-0 flex-1">
                         <AccountCard account={acc} size="chip" />
@@ -364,7 +365,7 @@ export const BankAccountsModal = ({
                         <button
                           onClick={() => handleRestore(acc)}
                           disabled={saving}
-                          className="inline-flex h-11 w-11 items-center justify-center rounded-lg text-slate-400 hover:bg-emerald-50 hover:text-emerald-600 transition-colors disabled:opacity-50"
+                          className="inline-flex h-11 w-11 items-center justify-center rounded-lg text-fg-subtle hover:bg-success-soft hover:text-success transition-colors disabled:opacity-50"
                           aria-label={`Restore ${acc.account_name}`}
                           title="Restore"
                         >
@@ -372,7 +373,7 @@ export const BankAccountsModal = ({
                         </button>
                         <button
                           onClick={() => handleRemoveClick(acc)}
-                          className="inline-flex h-11 w-11 items-center justify-center rounded-lg text-red-400 hover:bg-red-50 hover:text-red-600 transition-colors"
+                          className="inline-flex h-11 w-11 items-center justify-center rounded-lg text-danger/70 hover:bg-danger-soft hover:text-danger transition-colors"
                           aria-label={`Remove ${acc.account_name}`}
                           title="Delete"
                         >
@@ -437,7 +438,6 @@ export const BankAccountsModal = ({
         />
       )}
 
-      {/* ============ MOVE BILLS + ARCHIVE (3a) ============ */}
       {moveWarning && (
         <Sheet
           title={`Archive "${moveWarning.account.account_name}"?`}
@@ -450,9 +450,9 @@ export const BankAccountsModal = ({
           saving={saving}
           maxWidth="md:max-w-lg"
         >
-          <p className="text-xs text-slate-500 leading-relaxed">
+          <p className="text-xs text-fg-muted leading-relaxed">
             This account has{' '}
-            <strong className="text-slate-700">
+            <strong className="text-fg">
               {moveWarning.bills.length} active bill
               {moveWarning.bills.length === 1 ? '' : 's'}
             </strong>
@@ -464,43 +464,39 @@ export const BankAccountsModal = ({
             {moveWarning.bills.map((bill) => (
               <div
                 key={bill.id}
-                className="bg-slate-50 border border-slate-100 rounded-xl p-3 space-y-2"
+                className="bg-surface-2 border border-line rounded-xl p-3 space-y-2"
               >
                 <div className="flex items-center justify-between gap-3">
                   <div className="min-w-0">
-                    <p className="text-sm font-bold text-slate-800 truncate">{bill.name}</p>
-                    <p className="text-[11px] text-slate-400">
+                    <p className="text-sm font-bold text-fg truncate">{bill.name}</p>
+                    <p className="text-[11px] text-fg-subtle">
                       {formatMYR(bill.amount)} · due day {bill.due_day_of_month}
                     </p>
                   </div>
                 </div>
 
                 <div className="flex items-center gap-2">
-                  <ArrowRight className="w-3.5 h-3.5 text-slate-400 shrink-0" />
-                  <select
-                    value={moveTargets[bill.id] || ''}
-                    onChange={(e) =>
-                      setMoveTargets((prev) => ({ ...prev, [bill.id]: e.target.value }))
-                    }
-                    disabled={saving}
-                    aria-label={`New account for ${bill.name}`}
-                    className="flex-1 bg-white border border-slate-200 rounded-lg py-2 px-3 text-xs outline-none focus:border-blue-500 disabled:opacity-50"
-                  >
-                    <option value="">Select account…</option>
-                    {moveDestinations.map((a) => (
-                      <option key={a.id} value={a.id}>
-                        {a.account_name}
-                      </option>
-                    ))}
-                  </select>
+                  <ArrowRight className="w-3.5 h-3.5 text-fg-subtle shrink-0" />
+                  <div className="flex-1 min-w-0">
+                    <AccountDropdown
+                      accounts={moveDestinations}
+                      value={moveTargets[bill.id] || ''}
+                      onChange={(v) =>
+                        setMoveTargets((prev) => ({ ...prev, [bill.id]: v }))
+                      }
+                      includeAll={false}
+                      label={`New account for ${bill.name}`}
+                      placeholder="Select account…"
+                    />
+                  </div>
                 </div>
               </div>
             ))}
           </div>
 
           {moveDestinations.length === 0 && (
-            <div className="bg-amber-50 border border-amber-200 rounded-xl p-3">
-              <p className="text-xs text-amber-800 leading-relaxed">
+            <div className="bg-warning-soft border border-warning-border rounded-xl p-3">
+              <p className="text-xs text-warning-text leading-relaxed">
                 You have no other active accounts to move bills to. Add a new account first,
                 or archive anyway and fix the bills from the radar.
               </p>
@@ -512,7 +508,7 @@ export const BankAccountsModal = ({
               type="button"
               onClick={handleMoveAndArchive}
               disabled={saving || moveDestinations.length === 0}
-              className="w-full py-3 rounded-xl text-sm font-bold bg-slate-900 hover:bg-slate-800 text-white transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              className="w-full py-3 rounded-xl text-sm font-bold bg-brand-solid hover:bg-brand-solid-hover text-white transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
               style={{ minHeight: 44 }}
             >
               {saving ? 'Moving…' : 'Move bills & archive'}
@@ -522,7 +518,7 @@ export const BankAccountsModal = ({
               type="button"
               onClick={handleArchiveAnyway}
               disabled={saving}
-              className="w-full py-3 rounded-xl text-xs font-semibold text-amber-700 bg-amber-50 hover:bg-amber-100 border border-amber-200 transition-colors disabled:opacity-50"
+              className="w-full py-3 rounded-xl text-xs font-semibold text-warning-text bg-warning-soft hover:bg-warning/20 border border-warning-border transition-colors disabled:opacity-50"
               style={{ minHeight: 44 }}
             >
               Archive anyway, fix bills later
@@ -535,7 +531,7 @@ export const BankAccountsModal = ({
                 setMoveTargets({})
               }}
               disabled={saving}
-              className="w-full py-3 rounded-xl text-xs font-semibold text-slate-500 hover:bg-slate-100 transition-colors disabled:opacity-50"
+              className="w-full py-3 rounded-xl text-xs font-semibold text-fg-muted hover:bg-surface-2 transition-colors disabled:opacity-50"
               style={{ minHeight: 44 }}
             >
               Cancel

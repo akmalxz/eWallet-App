@@ -70,7 +70,7 @@ export const Sheet = ({
 
   return (
     <div
-      className="fixed inset-0 z-[130] flex items-end md:items-center justify-center bg-slate-900/40 backdrop-blur-sm p-0 md:p-4 animate-in fade-in duration-200"
+      className="fixed inset-0 z-[130] flex items-end md:items-center justify-center bg-black/50 backdrop-blur-sm p-0 md:p-4 animate-in fade-in duration-200"
       onClick={attemptClose}
     >
       <div
@@ -78,23 +78,23 @@ export const Sheet = ({
         role="dialog"
         aria-modal="true"
         aria-labelledby={title ? titleId : undefined}
-        className={`w-full ${maxWidth} bg-white rounded-t-3xl md:rounded-3xl shadow-2xl overflow-hidden flex flex-col max-h-[92vh] md:max-h-[85vh] animate-in slide-in-from-bottom-4 md:zoom-in-95 duration-300`}
+        className={`w-full ${maxWidth} bg-surface rounded-t-3xl md:rounded-3xl shadow-2xl overflow-hidden flex flex-col max-h-[92vh] md:max-h-[85vh] animate-in slide-in-from-bottom-4 md:zoom-in-95 duration-300`}
         onClick={(e) => e.stopPropagation()}
       >
         <div className="md:hidden flex justify-center pt-3 pb-1 shrink-0">
-          <div className="w-10 h-1 rounded-full bg-slate-200" />
+          <div className="w-10 h-1 rounded-full bg-line-strong" />
         </div>
 
         {title && (
-          <div className="flex items-center justify-between px-5 py-4 border-b border-slate-100 shrink-0">
-            <h3 id={titleId} className="text-base font-bold text-slate-800">
+          <div className="flex items-center justify-between px-5 py-4 border-b border-line shrink-0">
+            <h3 id={titleId} className="text-base font-bold text-fg">
               {title}
             </h3>
             <button
               type="button"
               onClick={attemptClose}
               disabled={saving}
-              className="inline-flex h-11 w-11 items-center justify-center rounded-full text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-colors disabled:opacity-50"
+              className="inline-flex h-11 w-11 items-center justify-center rounded-full text-fg-subtle hover:text-fg hover:bg-surface-2 transition-colors disabled:opacity-50"
               aria-label="Close"
             >
               <X className="h-4 w-4" />

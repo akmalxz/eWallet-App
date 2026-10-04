@@ -7,7 +7,7 @@ import { formatMYR } from '../../utils/formatters'
 const NAME_MAX = 40
 
 export const CommitmentFormSheet = ({
-  commitment = null, // null → add, object → edit
+  commitment = null,
   accounts = [],
   allCommitments = [],
   saving = false,
@@ -103,13 +103,13 @@ export const CommitmentFormSheet = ({
         <div className="flex items-center justify-between mb-1.5">
           <label
             htmlFor="bill-name"
-            className="block text-[11px] font-bold text-slate-400 uppercase tracking-wider"
+            className="block text-[11px] font-bold text-fg-subtle uppercase tracking-wider"
           >
             Name
           </label>
           <span
             className={`text-[10px] font-medium ${
-              draft.name.length > NAME_MAX ? 'text-red-500' : 'text-slate-400'
+              draft.name.length > NAME_MAX ? 'text-danger' : 'text-fg-subtle'
             }`}
           >
             {draft.name.length}/{NAME_MAX}
@@ -124,12 +124,14 @@ export const CommitmentFormSheet = ({
           maxLength={NAME_MAX + 5}
           placeholder="e.g. Netflix, Rent"
           disabled={saving}
-          className={`w-full bg-white border rounded-xl py-3 px-3 text-sm outline-none transition-colors disabled:bg-slate-50 ${
-            errors.name ? 'border-red-300 focus:border-red-500' : 'border-slate-200 focus:border-blue-500'
+          className={`w-full bg-surface border rounded-xl py-3 px-3 text-sm text-fg placeholder:text-fg-subtle outline-none transition-colors disabled:bg-surface-2 disabled:opacity-70 ${
+            errors.name
+              ? 'border-danger-border focus:border-danger'
+              : 'border-line focus:border-brand'
           }`}
         />
         {errors.name && (
-          <p className="mt-1 text-[11px] text-red-500 font-medium flex items-center gap-1">
+          <p className="mt-1 text-[11px] text-danger font-medium flex items-center gap-1">
             <AlertCircle className="w-3 h-3" /> {errors.name}
           </p>
         )}
@@ -139,7 +141,7 @@ export const CommitmentFormSheet = ({
         <div>
           <label
             htmlFor="bill-amount"
-            className="block text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-1.5"
+            className="block text-[11px] font-bold text-fg-subtle uppercase tracking-wider mb-1.5"
           >
             Amount (RM)
           </label>
@@ -152,13 +154,15 @@ export const CommitmentFormSheet = ({
             value={draft.amount}
             onChange={setField('amount')}
             disabled={saving}
-            className={`w-full bg-white border rounded-xl py-3 px-3 text-sm outline-none transition-colors disabled:bg-slate-50 ${
-              errors.amount ? 'border-red-300 focus:border-red-500' : 'border-slate-200 focus:border-blue-500'
+            className={`w-full bg-surface border rounded-xl py-3 px-3 text-sm text-fg placeholder:text-fg-subtle outline-none transition-colors disabled:bg-surface-2 disabled:opacity-70 ${
+              errors.amount
+                ? 'border-danger-border focus:border-danger'
+                : 'border-line focus:border-brand'
             }`}
             placeholder="0.00"
           />
           {errors.amount && (
-            <p className="mt-1 text-[11px] text-red-500 font-medium flex items-center gap-1">
+            <p className="mt-1 text-[11px] text-danger font-medium flex items-center gap-1">
               <AlertCircle className="w-3 h-3" /> {errors.amount}
             </p>
           )}
@@ -167,7 +171,7 @@ export const CommitmentFormSheet = ({
         <div>
           <label
             htmlFor="bill-due-day"
-            className="block text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-1.5"
+            className="block text-[11px] font-bold text-fg-subtle uppercase tracking-wider mb-1.5"
           >
             Due day
           </label>
@@ -180,19 +184,21 @@ export const CommitmentFormSheet = ({
             value={draft.dueDay}
             onChange={setField('dueDay')}
             disabled={saving}
-            className={`w-full bg-white border rounded-xl py-3 px-3 text-sm outline-none transition-colors disabled:bg-slate-50 ${
-              errors.dueDay ? 'border-red-300 focus:border-red-500' : 'border-slate-200 focus:border-blue-500'
+            className={`w-full bg-surface border rounded-xl py-3 px-3 text-sm text-fg placeholder:text-fg-subtle outline-none transition-colors disabled:bg-surface-2 disabled:opacity-70 ${
+              errors.dueDay
+                ? 'border-danger-border focus:border-danger'
+                : 'border-line focus:border-brand'
             }`}
             placeholder="1–31"
           />
         </div>
       </div>
 
-      <p className="text-[11px] text-slate-500 leading-relaxed">
+      <p className="text-[11px] text-fg-muted leading-relaxed">
         Bills due on 29–31 fall on the last day in shorter months.
       </p>
       {errors.dueDay && (
-        <p className="text-[11px] text-red-500 font-medium flex items-center gap-1">
+        <p className="text-[11px] text-danger font-medium flex items-center gap-1">
           <AlertCircle className="w-3 h-3" /> {errors.dueDay}
         </p>
       )}
@@ -200,7 +206,7 @@ export const CommitmentFormSheet = ({
       <div>
         <label
           htmlFor="bill-account"
-          className="block text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-1.5"
+          className="block text-[11px] font-bold text-fg-subtle uppercase tracking-wider mb-1.5"
         >
           Deduct from
         </label>
@@ -209,8 +215,10 @@ export const CommitmentFormSheet = ({
           value={draft.accountId}
           onChange={setField('accountId')}
           disabled={saving}
-          className={`w-full bg-white border rounded-xl py-3 px-3 text-sm outline-none transition-colors disabled:bg-slate-50 ${
-            errors.accountId ? 'border-red-300 focus:border-red-500' : 'border-slate-200 focus:border-blue-500'
+          className={`w-full bg-surface border rounded-xl py-3 px-3 text-sm text-fg outline-none transition-colors disabled:bg-surface-2 disabled:opacity-70 ${
+            errors.accountId
+              ? 'border-danger-border focus:border-danger'
+              : 'border-line focus:border-brand'
           }`}
         >
           <option value="">Select account…</option>
@@ -222,27 +230,27 @@ export const CommitmentFormSheet = ({
           ))}
         </select>
         {account && !accountIsArchived && (
-          <p className="mt-1.5 text-[11px] text-slate-500">
+          <p className="mt-1.5 text-[11px] text-fg-muted">
             Balance:{' '}
-            <strong className="text-slate-700">{formatMYR(account.balance || 0)}</strong>
+            <strong className="text-fg">{formatMYR(account.balance || 0)}</strong>
           </p>
         )}
         {accountIsArchived && (
-          <p className="mt-1.5 text-[11px] text-amber-600 font-medium">
+          <p className="mt-1.5 text-[11px] text-warning-text font-medium">
             This account is archived. Choose a different one.
           </p>
         )}
         {errors.accountId && (
-          <p className="mt-1 text-[11px] text-red-500 font-medium flex items-center gap-1">
+          <p className="mt-1 text-[11px] text-danger font-medium flex items-center gap-1">
             <AlertCircle className="w-3 h-3" /> {errors.accountId}
           </p>
         )}
       </div>
 
       {serverError && (
-        <div className="bg-red-50 border border-red-200 rounded-xl p-3 flex items-start gap-2">
-          <AlertCircle className="w-4 h-4 text-red-600 shrink-0 mt-0.5" />
-          <p className="text-xs text-red-700 font-medium leading-relaxed">{serverError}</p>
+        <div className="bg-danger-soft border border-danger-border rounded-xl p-3 flex items-start gap-2">
+          <AlertCircle className="w-4 h-4 text-danger shrink-0 mt-0.5" />
+          <p className="text-xs text-danger-text font-medium leading-relaxed">{serverError}</p>
         </div>
       )}
 
@@ -251,7 +259,7 @@ export const CommitmentFormSheet = ({
           type="button"
           onClick={onCancel}
           disabled={saving}
-          className="flex-1 py-3 rounded-xl text-sm font-semibold text-slate-500 hover:bg-slate-100 transition-colors disabled:opacity-50"
+          className="flex-1 py-3 rounded-xl text-sm font-semibold text-fg-muted hover:bg-surface-2 transition-colors disabled:opacity-50"
           style={{ minHeight: 44 }}
         >
           Cancel
@@ -260,7 +268,7 @@ export const CommitmentFormSheet = ({
           type="button"
           onClick={handleSave}
           disabled={saving}
-          className="flex-1 py-3 rounded-xl text-sm font-bold bg-slate-900 hover:bg-slate-800 text-white transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
+          className="flex-1 py-3 rounded-xl text-sm font-bold bg-brand-solid hover:bg-brand-solid-hover text-white transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
           style={{ minHeight: 44 }}
         >
           <Save className="w-4 h-4" />

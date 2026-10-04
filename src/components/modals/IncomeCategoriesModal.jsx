@@ -119,12 +119,12 @@ export const IncomeCategoriesModal = ({
       <ModalWrapper title="Income Setup" closeModal={closeModal}>
         {!incomeCategory ? (
           <div className="text-center p-4">
-            <p className="text-sm text-slate-500 mb-3">
+            <p className="text-sm text-fg-muted mb-3">
               You don't have an Income category set up yet.
             </p>
             <button
               onClick={(e) => handleAddMainCategory(e, 'Income')}
-              className="bg-slate-900 text-white px-4 py-2 rounded-xl text-sm font-bold w-full transition-colors hover:bg-slate-800"
+              className="bg-brand-solid hover:bg-brand-solid-hover text-white px-4 py-2 rounded-xl text-sm font-bold w-full transition-colors"
               style={{ minHeight: 44 }}
             >
               Create "Income" Category
@@ -142,8 +142,8 @@ export const IncomeCategoriesModal = ({
               }}
               className={`w-full flex items-center justify-center gap-2 py-2.5 rounded-xl text-xs font-bold transition-colors shadow-sm border ${
                 addingSubToId === incomeCategory.id
-                  ? 'bg-slate-100 text-slate-700 border-slate-200'
-                  : 'bg-slate-900 text-white border-slate-900 hover:bg-slate-800'
+                  ? 'bg-surface-2 text-fg-muted border-line'
+                  : 'bg-brand-solid text-white border-brand-solid hover:bg-brand-solid-hover'
               }`}
               aria-label="Add income stream"
               style={{ minHeight: 44 }}
@@ -157,7 +157,7 @@ export const IncomeCategoriesModal = ({
             </button>
 
             {addingSubToId === incomeCategory.id && (
-              <div className="flex gap-2 p-3 bg-slate-50 border border-slate-200 rounded-xl animate-fadeIn">
+              <div className="flex gap-2 p-3 bg-surface-2 border border-line rounded-xl animate-fadeIn">
                 <label htmlFor="income-subcat-name" className="sr-only">
                   Income Subcategory Name
                 </label>
@@ -169,12 +169,12 @@ export const IncomeCategoriesModal = ({
                   value={newSubCategoryName}
                   onChange={(e) => setNewSubCategoryName(e.target.value)}
                   placeholder="e.g. Salary, Side Hustle"
-                  className="flex-1 bg-white border border-slate-200 rounded-lg px-3 py-2 text-sm outline-none focus:border-blue-500"
+                  className="flex-1 bg-surface border border-line rounded-lg px-3 py-2 text-sm text-fg placeholder:text-fg-subtle outline-none focus:border-brand"
                 />
                 <button
                   onClick={() => handleAddSubCategory(incomeCategory.id)}
                   disabled={saving || !newSubCategoryName.trim()}
-                  className="bg-slate-900 text-white px-4 py-2 rounded-lg text-sm font-bold transition-colors hover:bg-slate-800 disabled:opacity-50"
+                  className="bg-brand-solid hover:bg-brand-solid-hover text-white px-4 py-2 rounded-lg text-sm font-bold transition-colors disabled:opacity-50"
                 >
                   Save
                 </button>
@@ -184,7 +184,7 @@ export const IncomeCategoriesModal = ({
             {getSubCategories(incomeCategory.id).map((sub) => (
               <div
                 key={sub.id}
-                className="bg-white/50 p-3 rounded-xl border border-white/60 min-h-[48px]"
+                className="bg-surface-2 p-3 rounded-xl border border-line min-h-[48px]"
               >
                 {editingItemId === sub.id ? (
                   <div className="flex gap-2">
@@ -194,19 +194,19 @@ export const IncomeCategoriesModal = ({
                       type="text"
                       value={editValue}
                       onChange={(e) => setEditValue(e.target.value)}
-                      className="flex-1 bg-white border border-slate-200 rounded-md px-2 py-1 text-sm outline-none focus:border-blue-500"
+                      className="flex-1 bg-surface border border-line rounded-md px-2 py-1 text-sm text-fg outline-none focus:border-brand"
                     />
                     <div className="flex flex-col gap-1 shrink-0">
                       <button
                         onClick={() => handleUpdateCategory(sub.id)}
-                        className="inline-flex h-10 w-10 items-center justify-center rounded-lg bg-emerald-100 text-emerald-700 transition-colors hover:bg-emerald-200"
+                        className="inline-flex h-10 w-10 items-center justify-center rounded-lg bg-success-soft text-success-text transition-colors hover:bg-success/20"
                         aria-label="Save category"
                       >
                         <Save className="h-4 w-4" />
                       </button>
                       <button
                         onClick={() => setEditingItemId(null)}
-                        className="inline-flex h-10 w-10 items-center justify-center rounded-lg bg-slate-200 text-slate-600 transition-colors hover:bg-slate-300"
+                        className="inline-flex h-10 w-10 items-center justify-center rounded-lg bg-surface-3 text-fg-muted transition-colors hover:bg-line-strong"
                         aria-label="Cancel editing"
                       >
                         <X className="h-4 w-4" />
@@ -215,8 +215,8 @@ export const IncomeCategoriesModal = ({
                   </div>
                 ) : (
                   <div className="flex justify-between items-center">
-                    <p className="text-sm font-bold text-slate-800 flex items-center gap-2">
-                      <CornerDownRight className="w-4 h-4 text-slate-300" />
+                    <p className="text-sm font-bold text-fg flex items-center gap-2">
+                      <CornerDownRight className="w-4 h-4 text-fg-subtle" />
                       {sub.name}
                     </p>
                     <div className="flex items-center gap-1">
@@ -226,14 +226,14 @@ export const IncomeCategoriesModal = ({
                           setEditValue(sub.name)
                           setAddingSubToId(null)
                         }}
-                        className="inline-flex h-11 w-11 items-center justify-center rounded-lg text-slate-400 transition-colors hover:bg-blue-50 hover:text-blue-500"
+                        className="inline-flex h-11 w-11 items-center justify-center rounded-lg text-fg-subtle transition-colors hover:bg-brand-soft hover:text-brand"
                         aria-label={`Edit ${sub.name}`}
                       >
                         <Edit2 className="h-3.5 w-3.5" />
                       </button>
                       <button
                         onClick={() => requestDeleteCategory(sub.id, sub.name)}
-                        className="inline-flex h-11 w-11 items-center justify-center rounded-lg text-red-300 transition-colors hover:bg-red-50 hover:text-red-500"
+                        className="inline-flex h-11 w-11 items-center justify-center rounded-lg text-danger/70 transition-colors hover:bg-danger-soft hover:text-danger"
                         aria-label={`Delete ${sub.name}`}
                       >
                         <Trash2 className="h-3.5 w-3.5" />

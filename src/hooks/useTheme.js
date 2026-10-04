@@ -1,16 +1,12 @@
 // src/hooks/useTheme.js
-import { useCallback, useEffect, useState } from 'react'
+import { useEffect, useState } from 'react'
 
 const STORAGE_KEY = 'theme'
-const MODES = ['light', 'dark', 'system']
+const VALID = ['light', 'dark']
 
 function getSystemTheme() {
   if (typeof window === 'undefined') return 'light'
   return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'
-}
-
-function resolve(preference) {
-  return preference === 'system' ? getSystemTheme() : preference
 }
 
 function apply(resolved) {
@@ -21,28 +17,18 @@ function apply(resolved) {
 
 export function useTheme() {
   const [preference, setPreference] = useState(() => {
-    if (typeof window === 'undefined') return 'system'
+    if (typeof window === 'undefined') return 'light'
+
     const saved = localStorage.getItem(STORAGE_KEY)
-    return MODES.includes(saved) ? saved : 'system'
+    if (VALID.includes(saved)) return saved
+
+    return getSystemTheme()
   })
 
   useEffect(() => {
-    apply(resolve(preference))
+    apply(preference)
     localStorage.setItem(STORAGE_KEY, preference)
   }, [preference])
 
-  // Follow OS changes while in "system" mode
-  useEffect(() => {
-    if (preference !== 'system') return
-    const mq = window.matchMedia('(prefers-color-scheme: dark)')
-    const handler = () => apply(getSystemTheme())
-    mq.addEventListener('change', handler)
-    return () => mq.removeEventListener('change', handler)
-  }, [preference])
-
-  const cycle = useCallback(() => {
-    setPreference(p => (p === 'light' ? 'dark' : p === 'dark' ? 'system' : 'light'))
-  }, [])
-
-  return { preference, setPreference, cycle, resolved: resolve(preference) }
+  return { preference, setPreference, resolved: preference }
 }

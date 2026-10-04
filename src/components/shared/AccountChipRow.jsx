@@ -45,12 +45,13 @@ export const AccountChipRow = ({
   return (
     <div
       ref={containerRef}
-      className="relative flex items-center h-11 rounded-2xl bg-white/5 backdrop-blur-2xl border border-white/25 shadow-[0_4px_16px_rgba(0,0,0,0.05)] overflow-x-auto scrollbar-hide"
+      className="relative flex items-center h-11 rounded-2xl bg-glass-bg backdrop-blur-2xl border border-glass-border shadow-[0_4px_16px_rgba(0,0,0,0.05)] dark:shadow-[0_4px_16px_rgba(0,0,0,0.4)] overflow-x-auto scrollbar-hide"
     >
-      {/* Sliding black pill — measured position, spring overshoot */}
+      {/* Sliding active pill — bg-fg inverts to near-white in dark mode,
+          text-fg-inverse flips with it so labels stay legible. */}
       {indicator.ready && (
         <div
-          className="absolute top-1 bottom-1 rounded-xl bg-gradient-to-b from-slate-900 to-slate-800 shadow-[0_4px_16px_rgba(0,0,0,0.18),inset_0_1px_0_rgba(255,255,255,0.08)] pointer-events-none transition-all duration-500 ease-[cubic-bezier(0.34,1.56,0.64,1)]"
+          className="absolute top-1 bottom-1 rounded-xl bg-fg shadow-[0_4px_16px_rgba(0,0,0,0.18),inset_0_1px_0_rgba(255,255,255,0.08)] dark:shadow-[0_4px_16px_rgba(0,0,0,0.5),inset_0_1px_0_rgba(0,0,0,0.06)] pointer-events-none transition-all duration-500 ease-[cubic-bezier(0.34,1.56,0.64,1)]"
           style={{ left: indicator.left, width: indicator.width }}
         />
       )}
@@ -65,8 +66,8 @@ export const AccountChipRow = ({
             aria-pressed={isActive}
             className={`relative z-10 shrink-0 h-full px-4 text-xs font-bold transition-colors duration-300 ${
               isActive
-                ? 'text-white'
-                : 'text-slate-500 hover:text-slate-700'
+                ? 'text-fg-inverse'
+                : 'text-fg-subtle hover:text-fg-muted'
             }`}
           >
             <span className="truncate max-w-[120px] block">

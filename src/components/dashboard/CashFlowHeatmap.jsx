@@ -37,25 +37,27 @@ export const CashFlowHeatmap = ({
   return (
     <div className="relative flex flex-col h-full pt-3">
 
-      {/* Accent strip for this panel */}
-      <div className="absolute top-0 left-0 right-0 h-1 bg-blue-500 rounded-full" />
+      {/* Accent strip */}
+      <div className="absolute top-0 left-0 right-0 h-1 bg-brand rounded-full" />
 
       {!cashFlowData || cashFlowData.length === 0 ? (
         <div className="pt-1">
           <div className="mb-5">
-            <h2 className="text-sm font-bold text-slate-800">Where your money went</h2>
-            <p className="text-xs text-slate-400 mt-0.5">This month</p>
+            <h2 className="text-sm font-bold text-fg">Where your money went</h2>
+            <p className="text-xs text-fg-subtle mt-0.5">This month</p>
           </div>
-          <div className="h-56 flex flex-col items-center justify-center text-slate-400">
-            <div className="w-14 h-14 bg-slate-50 border border-slate-100 rounded-2xl flex items-center justify-center mb-4 text-slate-300">
+          <div className="h-56 flex flex-col items-center justify-center text-fg-subtle">
+            <div className="w-14 h-14 bg-surface-2 border border-line rounded-2xl flex items-center justify-center mb-4 text-fg-subtle">
               <PieChart className="w-6 h-6" />
             </div>
-            <p className="text-sm font-bold text-slate-700">No spending yet this month</p>
-            <p className="text-xs text-slate-400 mt-1 text-center max-w-xs leading-relaxed">
+            <p className="text-sm font-bold text-fg">No spending yet this month</p>
+            <p className="text-xs text-fg-subtle mt-1 text-center max-w-xs leading-relaxed">
               Log your first expense to see the breakdown.
             </p>
-            <button onClick={onAddTransaction}
-              className="mt-4 inline-flex items-center gap-2 px-4 py-2.5 bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold rounded-xl shadow-sm transition-all">
+            <button
+              onClick={onAddTransaction}
+              className="mt-4 inline-flex items-center gap-2 px-4 py-2.5 bg-brand-solid hover:bg-brand-solid-hover text-white text-xs font-bold rounded-xl shadow-sm transition-all"
+            >
               <Plus className="w-4 h-4" /> Log expense
             </button>
           </div>
@@ -63,14 +65,14 @@ export const CashFlowHeatmap = ({
       ) : (
         <>
           {/* Header */}
-          <div className="flex justify-between items-start mb-4 border-b border-slate-100 pb-3 pt-1 gap-3">
+          <div className="flex justify-between items-start mb-4 border-b border-line pb-3 pt-1 gap-3">
             <div className="min-w-0">
-              <h2 className="text-sm font-bold text-slate-800">Where your money went</h2>
-              <p className="text-xs text-slate-400 mt-0.5">This month</p>
+              <h2 className="text-sm font-bold text-fg">Where your money went</h2>
+              <p className="text-xs text-fg-subtle mt-0.5">This month</p>
             </div>
             <div className="text-right shrink-0">
-              <p className="text-[11px] text-slate-400 uppercase font-bold tracking-wider mb-0.5">Total spent</p>
-              <p className="text-base font-black text-slate-800" title={formatMYR(totalExpenses)}>
+              <p className="text-[11px] text-fg-subtle uppercase font-bold tracking-wider mb-0.5">Total spent</p>
+              <p className="text-base font-black text-fg" title={formatMYR(totalExpenses)}>
                 {compactMYR(totalExpenses)}
               </p>
             </div>
@@ -99,7 +101,9 @@ export const CashFlowHeatmap = ({
                         <Cell
                           key={`cell-${idx}`}
                           fill={entry.color || '#94a3b8'}
-                          className="outline-none stroke-white stroke-2 transition-opacity duration-200 cursor-pointer"
+                          stroke="var(--surface)"
+                          strokeWidth={2}
+                          className="outline-none transition-opacity duration-200 cursor-pointer"
                           opacity={dim ? 0.35 : 1}
                         />
                       )
@@ -113,13 +117,14 @@ export const CashFlowHeatmap = ({
                 className="absolute inset-0 flex flex-col items-center justify-center text-center p-4 cursor-pointer"
                 aria-label="Clear selection"
               >
-                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider truncate w-24">
+                <p className="text-[10px] font-bold text-fg-subtle uppercase tracking-wider truncate w-24">
                   {activeItem ? activeItem.name : 'Outflow'}
                 </p>
-                <p className="text-sm font-black text-slate-800 tracking-tight truncate w-28 mt-0.5" title={activeItem ? formatMYR(activeItem.value) : formatMYR(totalExpenses)}>
+                <p className="text-sm font-black text-fg tracking-tight truncate w-28 mt-0.5"
+                   title={activeItem ? formatMYR(activeItem.value) : formatMYR(totalExpenses)}>
                   {activeItem ? compactMYR(activeItem.value) : compactMYR(totalExpenses)}
                 </p>
-                <p className="text-[10px] font-bold text-blue-500 mt-0.5">
+                <p className="text-[10px] font-bold text-brand mt-0.5">
                   {activeItem
                     ? `${((activeItem.value / totalExpenses) * 100).toFixed(1)}%`
                     : `${cashFlowData.length} categories`
@@ -142,28 +147,32 @@ export const CashFlowHeatmap = ({
                       onClick={() => handleSelect(item.name)}
                       className={`w-full text-left flex items-center justify-between p-2.5 rounded-xl border transition-all ${
                         isActive
-                          ? 'bg-slate-50 border-slate-200 shadow-sm'
-                          : 'bg-white border-transparent hover:border-slate-100 hover:bg-slate-50/40'
+                          ? 'bg-surface-2 border-line shadow-sm'
+                          : 'bg-transparent border-transparent hover:border-line hover:bg-surface-2/40'
                       }`}
                       style={{ minHeight: 44 }}
                     >
                       <div className="flex items-center gap-2.5 min-w-0 flex-1">
                         <div className="w-3 h-3 rounded-md shrink-0" style={{ backgroundColor: item.color }} />
                         <div className="min-w-0 flex-1">
-                          <span className={`text-xs font-semibold truncate text-slate-700 block ${isActive ? 'text-slate-900 font-bold' : ''}`}>
+                          <span className={`text-xs font-semibold truncate text-fg-muted block ${
+                            isActive ? 'text-fg font-bold' : ''
+                          }`}>
                             {item.name}
                           </span>
                           {cmp && (
                             <span className={`text-[10px] font-bold flex items-center gap-0.5 mt-0.5 ${
-                              cmp.isNew ? 'text-blue-500'
-                              : cmp.diff > 0 ? 'text-red-500'
-                              : 'text-emerald-500'
+                              cmp.isNew ? 'text-brand'
+                              : cmp.diff > 0 ? 'text-danger'
+                              : 'text-success'
                             }`}>
                               {cmp.isNew ? (
                                 <>New</>
                               ) : (
                                 <>
-                                  {cmp.diff > 0 ? <TrendingUp className="w-2.5 h-2.5" /> : <TrendingDown className="w-2.5 h-2.5" />}
+                                  {cmp.diff > 0
+                                    ? <TrendingUp className="w-2.5 h-2.5" />
+                                    : <TrendingDown className="w-2.5 h-2.5" />}
                                   {cmp.diff > 0 ? '+' : ''}{Math.abs(cmp.pct ?? 0).toFixed(0)}%
                                 </>
                               )}
@@ -172,8 +181,8 @@ export const CashFlowHeatmap = ({
                         </div>
                       </div>
                       <div className="flex items-center gap-3 shrink-0 ml-2 text-right">
-                        <span className="text-xs font-black text-slate-800">{formatMYR(item.value)}</span>
-                        <span className="text-[10px] font-bold text-slate-400 bg-slate-50 border border-slate-100 px-1.5 py-0.5 rounded-md min-w-[42px] text-center">
+                        <span className="text-xs font-black text-fg">{formatMYR(item.value)}</span>
+                        <span className="text-[10px] font-bold text-fg-subtle bg-surface-2 border border-line px-1.5 py-0.5 rounded-md min-w-[42px] text-center">
                           {pct}%
                         </span>
                       </div>
@@ -185,7 +194,7 @@ export const CashFlowHeatmap = ({
               {cashFlowData.length > MOBILE_LIMIT && (
                 <button
                   onClick={() => setShowAll(s => !s)}
-                  className="md:hidden w-full mt-2 py-2 text-xs font-bold text-slate-500 hover:text-slate-800 transition-colors"
+                  className="md:hidden w-full mt-2 py-2 text-xs font-bold text-fg-muted hover:text-fg transition-colors"
                   style={{ minHeight: 44 }}
                 >
                   {showAll ? 'Show less' : `Show ${cashFlowData.length - MOBILE_LIMIT} more`}
@@ -200,7 +209,7 @@ export const CashFlowHeatmap = ({
       {onSeeTrends && (
         <button
           onClick={onSeeTrends}
-          className="w-full mt-auto pt-3 border-t border-slate-100 flex items-center justify-center gap-1.5 text-xs font-bold text-slate-500 hover:text-slate-800 transition-colors"
+          className="w-full mt-auto pt-3 border-t border-line flex items-center justify-center gap-1.5 text-xs font-bold text-fg-muted hover:text-fg transition-colors"
           style={{ minHeight: 44 }}
         >
           See trends <ArrowRight className="w-3.5 h-3.5" />

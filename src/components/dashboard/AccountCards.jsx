@@ -23,15 +23,15 @@ export const AccountCards = ({
 
   if (!accounts || accounts.length === 0) {
     return (
-      <div className="bg-white rounded-2xl p-8 text-center border border-dashed border-slate-300">
-        <div className="w-16 h-16 bg-slate-100 rounded-full flex items-center justify-center mx-auto mb-4">
-          <Wallet className="w-8 h-8 text-slate-300" />
+      <div className="bg-surface rounded-2xl p-8 text-center border border-dashed border-line-strong">
+        <div className="w-16 h-16 bg-surface-2 rounded-full flex items-center justify-center mx-auto mb-4">
+          <Wallet className="w-8 h-8 text-fg-subtle" />
         </div>
-        <h3 className="text-sm font-medium text-slate-700 mb-1">No Accounts Yet</h3>
-        <p className="text-xs text-slate-400 mb-4">Add your first bank account to start tracking</p>
+        <h3 className="text-sm font-medium text-fg-muted mb-1">No Accounts Yet</h3>
+        <p className="text-xs text-fg-subtle mb-4">Add your first bank account to start tracking</p>
         <button
           onClick={onAddAccount}
-          className="inline-flex items-center justify-center gap-2 px-4 py-2 bg-slate-900 hover:bg-slate-800 text-white text-sm font-medium rounded-xl transition-colors"
+          className="inline-flex items-center justify-center gap-2 px-4 py-2 bg-brand-solid hover:bg-brand-solid-hover text-white text-sm font-medium rounded-xl transition-colors"
           style={{ minHeight: 44 }}
         >
           <Plus className="w-4 h-4" /> Add Account
@@ -45,12 +45,12 @@ export const AccountCards = ({
   return (
     <div className="relative">
       <div className="flex items-center justify-between mb-4">
-        <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">
+        <span className="text-xs font-bold text-fg-subtle uppercase tracking-wider">
           {accounts.length} Accounts
         </span>
         <button
           onClick={toggleBalances}
-          className="flex items-center justify-center gap-1.5 text-xs text-slate-400 hover:text-slate-600 transition-colors px-3 py-2 rounded-lg hover:bg-slate-100"
+          className="flex items-center justify-center gap-1.5 text-xs text-fg-subtle hover:text-fg-muted transition-colors px-3 py-2 rounded-lg hover:bg-surface-2"
           style={{ minHeight: 44 }}
         >
           {showBalances ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}

@@ -13,7 +13,7 @@ import { CommitmentFormSheet } from '../commitments/CommitmentFormSheet'
 import { ConfirmSheet } from '../shared/ConfirmSheet'
 
 // ============================================================
-// Period pill (P3.6)
+// Period pill
 // ============================================================
 const getPeriodPill = (period, nowMY) => {
   const dueMY = toMYDate(period.dueDate)
@@ -25,26 +25,26 @@ const getPeriodPill = (period, nowMY) => {
     const prefix = isSameMonth ? '' : `${monthShortName(period.dueDate)} · `
     return {
       label: `${prefix}${period.daysOverdue}d overdue`,
-      color: 'text-red-700 bg-red-50 border border-red-200'
+      color: 'text-danger-text bg-danger-soft border border-danger-border'
     }
   }
   if (period.daysUntil === 0) {
-    return { label: 'Due today', color: 'text-red-600 bg-red-50 border border-red-200' }
+    return { label: 'Due today', color: 'text-danger-text bg-danger-soft border border-danger-border' }
   }
   if (period.daysUntil <= 3) {
-    return { label: `In ${period.daysUntil}d`, color: 'text-amber-700 bg-amber-50 border border-amber-200' }
+    return { label: `In ${period.daysUntil}d`, color: 'text-warning-text bg-warning-soft border border-warning-border' }
   }
   if (period.daysUntil <= 7) {
-    return { label: `In ${period.daysUntil}d`, color: 'text-blue-700 bg-blue-50 border border-blue-200' }
+    return { label: `In ${period.daysUntil}d`, color: 'text-info-text bg-info-soft border border-info-border' }
   }
   return {
     label: `Due ${dueMY.getUTCDate()} ${monthShortName(period.dueDate)}`,
-    color: 'text-slate-500 bg-slate-50 border border-slate-200'
+    color: 'text-fg-muted bg-surface-2 border border-line'
   }
 }
 
 // ============================================================
-// Row menu — small popover with 44px items
+// Row menu
 // ============================================================
 const RowMenu = ({ actions, ariaLabel = 'Bill actions' }) => {
   const [open, setOpen] = useState(false)
@@ -74,14 +74,14 @@ const RowMenu = ({ actions, ariaLabel = 'Bill actions' }) => {
         aria-haspopup="menu"
         aria-expanded={open}
         aria-label={ariaLabel}
-        className="inline-flex h-11 w-11 items-center justify-center rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-colors"
+        className="inline-flex h-11 w-11 items-center justify-center rounded-lg text-fg-subtle hover:text-fg hover:bg-surface-2 transition-colors"
       >
         <MoreVertical className="w-4 h-4" />
       </button>
       {open && (
         <div
           role="menu"
-          className="absolute right-0 top-full mt-1 z-30 min-w-[170px] bg-white border border-slate-200 rounded-xl shadow-xl overflow-hidden animate-in fade-in slide-in-from-top-1 duration-150"
+          className="absolute right-0 top-full mt-1 z-30 min-w-[170px] bg-surface border border-line rounded-xl shadow-xl overflow-hidden animate-in fade-in slide-in-from-top-1 duration-150"
         >
           {actions.map((a) => (
             <button
@@ -94,7 +94,7 @@ const RowMenu = ({ actions, ariaLabel = 'Bill actions' }) => {
                 a.onClick()
               }}
               className={`w-full flex items-center gap-2 px-3 py-2.5 text-xs font-semibold text-left transition-colors disabled:opacity-50 ${
-                a.danger ? 'text-red-600 hover:bg-red-50' : 'text-slate-700 hover:bg-slate-50'
+                a.danger ? 'text-danger hover:bg-danger-soft' : 'text-fg-muted hover:bg-surface-2'
               }`}
               style={{ minHeight: 44 }}
             >
@@ -120,7 +120,6 @@ export const CommitmentRadar = ({
   saving = false,
   loading = false,
   error = null,
-  // mutations from useCommitments
   onAddCommitment,
   onUpdateCommitment,
   onDeleteCommitment,
@@ -135,9 +134,8 @@ export const CommitmentRadar = ({
   const [showInactive, setShowInactive] = useState(false)
   const [marking, setMarking] = useState(null)
   const [markPaidError, setMarkPaidError] = useState(null)
-  const [formState, setFormState] = useState(null) // null | { mode: 'new' } | { mode: 'edit', commitment }
+  const [formState, setFormState] = useState(null)
   const [confirm, setConfirm] = useState(null)
-  // { kind: 'delete'|'pause'|'skip'|'undo', commitment, period?, paymentCount? }
 
   const {
     currentBalance = 0,
@@ -176,7 +174,6 @@ export const CommitmentRadar = ({
 
   const hasAnyCommitments = commitments.length > 0
 
-  // Payments count per commitment — for the delete confirmation copy
   const paymentCountByCommitment = useMemo(() => {
     const map = new Map()
     for (const p of payments) {
@@ -185,7 +182,6 @@ export const CommitmentRadar = ({
     return map
   }, [payments])
 
-  // ---------- Form submit (add OR edit) ----------
   const handleFormSubmit = async (payload, existing) => {
     if (existing) {
       const res = await onUpdateCommitment(existing.id, payload)
@@ -197,7 +193,6 @@ export const CommitmentRadar = ({
     return res
   }
 
-  // ---------- Mark paid ----------
   const handleMarkPaidConfirm = async ({ periodYear, periodMonth, amount, paidDate }) => {
     if (!onMarkAsPaid || !marking) return
     setMarkPaidError(null)
@@ -215,7 +210,6 @@ export const CommitmentRadar = ({
     }
   }
 
-  // ---------- Confirmations ----------
   const confirmActions = {
     delete: async () => {
       const c = confirm.commitment
@@ -239,11 +233,10 @@ export const CommitmentRadar = ({
     }
   }
 
-  // ---- Loading / error states (P4.7.3) ----
   if (loading) {
     return (
-      <div className="bg-white rounded-2xl shadow-md border border-slate-100 p-6">
-        <div className="flex items-center justify-center py-10 text-slate-400">
+      <div className="bg-surface rounded-2xl shadow-md border border-line p-6">
+        <div className="flex items-center justify-center py-10 text-fg-subtle">
           <Loader2 className="w-6 h-6 animate-spin" />
           <span className="ml-2 text-sm font-medium">Loading bills…</span>
         </div>
@@ -253,35 +246,34 @@ export const CommitmentRadar = ({
 
   if (error) {
     return (
-      <div className="bg-white rounded-2xl shadow-md border border-red-100 p-6">
+      <div className="bg-surface rounded-2xl shadow-md border border-danger-border p-6">
         <div className="flex items-start gap-3">
-          <AlertTriangle className="w-5 h-5 text-red-500 shrink-0 mt-0.5" />
+          <AlertTriangle className="w-5 h-5 text-danger shrink-0 mt-0.5" />
           <div>
-            <p className="text-sm font-bold text-slate-800">Couldn't load bills</p>
-            <p className="text-xs text-slate-500 mt-1">{error}</p>
+            <p className="text-sm font-bold text-fg">Couldn't load bills</p>
+            <p className="text-xs text-fg-muted mt-1">{error}</p>
           </div>
         </div>
       </div>
     )
   }
 
-  // ---- Empty state ----
   if (!hasAnyCommitments) {
     return (
       <>
-        <div className="bg-white rounded-2xl shadow-md border border-slate-100 p-6 relative overflow-hidden">
-          <div className="absolute top-0 inset-x-0 h-1 bg-slate-200" />
+        <div className="bg-surface rounded-2xl shadow-md border border-line p-6 relative overflow-hidden">
+          <div className="absolute top-0 inset-x-0 h-1 bg-surface-3" />
           <div className="text-center py-8">
-            <div className="w-14 h-14 bg-slate-50 border border-slate-100 rounded-2xl flex items-center justify-center mx-auto mb-3 text-slate-300">
+            <div className="w-14 h-14 bg-surface-2 border border-line rounded-2xl flex items-center justify-center mx-auto mb-3 text-fg-subtle">
               <Target className="w-6 h-6" />
             </div>
-            <p className="text-sm font-bold text-slate-700">No bills yet</p>
-            <p className="text-xs text-slate-400 mt-1 max-w-[260px] mx-auto leading-relaxed">
+            <p className="text-sm font-bold text-fg">No bills yet</p>
+            <p className="text-xs text-fg-subtle mt-1 max-w-[260px] mx-auto leading-relaxed">
               Add your first subscription or bill to track what's coming up.
             </p>
             <button
               onClick={() => setFormState({ mode: 'new' })}
-              className="mt-4 inline-flex items-center gap-2 px-4 py-2.5 bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold rounded-xl shadow-sm transition-colors"
+              className="mt-4 inline-flex items-center gap-2 px-4 py-2.5 bg-brand-solid hover:bg-brand-solid-hover text-white text-xs font-bold rounded-xl shadow-sm transition-colors"
               style={{ minHeight: 44 }}
             >
               <Plus className="w-4 h-4" /> Add your first bill
@@ -303,27 +295,26 @@ export const CommitmentRadar = ({
     )
   }
 
-  // ---- Main ----
   return (
     <>
       <div
-        className={`bg-white rounded-2xl shadow-md border p-5 md:p-6 relative overflow-hidden transition-all duration-300 ${
-          isSafe ? 'border-slate-100 shadow-slate-100/40' : 'border-red-100 shadow-red-50/30'
+        className={`bg-surface rounded-2xl shadow-md border p-5 md:p-6 relative overflow-hidden transition-all duration-300 ${
+          isSafe ? 'border-line' : 'border-danger-border'
         }`}
       >
-        <div className={`absolute top-0 inset-x-0 h-1 ${isSafe ? 'bg-emerald-500' : 'bg-red-500'}`} />
+        <div className={`absolute top-0 inset-x-0 h-1 ${isSafe ? 'bg-success' : 'bg-danger'}`} />
 
         {/* Header */}
         <div className="flex justify-between items-center mb-5 mt-1 gap-3">
           <div className="min-w-0">
-            <h2 className="text-base font-bold text-slate-800">Bills</h2>
-            <p className="text-xs text-slate-400 mt-0.5">Subscriptions & recurring payments</p>
+            <h2 className="text-base font-bold text-fg">Bills</h2>
+            <p className="text-xs text-fg-subtle mt-0.5">Subscriptions & recurring payments</p>
           </div>
 
           <div className="flex items-center gap-1.5 shrink-0">
             <button
               onClick={() => setFormState({ mode: 'new' })}
-              className="w-11 h-11 flex items-center justify-center text-slate-500 hover:text-blue-600 hover:bg-slate-50 rounded-xl transition-all border border-transparent hover:border-slate-200"
+              className="w-11 h-11 flex items-center justify-center text-fg-muted hover:text-brand hover:bg-surface-2 rounded-xl transition-all border border-transparent hover:border-line"
               title="Add bill"
               aria-label="Add bill"
             >
@@ -332,8 +323,8 @@ export const CommitmentRadar = ({
             <div
               className={`px-2.5 py-1.5 rounded-lg text-[10px] font-bold tracking-wider flex items-center gap-1.5 border shadow-sm ${
                 isSafe
-                  ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
-                  : 'bg-red-50 text-red-700 border-red-200'
+                  ? 'bg-success-soft text-success-text border-success-border'
+                  : 'bg-danger-soft text-danger-text border-danger-border'
               }`}
             >
               {isSafe ? <ShieldCheck className="w-3.5 h-3.5" /> : <AlertTriangle className="w-3.5 h-3.5" />}
@@ -344,29 +335,29 @@ export const CommitmentRadar = ({
 
         {/* Stats strip */}
         <div className="grid grid-cols-3 gap-2 md:gap-3 mb-4">
-          <div className="rounded-xl border border-slate-200/80 bg-white p-2.5 md:p-3.5 shadow-sm min-w-0">
-            <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 whitespace-nowrap">
+          <div className="rounded-xl border border-line bg-surface p-2.5 md:p-3.5 shadow-sm min-w-0">
+            <span className="text-[10px] font-bold uppercase tracking-wider text-fg-subtle whitespace-nowrap">
               Available
             </span>
-            <p className="text-sm font-black tracking-tight text-slate-800 mt-1 whitespace-nowrap">
+            <p className="text-sm font-black tracking-tight text-fg mt-1 whitespace-nowrap">
               {formatMYR(currentBalance)}
             </p>
           </div>
-          <div className="rounded-xl border border-slate-200/80 bg-white p-2.5 md:p-3.5 shadow-sm min-w-0">
-            <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 whitespace-nowrap">
+          <div className="rounded-xl border border-line bg-surface p-2.5 md:p-3.5 shadow-sm min-w-0">
+            <span className="text-[10px] font-bold uppercase tracking-wider text-fg-subtle whitespace-nowrap">
               To pay
             </span>
-            <p className="text-sm font-black tracking-tight text-slate-800 mt-1 whitespace-nowrap">
+            <p className="text-sm font-black tracking-tight text-fg mt-1 whitespace-nowrap">
               {formatMYR(totalRequired)}
             </p>
           </div>
-          <div className="rounded-xl border border-slate-200/80 bg-white p-2.5 md:p-3.5 shadow-sm min-w-0">
-            <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 whitespace-nowrap">
+          <div className="rounded-xl border border-line bg-surface p-2.5 md:p-3.5 shadow-sm min-w-0">
+            <span className="text-[10px] font-bold uppercase tracking-wider text-fg-subtle whitespace-nowrap">
               Unpaid
             </span>
             <p
               className={`text-sm font-black tracking-tight mt-1 whitespace-nowrap ${
-                unpaidCount > 0 ? 'text-amber-600' : 'text-slate-800'
+                unpaidCount > 0 ? 'text-warning' : 'text-fg'
               }`}
             >
               {unpaidCount}
@@ -374,12 +365,12 @@ export const CommitmentRadar = ({
           </div>
         </div>
 
-        {/* Needs attention banner (P4.6.1) */}
+        {/* Needs attention banner */}
         {scheduleSafe.needsAttention.length > 0 && (
-          <div className="mb-3 bg-amber-50/60 border border-amber-200/60 rounded-xl p-3 flex items-start gap-2">
-            <AlertOctagon className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
+          <div className="mb-3 bg-warning-soft border border-warning-border rounded-xl p-3 flex items-start gap-2">
+            <AlertOctagon className="w-4 h-4 text-warning shrink-0 mt-0.5" />
             <div className="flex-1 min-w-0">
-              <p className="text-xs text-amber-800 leading-relaxed">
+              <p className="text-xs text-warning-text leading-relaxed">
                 <strong>{scheduleSafe.needsAttention.length}</strong> bill
                 {scheduleSafe.needsAttention.length === 1 ? '' : 's'} aren't counted because{' '}
                 {scheduleSafe.needsAttention.length === 1 ? 'its' : 'their'} account is archived or
@@ -393,7 +384,7 @@ export const CommitmentRadar = ({
                     commitment: scheduleSafe.needsAttention[0].commitment
                   })
                 }
-                className="mt-2 inline-flex items-center gap-1 text-[11px] font-bold text-amber-800 hover:text-amber-900 underline underline-offset-2"
+                className="mt-2 inline-flex items-center gap-1 text-[11px] font-bold text-warning-text hover:text-warning-text/80 underline underline-offset-2"
                 style={{ minHeight: 32 }}
               >
                 Fix "{scheduleSafe.needsAttention[0].commitment.name}"
@@ -410,17 +401,17 @@ export const CommitmentRadar = ({
             {scheduleSafe.accountShortfalls.map((sf) => (
               <div
                 key={sf.accountId}
-                className="bg-amber-50/60 border border-amber-200/60 rounded-xl p-3 flex items-start gap-2"
+                className="bg-warning-soft border border-warning-border rounded-xl p-3 flex items-start gap-2"
               >
-                <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
-                <p className="text-xs text-amber-800 leading-relaxed">
+                <AlertTriangle className="w-4 h-4 text-warning shrink-0 mt-0.5" />
+                <p className="text-xs text-warning-text leading-relaxed">
                   <strong>{sf.accountName}</strong> is short by{' '}
                   <strong>{formatMYR(sf.shortfall)}</strong> for bills before payday.
                 </p>
               </div>
             ))}
             {isSafe && (
-              <p className="text-[11px] text-amber-700 italic px-1">
+              <p className="text-[11px] text-warning-text italic px-1">
                 Your total covers it, but the account
                 {scheduleSafe.accountShortfalls.length === 1 ? '' : 's'} above don't. Move money
                 before the due dates.
@@ -431,13 +422,13 @@ export const CommitmentRadar = ({
 
         {/* Unpaid periods */}
         <div className="mb-4">
-          <p className="text-[10px] text-slate-400 uppercase font-bold tracking-wider mb-2.5 flex items-center gap-1.5">
-            <Calendar className="w-3.5 h-3.5 text-blue-500" /> Coming up ({scheduleSafe.unpaidPeriods.length})
+          <p className="text-[10px] text-fg-subtle uppercase font-bold tracking-wider mb-2.5 flex items-center gap-1.5">
+            <Calendar className="w-3.5 h-3.5 text-brand" /> Coming up ({scheduleSafe.unpaidPeriods.length})
           </p>
 
           {scheduleSafe.unpaidPeriods.length === 0 ? (
-            <div className="text-xs font-medium text-emerald-700 p-3.5 bg-emerald-50/60 border border-emerald-100 rounded-xl flex items-center gap-2">
-              <CheckCircle className="w-4 h-4 text-emerald-500 shrink-0" />
+            <div className="text-xs font-medium text-success-text p-3.5 bg-success-soft border border-success-border rounded-xl flex items-center gap-2">
+              <CheckCircle className="w-4 h-4 text-success shrink-0" />
               You've handled everything for this month.
             </div>
           ) : (
@@ -451,10 +442,10 @@ export const CommitmentRadar = ({
                 const accountShort = period.accountShort
 
                 const rowClass = isOverdue
-                  ? 'bg-red-50/50 border-red-200'
+                  ? 'bg-danger-soft/50 border-danger-border'
                   : accountShort
-                    ? 'bg-amber-50/40 border-amber-200'
-                    : 'bg-white border-slate-100 hover:border-slate-200'
+                    ? 'bg-warning-soft/50 border-warning-border'
+                    : 'bg-surface border-line hover:border-line-strong'
 
                 const rowActions = [
                   {
@@ -483,11 +474,11 @@ export const CommitmentRadar = ({
                     <div className="flex flex-col gap-2 min-w-0 flex-1">
                       <div className="flex items-center gap-2.5 flex-wrap">
                         {isOverdue ? (
-                          <div className="bg-red-100 p-1.5 rounded-lg text-red-600 shrink-0">
+                          <div className="bg-danger/15 p-1.5 rounded-lg text-danger shrink-0">
                             <AlertTriangle className="w-3.5 h-3.5" />
                           </div>
                         ) : (
-                          <span className="text-slate-400 shrink-0">
+                          <span className="text-fg-subtle shrink-0">
                             <Calendar className="w-3.5 h-3.5" />
                           </span>
                         )}
@@ -496,27 +487,27 @@ export const CommitmentRadar = ({
                         >
                           {pill.label}
                         </span>
-                        <span className="text-sm font-bold text-slate-800 truncate">{comm.name}</span>
+                        <span className="text-sm font-bold text-fg truncate">{comm.name}</span>
                       </div>
 
-                      <div className="flex items-center gap-1.5 text-[11px] font-medium text-slate-500 pl-1 flex-wrap">
-                        <Building2 className="w-3 h-3 text-slate-400 shrink-0" />
+                      <div className="flex items-center gap-1.5 text-[11px] font-medium text-fg-muted pl-1 flex-wrap">
+                        <Building2 className="w-3 h-3 text-fg-subtle shrink-0" />
                         <span>
                           Deducts from:{' '}
-                          <strong className="text-slate-700">
+                          <strong className="text-fg">
                             {account?.account_name || 'Unknown'}
                           </strong>
                         </span>
-                        <span className="text-slate-300">·</span>
-                        <Wallet className="w-3 h-3 text-slate-400 shrink-0" />
-                        <span className={accountShort ? 'text-amber-700 font-semibold' : ''}>
+                        <span className="text-line-strong">·</span>
+                        <Wallet className="w-3 h-3 text-fg-subtle shrink-0" />
+                        <span className={accountShort ? 'text-warning-text font-semibold' : ''}>
                           {formatMYR(accountBalance)} available
                         </span>
                       </div>
                     </div>
 
-                    <div className="flex items-center justify-between sm:justify-end gap-2 shrink-0 border-t sm:border-t-0 border-slate-100 pt-3 sm:pt-0">
-                      <span className="text-sm font-black whitespace-nowrap text-slate-900">
+                    <div className="flex items-center justify-between sm:justify-end gap-2 shrink-0 border-t sm:border-t-0 border-line pt-3 sm:pt-0">
+                      <span className="text-sm font-black whitespace-nowrap text-fg">
                         {formatMYR(period.amount)}
                       </span>
 
@@ -526,7 +517,7 @@ export const CommitmentRadar = ({
                             setConfirm({ kind: 'skip', commitment: comm, period })
                           }
                           disabled={saving}
-                          className="flex items-center gap-1 px-3 py-2 text-xs font-bold text-slate-500 bg-slate-50 hover:bg-slate-100 border border-slate-200 rounded-lg transition-all disabled:opacity-50"
+                          className="flex items-center gap-1 px-3 py-2 text-xs font-bold text-fg-muted bg-surface-2 hover:bg-surface-3 border border-line rounded-lg transition-all disabled:opacity-50"
                           style={{ minHeight: 44 }}
                           title="Skip this month"
                           aria-label={`Skip ${comm.name} for this period`}
@@ -541,7 +532,7 @@ export const CommitmentRadar = ({
                             setMarking(period)
                           }}
                           disabled={saving}
-                          className="flex items-center gap-1.5 px-3.5 py-2 text-xs font-bold text-emerald-700 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 rounded-lg transition-all shadow-sm disabled:opacity-50"
+                          className="flex items-center gap-1.5 px-3.5 py-2 text-xs font-bold text-success-text bg-success-soft hover:bg-success-soft/80 border border-success-border rounded-lg transition-all shadow-sm disabled:opacity-50"
                           style={{ minHeight: 44 }}
                         >
                           <Check className="w-3.5 h-3.5" /> Paid
@@ -562,15 +553,15 @@ export const CommitmentRadar = ({
           <div className="mb-2">
             <button
               onClick={() => setShowPaid(!showPaid)}
-              className="w-full flex items-center justify-between p-3 bg-white hover:bg-slate-50 border border-slate-100 rounded-xl transition-colors shadow-sm"
+              className="w-full flex items-center justify-between p-3 bg-surface hover:bg-surface-2 border border-line rounded-xl transition-colors shadow-sm"
               aria-expanded={showPaid}
               style={{ minHeight: 44 }}
             >
-              <span className="text-[10px] text-slate-500 uppercase font-bold tracking-wider flex items-center gap-1.5">
-                <CheckCircle className="w-3.5 h-3.5 text-emerald-500" /> Paid this month (
+              <span className="text-[10px] text-fg-muted uppercase font-bold tracking-wider flex items-center gap-1.5">
+                <CheckCircle className="w-3.5 h-3.5 text-success" /> Paid this month (
                 {paidCommitments.length})
               </span>
-              {showPaid ? <ChevronUp className="w-4 h-4 text-slate-400" /> : <ChevronDown className="w-4 h-4 text-slate-400" />}
+              {showPaid ? <ChevronUp className="w-4 h-4 text-fg-subtle" /> : <ChevronDown className="w-4 h-4 text-fg-subtle" />}
             </button>
 
             {showPaid && (
@@ -578,22 +569,22 @@ export const CommitmentRadar = ({
                 {paidCommitments.map((comm) => (
                   <div
                     key={comm.id}
-                    className="flex items-center justify-between p-2.5 rounded-xl bg-emerald-50/30 border border-emerald-100/50 gap-2"
+                    className="flex items-center justify-between p-2.5 rounded-xl bg-success-soft/30 border border-success-border gap-2"
                   >
                     <div className="flex items-center gap-2 min-w-0 flex-1">
-                      <CheckCircle className="w-3.5 h-3.5 text-emerald-500 shrink-0" />
-                      <span className="text-xs font-medium text-slate-500 line-through truncate">
+                      <CheckCircle className="w-3.5 h-3.5 text-success shrink-0" />
+                      <span className="text-xs font-medium text-fg-muted line-through truncate">
                         {comm.name}
                       </span>
                     </div>
                     <div className="flex items-center gap-2 shrink-0">
-                      <span className="text-xs font-bold text-slate-400 line-through">
+                      <span className="text-xs font-bold text-fg-subtle line-through">
                         {formatMYR(comm.amount)}
                       </span>
                       <button
                         onClick={() => setConfirm({ kind: 'undo', commitment: comm })}
                         disabled={saving}
-                        className="inline-flex items-center gap-1 text-[11px] font-bold text-slate-400 hover:text-slate-700 hover:bg-white px-2.5 py-2 rounded-md transition-colors border border-transparent hover:border-slate-200 disabled:opacity-50"
+                        className="inline-flex items-center gap-1 text-[11px] font-bold text-fg-subtle hover:text-fg hover:bg-surface px-2.5 py-2 rounded-md transition-colors border border-transparent hover:border-line disabled:opacity-50"
                         style={{ minHeight: 44 }}
                         aria-label={`Undo payment for ${comm.name}`}
                       >
@@ -612,15 +603,15 @@ export const CommitmentRadar = ({
           <div className="mb-2">
             <button
               onClick={() => setShowSkipped(!showSkipped)}
-              className="w-full flex items-center justify-between p-3 bg-white hover:bg-slate-50 border border-slate-100 rounded-xl transition-colors shadow-sm"
+              className="w-full flex items-center justify-between p-3 bg-surface hover:bg-surface-2 border border-line rounded-xl transition-colors shadow-sm"
               aria-expanded={showSkipped}
               style={{ minHeight: 44 }}
             >
-              <span className="text-[10px] text-slate-500 uppercase font-bold tracking-wider flex items-center gap-1.5">
-                <CircleSlash className="w-3.5 h-3.5 text-slate-400" /> Skipped this month (
+              <span className="text-[10px] text-fg-muted uppercase font-bold tracking-wider flex items-center gap-1.5">
+                <CircleSlash className="w-3.5 h-3.5 text-fg-subtle" /> Skipped this month (
                 {skippedCommitments.length})
               </span>
-              {showSkipped ? <ChevronUp className="w-4 h-4 text-slate-400" /> : <ChevronDown className="w-4 h-4 text-slate-400" />}
+              {showSkipped ? <ChevronUp className="w-4 h-4 text-fg-subtle" /> : <ChevronDown className="w-4 h-4 text-fg-subtle" />}
             </button>
 
             {showSkipped && (
@@ -628,18 +619,18 @@ export const CommitmentRadar = ({
                 {skippedCommitments.map((comm) => (
                   <div
                     key={comm.id}
-                    className="flex items-center justify-between p-2.5 rounded-xl bg-slate-50/40 border border-slate-100 gap-2"
+                    className="flex items-center justify-between p-2.5 rounded-xl bg-surface-2/40 border border-line gap-2"
                   >
                     <div className="flex items-center gap-2 min-w-0 flex-1">
-                      <CircleSlash className="w-3.5 h-3.5 text-slate-400 shrink-0" />
-                      <span className="text-xs font-medium text-slate-500 truncate">{comm.name}</span>
+                      <CircleSlash className="w-3.5 h-3.5 text-fg-subtle shrink-0" />
+                      <span className="text-xs font-medium text-fg-muted truncate">{comm.name}</span>
                     </div>
                     <div className="flex items-center gap-2 shrink-0">
-                      <span className="text-xs font-bold text-slate-400">{formatMYR(comm.amount)}</span>
+                      <span className="text-xs font-bold text-fg-subtle">{formatMYR(comm.amount)}</span>
                       <button
                         onClick={() => setConfirm({ kind: 'undo', commitment: comm })}
                         disabled={saving}
-                        className="inline-flex items-center gap-1 text-[11px] font-bold text-slate-400 hover:text-slate-700 hover:bg-white px-2.5 py-2 rounded-md transition-colors border border-transparent hover:border-slate-200 disabled:opacity-50"
+                        className="inline-flex items-center gap-1 text-[11px] font-bold text-fg-subtle hover:text-fg hover:bg-surface px-2.5 py-2 rounded-md transition-colors border border-transparent hover:border-line disabled:opacity-50"
                         style={{ minHeight: 44 }}
                       >
                         <Undo2 className="w-3.5 h-3.5" /> Undo
@@ -657,14 +648,14 @@ export const CommitmentRadar = ({
           <div className="mb-2">
             <button
               onClick={() => setShowInactive(!showInactive)}
-              className="w-full flex items-center justify-between p-3 bg-white hover:bg-slate-50 border border-slate-100 rounded-xl transition-colors shadow-sm"
+              className="w-full flex items-center justify-between p-3 bg-surface hover:bg-surface-2 border border-line rounded-xl transition-colors shadow-sm"
               aria-expanded={showInactive}
               style={{ minHeight: 44 }}
             >
-              <span className="text-[10px] text-slate-500 uppercase font-bold tracking-wider flex items-center gap-1.5">
-                <Power className="w-3.5 h-3.5 text-slate-400" /> Paused ({inactiveCommitments.length})
+              <span className="text-[10px] text-fg-muted uppercase font-bold tracking-wider flex items-center gap-1.5">
+                <Power className="w-3.5 h-3.5 text-fg-subtle" /> Paused ({inactiveCommitments.length})
               </span>
-              {showInactive ? <ChevronUp className="w-4 h-4 text-slate-400" /> : <ChevronDown className="w-4 h-4 text-slate-400" />}
+              {showInactive ? <ChevronUp className="w-4 h-4 text-fg-subtle" /> : <ChevronDown className="w-4 h-4 text-fg-subtle" />}
             </button>
 
             {showInactive && (
@@ -672,19 +663,19 @@ export const CommitmentRadar = ({
                 {inactiveCommitments.map((comm) => (
                   <div
                     key={comm.id}
-                    className="flex items-center justify-between p-3 rounded-xl bg-slate-50/50 border border-slate-100 gap-2"
+                    className="flex items-center justify-between p-3 rounded-xl bg-surface-2/50 border border-line gap-2"
                   >
-                    <span className="text-xs font-bold text-slate-500 truncate min-w-0">
+                    <span className="text-xs font-bold text-fg-muted truncate min-w-0">
                       {comm.name}
                     </span>
                     <div className="flex items-center gap-1.5 shrink-0">
-                      <span className="text-xs font-bold text-slate-400 mr-1">
+                      <span className="text-xs font-bold text-fg-subtle mr-1">
                         {formatMYR(comm.amount)}
                       </span>
                       <button
                         onClick={() => onReactivateCommitment(comm.id)}
                         disabled={saving}
-                        className="flex items-center justify-center w-11 h-11 text-slate-400 hover:text-emerald-600 hover:bg-emerald-50 rounded-lg transition-all border border-transparent hover:border-emerald-200 disabled:opacity-50"
+                        className="flex items-center justify-center w-11 h-11 text-fg-subtle hover:text-success hover:bg-success-soft rounded-lg transition-all border border-transparent hover:border-success-border disabled:opacity-50"
                         aria-label={`Reactivate ${comm.name}`}
                         title="Reactivate"
                       >
@@ -692,7 +683,7 @@ export const CommitmentRadar = ({
                       </button>
                       <button
                         onClick={() => setFormState({ mode: 'edit', commitment: comm })}
-                        className="flex items-center justify-center w-11 h-11 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-all border border-transparent hover:border-blue-200"
+                        className="flex items-center justify-center w-11 h-11 text-fg-subtle hover:text-brand hover:bg-brand-soft rounded-lg transition-all border border-transparent hover:border-brand/30"
                         aria-label={`Edit ${comm.name}`}
                         title="Edit"
                       >
@@ -700,7 +691,7 @@ export const CommitmentRadar = ({
                       </button>
                       <button
                         onClick={() => setConfirm({ kind: 'delete', commitment: comm })}
-                        className="flex items-center justify-center w-11 h-11 text-red-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-all border border-transparent hover:border-red-200"
+                        className="flex items-center justify-center w-11 h-11 text-danger/70 hover:text-danger hover:bg-danger-soft rounded-lg transition-all border border-transparent hover:border-danger-border"
                         aria-label={`Delete ${comm.name}`}
                         title="Delete"
                       >
@@ -716,13 +707,13 @@ export const CommitmentRadar = ({
 
         {/* Top-level shortfall */}
         {!isSafe && totalRequired > 0 && (
-          <div className="bg-red-50/60 border border-red-200/60 rounded-xl p-3.5 mt-4 flex items-start gap-2.5">
-            <AlertTriangle className="w-4 h-4 text-red-600 shrink-0 mt-0.5" />
+          <div className="bg-danger-soft border border-danger-border rounded-xl p-3.5 mt-4 flex items-start gap-2.5">
+            <AlertTriangle className="w-4 h-4 text-danger shrink-0 mt-0.5" />
             <div>
-              <p className="text-xs font-bold text-red-800">
+              <p className="text-xs font-bold text-danger-text">
                 You're short by {formatMYR(shortfall)}
               </p>
-              <p className="text-xs text-red-700/90 mt-0.5 leading-relaxed">
+              <p className="text-xs text-danger-text/90 mt-0.5 leading-relaxed">
                 Your available balance doesn't cover every unpaid bill this month.
               </p>
             </div>

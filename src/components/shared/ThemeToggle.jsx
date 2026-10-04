@@ -1,11 +1,10 @@
 // src/components/shared/ThemeToggle.jsx
-import { Moon, Sun, Monitor } from 'lucide-react'
+import { Moon, Sun } from 'lucide-react'
 import { useTheme } from '../../hooks/useTheme'
 
 const OPTIONS = [
-  { value: 'light',  Icon: Sun,     label: 'Light'  },
-  { value: 'dark',   Icon: Moon,    label: 'Dark'   },
-  { value: 'system', Icon: Monitor, label: 'System' },
+  { value: 'light', Icon: Sun,  label: 'Light' },
+  { value: 'dark',  Icon: Moon, label: 'Dark' },
 ]
 
 export function ThemeToggle({ className = '' }) {
@@ -19,6 +18,7 @@ export function ThemeToggle({ className = '' }) {
     >
       {OPTIONS.map(({ value, Icon, label }) => {
         const active = preference === value
+
         return (
           <button
             key={value}
@@ -28,7 +28,7 @@ export function ThemeToggle({ className = '' }) {
             aria-label={label}
             title={label}
             onClick={() => setPreference(value)}
-            className={`p-1.5 rounded-full transition-colors ${
+            className={`flex items-center justify-center w-8 h-8 p-0 rounded-full transition-colors ${
               active
                 ? 'bg-surface text-fg shadow-sm'
                 : 'text-fg-subtle hover:text-fg'

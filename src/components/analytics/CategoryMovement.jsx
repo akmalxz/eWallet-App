@@ -3,13 +3,14 @@ import { useState, useMemo } from 'react'
 import { ArrowUpRight, ArrowDownRight, Minus, Layers } from 'lucide-react'
 import { formatMYR } from '../../utils/formatters'
 import { monthKey, lastNMonths } from '../../utils/dateHelpers'
-import { COLORS, CATEGORY_COLORS } from '../../utils/analyticsColors'
+import { useChartTheme } from '../../hooks/useChartTheme'
 import { EmptyState } from './AnalyticsShared'
 
 const mainCat = (cat) => (cat || 'Uncategorized').split(' > ')[0]
-const SMALL_THRESHOLD = 50 // group categories < this under "Other"
+const SMALL_THRESHOLD = 50
 
 export const CategoryMovement = ({ expenses, periodMonths }) => {
+  const theme = useChartTheme()
   const [expandedCat, setExpandedCat] = useState(null)
   const [selectedMonthKey, setSelectedMonthKey] = useState(null)
 
@@ -18,15 +19,13 @@ export const CategoryMovement = ({ expenses, periodMonths }) => {
     months,
     stackedData,
     topCategories,
-    thisMonthTotal,
-    lastMonthTotal
+    thisMonthTotal
   } = useMemo(() => {
     const now = new Date()
     const thisKey = monthKey(now)
     const lastDate = new Date(now.getFullYear(), now.getMonth() - 1, 1)
     const lastKey = monthKey(lastDate)
 
-    // This vs last month per main category
     const thisTotals = {}
     const lastTotals = {}
     const txByCat = {}
@@ -63,7 +62,6 @@ export const CategoryMovement = ({ expenses, periodMonths }) => {
       }
     })
 
-    // Group smalls under Other
     const big = rawRows.filter(r => Math.abs(r.diff) >= SMALL_THRESHOLD)
     const smalls = rawRows.filter(r => Math.abs(r.diff) < SMALL_THRESHOLD)
     const otherRow = smalls.length > 0 ? {
@@ -78,11 +76,9 @@ export const CategoryMovement = ({ expenses, periodMonths }) => {
       isOther: true
     } : null
 
-    // Sort by absolute ringgit change
     const sorted = [...big, ...(otherRow ? [otherRow] : [])]
       .sort((a, b) => Math.abs(b.diff) - Math.abs(a.diff))
 
-    // Stacked monthly data
     const monthList = lastNMonths(Math.min(periodMonths, 6), now)
     const totalsByMonth = monthList.map(m => ({ ...m, cats: {} }))
 
@@ -95,7 +91,6 @@ export const CategoryMovement = ({ expenses, periodMonths }) => {
       }
     })
 
-    // Keep top N categories, group rest as Other
     const catGrandTotals = {}
     totalsByMonth.forEach(m => {
       Object.entries(m.cats).forEach(([c, v]) => {
@@ -130,7 +125,7 @@ export const CategoryMovement = ({ expenses, periodMonths }) => {
 
   if (rows.length === 0) {
     return (
-      <div className="bg-white/60 backdrop-blur-xl border border-white/40 rounded-3xl p-6 shadow-sm">
+      <div className="bg-surface/60 backdrop-blur-xl border border-line/50 rounded-3xl p-6 shadow-sm">
         <EmptyState
           icon={Layers}
           title="No category data yet"
@@ -141,15 +136,13 @@ export const CategoryMovement = ({ expenses, periodMonths }) => {
   }
 
   const biggestChange = rows[0]
-  const maxRowTotal = Math.max(...rows.map(r => Math.max(r.thisMonth, r.lastMonth)), 1)
 
   return (
     <div className="space-y-4">
-      {/* Ranked change list */}
-      <div className="bg-white/60 backdrop-blur-xl border border-white/40 rounded-3xl p-5 md:p-6 shadow-sm">
+      <div className="bg-surface/60 backdrop-blur-xl border border-line/50 rounded-3xl p-5 md:p-6 shadow-sm">
         <div className="mb-4">
-          <h3 className="text-sm font-bold text-slate-800">Category Movement</h3>
-          <p className="text-xs text-slate-500 mt-0.5">
+          <h3 className="text-sm font-bold text-fg">Category Movement</h3>
+          <p className="text-xs text-fg-muted mt-0.5">
             <strong>{biggestChange.category}</strong> moved the most,{' '}
             {biggestChange.diff >= 0 ? 'up' : 'down'}{' '}
             <strong>{formatMYR(Math.abs(biggestChange.diff))}</strong> vs last month.
@@ -167,49 +160,47 @@ export const CategoryMovement = ({ expenses, periodMonths }) => {
               <div key={row.category}>
                 <button
                   onClick={() => setExpandedCat(prev => (prev === row.category ? null : row.category))}
-                  className="w-full text-left relative overflow-hidden rounded-xl bg-white border border-slate-100 hover:border-slate-200 transition-all p-3"
+                  className="w-full text-left relative overflow-hidden rounded-xl bg-surface border border-line hover:border-line-strong transition-all p-3"
                 >
-                  {/* Share bar behind */}
                   <div
-                    className="absolute inset-y-0 left-0 bg-slate-50 pointer-events-none"
+                    className="absolute inset-y-0 left-0 bg-surface-2 pointer-events-none"
                     style={{ width: `${share}%` }}
                   />
 
                   <div className="relative flex items-center justify-between gap-2">
                     <div className="min-w-0 flex-1">
-                      <p className="text-sm font-bold text-slate-800 truncate">
+                      <p className="text-sm font-bold text-fg truncate">
                         {row.category}
                       </p>
-                      <p className="text-[11px] text-slate-400 mt-0.5">
+                      <p className="text-[11px] text-fg-subtle mt-0.5">
                         {formatMYR(row.thisMonth)} this month
-                        {row.isNew && <span className="ml-1 text-blue-500 font-bold">· New</span>}
-                        {row.dropped && <span className="ml-1 text-slate-400 font-bold">· None this month</span>}
+                        {row.isNew && <span className="ml-1 text-brand font-bold">· New</span>}
+                        {row.dropped && <span className="ml-1 text-fg-subtle font-bold">· None this month</span>}
                       </p>
                     </div>
 
                     <div className="shrink-0 flex items-center gap-2">
                       {!neutral && (
-                        <div className={`flex items-center gap-0.5 text-xs font-black ${
-                          up ? 'text-red-500' : 'text-emerald-500'
-                        }`}>
+                        <div className="flex items-center gap-0.5 text-xs font-black"
+                             style={{ color: up ? theme.up : theme.down }}>
                           {up ? <ArrowUpRight className="w-3.5 h-3.5" /> : <ArrowDownRight className="w-3.5 h-3.5" />}
                           {formatMYR(Math.abs(row.diff))}
                         </div>
                       )}
-                      {neutral && <Minus className="w-3.5 h-3.5 text-slate-300" />}
+                      {neutral && <Minus className="w-3.5 h-3.5 text-fg-subtle" />}
                     </div>
                   </div>
                 </button>
 
                 {isExpanded && row.txns.length > 0 && (
-                  <div className="mt-1.5 ml-3 pl-3 border-l-2 border-slate-100 space-y-1 animate-fadeIn">
+                  <div className="mt-1.5 ml-3 pl-3 border-l-2 border-line space-y-1 animate-fadeIn">
                     {[...row.txns]
                       .sort((a, b) => b.amount - a.amount)
                       .slice(0, 3)
                       .map(tx => (
                         <div key={tx.id} className="flex justify-between text-[11px] py-1">
-                          <span className="text-slate-500 truncate pr-2">{tx.description}</span>
-                          <span className="text-slate-700 font-bold shrink-0">{formatMYR(tx.amount)}</span>
+                          <span className="text-fg-muted truncate pr-2">{tx.description}</span>
+                          <span className="text-fg font-bold shrink-0">{formatMYR(tx.amount)}</span>
                         </div>
                       ))}
                   </div>
@@ -220,9 +211,8 @@ export const CategoryMovement = ({ expenses, periodMonths }) => {
         </div>
       </div>
 
-      {/* Stacked monthly bars */}
-      <div className="bg-white/60 backdrop-blur-xl border border-white/40 rounded-3xl p-5 md:p-6 shadow-sm">
-        <h3 className="text-sm font-bold text-slate-800 mb-3">Category Mix Over Time</h3>
+      <div className="bg-surface/60 backdrop-blur-xl border border-line/50 rounded-3xl p-5 md:p-6 shadow-sm">
+        <h3 className="text-sm font-bold text-fg mb-3">Category Mix Over Time</h3>
 
         <div className="flex items-end gap-2 h-40">
           {stackedData.map(m => {
@@ -231,8 +221,8 @@ export const CategoryMovement = ({ expenses, periodMonths }) => {
               .reduce((s, [, v]) => s + v, 0)
             if (total === 0) return (
               <div key={m.key} className="flex-1 flex flex-col items-center gap-1">
-                <div className="w-full h-2 rounded-t bg-slate-100" />
-                <span className="text-[10px] font-bold text-slate-400">{m.label}</span>
+                <div className="w-full h-2 rounded-t bg-surface-2" />
+                <span className="text-[10px] font-bold text-fg-subtle">{m.label}</span>
               </div>
             )
 
@@ -242,7 +232,7 @@ export const CategoryMovement = ({ expenses, periodMonths }) => {
                 name: c,
                 value: m[c],
                 pct: (m[c] / total) * 100,
-                color: c === 'Other' ? COLORS.neutral : CATEGORY_COLORS[i % CATEGORY_COLORS.length]
+                color: c === 'Other' ? theme.neutral : theme.category[i % theme.category.length]
               }))
 
             return (
@@ -260,21 +250,20 @@ export const CategoryMovement = ({ expenses, periodMonths }) => {
                     />
                   ))}
                 </div>
-                <span className="text-[10px] font-bold text-slate-500">{m.label}</span>
+                <span className="text-[10px] font-bold text-fg-muted">{m.label}</span>
               </button>
             )
           })}
         </div>
 
-        {/* Legend */}
         <div className="flex flex-wrap gap-2 mt-3">
           {topCategories.map((c, i) => (
             <div key={c} className="flex items-center gap-1.5">
               <div
                 className="w-2.5 h-2.5 rounded"
-                style={{ backgroundColor: c === 'Other' ? COLORS.neutral : CATEGORY_COLORS[i % CATEGORY_COLORS.length] }}
+                style={{ backgroundColor: c === 'Other' ? theme.neutral : theme.category[i % theme.category.length] }}
               />
-              <span className="text-[10px] font-semibold text-slate-500">{c}</span>
+              <span className="text-[10px] font-semibold text-fg-muted">{c}</span>
             </div>
           ))}
         </div>

@@ -7,9 +7,6 @@ import {
   User
 } from 'lucide-react'
 
-// ============================================================
-// NAV ITEMS — shared between desktop + mobile
-// ============================================================
 const NAV_ITEMS = [
   { id: 'dashboard',    icon: LayoutDashboard, label: 'Home' },
   { id: 'transactions', icon: List,            label: 'Ledger' },
@@ -18,17 +15,8 @@ const NAV_ITEMS = [
   { id: 'profile',      icon: User,            label: 'Profile' }
 ]
 
-// Views that conceptually live inside the "Home" tab.
-// When one is active, the Home tab stays highlighted.
 const DASHBOARD_SUBVIEWS = ['network', 'split', 'analytics']
 
-// ============================================================
-// NAVIGATION BAR
-// Renders both the desktop floating pill and the mobile bottom
-// bar. Both use the same items and the same sliding indicator.
-// Place this right after <Header /> so the desktop nav can
-// stick to the top correctly.
-// ============================================================
 export const NavigationBar = ({ currentView, setCurrentView }) => {
   const navKey = DASHBOARD_SUBVIEWS.includes(currentView)
     ? 'dashboard'
@@ -43,11 +31,9 @@ export const NavigationBar = ({ currentView, setCurrentView }) => {
 
   return (
     <>
-      {/* ============================================
-          DESKTOP — Floating liquid glass pill
-      ============================================ */}
-      <div className="hidden md:flex justify-center sticky top-[64px] z-10 py-3 px-4">
-        <nav className="relative w-[560px] rounded-3xl bg-white/10 backdrop-blur-2xl border border-white/25 shadow-[0_8px_30px_rgba(0,0,0,0.08)]">
+      {/* DESKTOP — Floating liquid glass pill */}
+      <div className="hidden md:flex justify-center sticky top-[64px] z-10 pt-4 pb-3 px-4">
+        <nav className="relative w-[560px] rounded-3xl bg-glass-bg backdrop-blur-2xl border border-glass-border shadow-[0_8px_30px_rgba(0,0,0,0.08)] dark:shadow-[0_8px_30px_rgba(0,0,0,0.4)]">
           <div className="relative flex items-center h-16">
             {activeIndex >= 0 && (
               <div
@@ -57,7 +43,7 @@ export const NavigationBar = ({ currentView, setCurrentView }) => {
                   transform: `translateX(${activeIndex * 100}%)`
                 }}
               >
-                <div className="absolute inset-1.5 rounded-2xl bg-gradient-to-b from-white/35 via-white/25 to-white/15 backdrop-blur-xl border border-white/40 shadow-[0_4px_16px_rgba(0,0,0,0.05),inset_0_1px_0_rgba(255,255,255,0.5)]" />
+                <div className="absolute inset-1.5 rounded-2xl bg-gradient-to-b from-glass-active via-glass-bg to-transparent backdrop-blur-xl border border-glass-border shadow-[0_4px_16px_rgba(0,0,0,0.05),inset_0_1px_0_rgba(255,255,255,0.5)] dark:shadow-[0_4px_16px_rgba(0,0,0,0.3)]" />
               </div>
             )}
             {NAV_ITEMS.map((item) => {
@@ -71,8 +57,16 @@ export const NavigationBar = ({ currentView, setCurrentView }) => {
                   title={item.label}
                   className="relative z-10 flex-1 h-full min-w-0 p-0 m-0 flex items-center justify-center gap-2"
                 >
-                  <Icon className={`w-5 h-5 shrink-0 transition-colors duration-300 ${isActive ? 'text-blue-600' : 'text-slate-500 hover:text-slate-700'}`} />
-                  <span className={`text-sm font-semibold transition-colors duration-300 ${isActive ? 'text-blue-600' : 'text-slate-500 hover:text-slate-700'}`}>
+                  <Icon className={`w-5 h-5 shrink-0 transition-colors duration-300 ${
+                    isActive
+                      ? 'text-brand'
+                      : 'text-fg-subtle hover:text-fg-muted'
+                  }`} />
+                  <span className={`text-sm font-semibold transition-colors duration-300 ${
+                    isActive
+                      ? 'text-brand'
+                      : 'text-fg-subtle hover:text-fg-muted'
+                  }`}>
                     {item.label}
                   </span>
                 </button>
@@ -82,11 +76,9 @@ export const NavigationBar = ({ currentView, setCurrentView }) => {
         </nav>
       </div>
 
-      {/* ============================================
-          MOBILE — Fixed liquid glass pill
-      ============================================ */}
+      {/* MOBILE — Fixed liquid glass pill */}
       <nav
-        className="md:hidden fixed left-4 right-4 z-50 rounded-3xl bg-white/5 backdrop-blur-2xl border border-white/25 shadow-[0_8px_30px_rgba(0,0,0,0.08)]"
+        className="md:hidden fixed left-4 right-4 z-50 rounded-3xl bg-glass-bg backdrop-blur-2xl border border-glass-border shadow-[0_8px_30px_rgba(0,0,0,0.08)] dark:shadow-[0_8px_30px_rgba(0,0,0,0.5)]"
         style={{ bottom: 'calc(1.5rem + env(safe-area-inset-bottom, 0px))' }}
       >
         <div className="relative flex items-center h-16">
@@ -98,7 +90,7 @@ export const NavigationBar = ({ currentView, setCurrentView }) => {
                 transform: `translateX(${activeIndex * 100}%)`
               }}
             >
-              <div className="absolute inset-1.5 rounded-2xl bg-gradient-to-b from-white/35 via-white/25 to-white/15 backdrop-blur-xl border border-white/40 shadow-[0_4px_16px_rgba(0,0,0,0.05),inset_0_1px_0_rgba(255,255,255,0.5)]" />
+              <div className="absolute inset-1.5 rounded-2xl bg-gradient-to-b from-glass-active via-glass-bg to-transparent backdrop-blur-xl border border-glass-border shadow-[0_4px_16px_rgba(0,0,0,0.05),inset_0_1px_0_rgba(255,255,255,0.5)] dark:shadow-[0_4px_16px_rgba(0,0,0,0.3)]" />
             </div>
           )}
           {NAV_ITEMS.map((item) => {
@@ -112,7 +104,11 @@ export const NavigationBar = ({ currentView, setCurrentView }) => {
                 className="relative z-10 flex-1 h-full min-w-0 p-0 m-0 flex items-center justify-center"
               >
                 <span className="flex items-center justify-center w-10 h-10 leading-none">
-                  <Icon className={`block w-5 h-5 shrink-0 transition-colors duration-300 ${isActive ? 'text-blue-600' : 'text-slate-400'}`} />
+                  <Icon className={`block w-5 h-5 shrink-0 transition-colors duration-300 ${
+                    isActive
+                      ? 'text-brand'
+                      : 'text-fg-subtle'
+                  }`} />
                 </span>
               </button>
             )

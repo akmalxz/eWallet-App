@@ -7,7 +7,7 @@ import {
 } from 'recharts'
 import { formatMYR } from '../../utils/formatters'
 import { monthKey, lastNMonths } from '../../utils/dateHelpers'
-import { COLORS } from '../../utils/analyticsColors'
+import { useChartTheme } from '../../hooks/useChartTheme'
 import { ChartTooltip, EmptyState } from './AnalyticsShared'
 
 export const IncomeVsExpense = ({
@@ -19,6 +19,8 @@ export const IncomeVsExpense = ({
   accountLabel = 'All accounts',
   onAddIncome
 }) => {
+  const theme = useChartTheme()
+
   const { months, stats } = useMemo(() => {
     const now = new Date()
     const monthList = lastNMonths(periodMonths, now)
@@ -35,7 +37,6 @@ export const IncomeVsExpense = ({
       if (byKey[k]) byKey[k].expense += Number(tx.amount) || 0
     })
 
-    // Complete months only for averages
     const currentMonthKey = monthKey(now)
     const completed = data.filter(d => d.key !== currentMonthKey)
 
@@ -56,20 +57,16 @@ export const IncomeVsExpense = ({
   const hasIncome = stats.totalIncome > 0
   const isScoped = selectedAccountId !== 'all'
 
-  // Color the savings rate
   const rateColor = (() => {
-    if (stats.savingsRate === null) return COLORS.neutral
-    if (stats.savingsRate >= 20) return COLORS.down
+    if (stats.savingsRate === null) return theme.neutral
+    if (stats.savingsRate >= 20) return theme.down
     if (stats.savingsRate >= 0) return '#f59e0b'
-    return COLORS.up
+    return theme.up
   })()
 
-  // ----------------------------------------------------------
-  // Empty state — the message adapts to the active scope
-  // ----------------------------------------------------------
   if (!hasIncome) {
     return (
-      <div className="bg-white/60 backdrop-blur-xl border border-white/40 rounded-3xl p-6 shadow-sm">
+      <div className="bg-surface/60 backdrop-blur-xl border border-line/50 rounded-3xl p-6 shadow-sm">
         <EmptyState
           icon={Wallet}
           title={isScoped ? `No income for ${accountLabel}` : 'No income logged yet'}
@@ -91,17 +88,17 @@ export const IncomeVsExpense = ({
   return (
     <div className="space-y-4">
       {/* Hero savings rate */}
-      <div className="bg-white/60 backdrop-blur-xl border border-white/40 rounded-3xl p-6 shadow-sm text-center">
-        <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">
+      <div className="bg-surface/60 backdrop-blur-xl border border-line/50 rounded-3xl p-6 shadow-sm text-center">
+        <p className="text-[10px] font-bold text-fg-subtle uppercase tracking-wider">
           Savings Rate
         </p>
         <p className="text-4xl font-black mt-1" style={{ color: rateColor }}>
           {stats.savingsRate !== null ? `${stats.savingsRate.toFixed(0)}%` : '—'}
         </p>
-        <p className="text-xs text-slate-400 mt-1">
+        <p className="text-xs text-fg-subtle mt-1">
           The share of your income you kept.
         </p>
-        <p className="text-xs text-slate-500 mt-3 max-w-md mx-auto">
+        <p className="text-xs text-fg-muted mt-3 max-w-md mx-auto">
           {isScoped ? (
             <>
               For <strong>{accountLabel}</strong>: you saved <strong>{formatMYR(stats.net)}</strong> out
@@ -118,23 +115,23 @@ export const IncomeVsExpense = ({
 
       {/* 3 summary cards */}
       <div className="grid grid-cols-3 gap-3">
-        <div className="bg-white/60 backdrop-blur-xl border border-white/40 rounded-2xl p-3 text-center">
-          <p className="text-[9px] font-bold text-slate-400 uppercase tracking-wider">Avg Income</p>
-          <p className="text-sm font-black text-emerald-600 mt-1 break-all">
+        <div className="bg-surface/60 backdrop-blur-xl border border-line/50 rounded-2xl p-3 text-center">
+          <p className="text-[9px] font-bold text-fg-subtle uppercase tracking-wider">Avg Income</p>
+          <p className="text-sm font-black mt-1 break-all" style={{ color: theme.down }}>
             {formatMYR(stats.avgIncome)}
           </p>
         </div>
-        <div className="bg-white/60 backdrop-blur-xl border border-white/40 rounded-2xl p-3 text-center">
-          <p className="text-[9px] font-bold text-slate-400 uppercase tracking-wider">Avg Expense</p>
-          <p className="text-sm font-black text-red-500 mt-1 break-all">
+        <div className="bg-surface/60 backdrop-blur-xl border border-line/50 rounded-2xl p-3 text-center">
+          <p className="text-[9px] font-bold text-fg-subtle uppercase tracking-wider">Avg Expense</p>
+          <p className="text-sm font-black mt-1 break-all" style={{ color: theme.up }}>
             {formatMYR(stats.avgExpense)}
           </p>
         </div>
-        <div className="bg-white/60 backdrop-blur-xl border border-white/40 rounded-2xl p-3 text-center">
-          <p className="text-[9px] font-bold text-slate-400 uppercase tracking-wider">Net</p>
+        <div className="bg-surface/60 backdrop-blur-xl border border-line/50 rounded-2xl p-3 text-center">
+          <p className="text-[9px] font-bold text-fg-subtle uppercase tracking-wider">Net</p>
           <p
             className="text-sm font-black mt-1 break-all"
-            style={{ color: stats.net >= 0 ? COLORS.down : COLORS.up }}
+            style={{ color: stats.net >= 0 ? theme.down : theme.up }}
           >
             {formatMYR(stats.net)}
           </p>
@@ -142,24 +139,24 @@ export const IncomeVsExpense = ({
       </div>
 
       {/* Paired monthly bars */}
-      <div className="bg-white/60 backdrop-blur-xl border border-white/40 rounded-3xl p-5 md:p-6 shadow-sm">
+      <div className="bg-surface/60 backdrop-blur-xl border border-line/50 rounded-3xl p-5 md:p-6 shadow-sm">
         <div className="flex items-start justify-between gap-3 mb-3">
-          <h3 className="text-sm font-bold text-slate-800">Income vs Expense</h3>
-          <span className="text-[10px] font-semibold text-slate-400 shrink-0">
+          <h3 className="text-sm font-bold text-fg">Income vs Expense</h3>
+          <span className="text-[10px] font-semibold text-fg-subtle shrink-0">
             {accountLabel}
           </span>
         </div>
         <ResponsiveContainer width="100%" height={280}>
           <BarChart data={months} margin={{ top: 10, right: 8, bottom: 0, left: 0 }}>
-            <CartesianGrid strokeDasharray="3 3" stroke={COLORS.grid} vertical={false} />
+            <CartesianGrid strokeDasharray="3 3" stroke={theme.grid} vertical={false} />
             <XAxis
               dataKey="label"
-              tick={{ fontSize: 11, fill: '#94a3b8' }}
+              tick={{ fontSize: 11, fill: theme.axis }}
               axisLine={false}
               tickLine={false}
             />
             <YAxis
-              tick={{ fontSize: 11, fill: '#94a3b8' }}
+              tick={{ fontSize: 11, fill: theme.axis }}
               axisLine={false}
               tickLine={false}
               tickFormatter={(v) => (v >= 1000 ? `${(v / 1000).toFixed(1)}k` : v)}
@@ -168,8 +165,8 @@ export const IncomeVsExpense = ({
               content={
                 <ChartTooltip
                   rows={(d) => [
-                    { label: 'Income', value: d.income, color: COLORS.down },
-                    { label: 'Expense', value: d.expense, color: COLORS.up }
+                    { label: 'Income',  value: d.income,  color: theme.down },
+                    { label: 'Expense', value: d.expense, color: theme.up }
                   ]}
                   footer={(d) => {
                     const net = d.income - d.expense
@@ -177,15 +174,15 @@ export const IncomeVsExpense = ({
                   }}
                 />
               }
-              cursor={{ fill: 'rgba(148, 163, 184, 0.06)' }}
+              cursor={{ fill: theme.cursor, fillOpacity: 0.08 }}
             />
             <Legend
-              wrapperStyle={{ fontSize: 11, paddingTop: 8 }}
+              wrapperStyle={{ fontSize: 11, paddingTop: 8, color: theme.axis }}
               iconType="circle"
               iconSize={8}
             />
-            <Bar dataKey="income" fill={COLORS.down} radius={[4, 4, 0, 0]} name="Income" />
-            <Bar dataKey="expense" fill={COLORS.up} radius={[4, 4, 0, 0]} name="Expense" />
+            <Bar dataKey="income"  fill={theme.down} radius={[4, 4, 0, 0]} name="Income" />
+            <Bar dataKey="expense" fill={theme.up}   radius={[4, 4, 0, 0]} name="Expense" />
           </BarChart>
         </ResponsiveContainer>
       </div>

@@ -35,10 +35,10 @@ const SetupButton = ({
   return (
     <button
       onClick={handleClick}
-      className={`w-full bg-white/90 backdrop-blur-xl border border-white/60 rounded-3xl p-5 mb-4 flex items-center justify-between transition-all duration-300 shadow-sm outline-none group ${
+      className={`w-full bg-surface/90 backdrop-blur-xl border border-line/60 rounded-3xl p-5 mb-4 flex items-center justify-between transition-all duration-300 shadow-sm outline-none group ${
         isThisActive
-          ? 'ring-2 ring-slate-900 shadow-md scale-[1.01]'
-          : 'hover:bg-white hover:shadow-md hover:-translate-y-0.5'
+          ? 'ring-2 ring-fg shadow-md scale-[1.01]'
+          : 'hover:bg-surface hover:shadow-md hover:-translate-y-0.5'
       }`}
       style={{ minHeight: 44 }}
     >
@@ -47,8 +47,8 @@ const SetupButton = ({
         <div
           className={`p-2.5 rounded-xl transition-colors duration-300 ${
             isThisActive
-              ? 'bg-slate-900 text-white'
-              : 'bg-slate-100 text-slate-600 group-hover:bg-slate-200'
+              ? 'bg-fg text-fg-inverse'
+              : 'bg-surface-2 text-fg-muted group-hover:bg-surface-3'
           }`}
         >
           <Icon className="w-5 h-5" />
@@ -56,7 +56,7 @@ const SetupButton = ({
 
         <span
           className={`font-bold text-base transition-colors ${
-            isThisActive ? 'text-slate-900' : 'text-slate-800'
+            isThisActive ? 'text-fg' : 'text-fg'
           }`}
         >
           {title}
@@ -66,8 +66,8 @@ const SetupButton = ({
       <ChevronRight
         className={`w-5 h-5 transition-transform duration-300 ${
           isThisActive
-            ? 'text-slate-900 rotate-90'
-            : 'text-slate-400 group-hover:translate-x-1'
+            ? 'text-fg rotate-90'
+            : 'text-fg-subtle group-hover:translate-x-1'
         }`}
       />
     </button>
@@ -97,20 +97,11 @@ export function ProfilePage({
 
   const [activeModal, setActiveModal] = useState(initialModal)
 
-  // ----------------------------------------------------------
-  // Sync initial modal
-  // ----------------------------------------------------------
-
   useEffect(() => {
     if (initialModal) {
       setActiveModal(initialModal)
     }
   }, [initialModal])
-
-
-  // ----------------------------------------------------------
-  // Modal Controls
-  // ----------------------------------------------------------
 
   const openModal = (section) => {
     setActiveModal(section)
@@ -124,16 +115,10 @@ export function ProfilePage({
     openModal('api')
   }
 
-
-  // ----------------------------------------------------------
-  // Display name fallback
-  // ----------------------------------------------------------
-
   const displayName =
     profile?.username?.trim() ||
     user?.email?.split('@')[0] ||
     'Your Vault'
-
 
   // ============================================================
   // RENDER
@@ -142,29 +127,26 @@ export function ProfilePage({
   return (
     <div className="max-w-xl mx-auto animate-in fade-in slide-in-from-bottom-4 duration-500 pb-12">
 
-      {/* ======================================================
-          PROFILE HEADER
-      ====================================================== */}
+      {/* PROFILE HEADER */}
+      <div className="bg-surface/60 backdrop-blur-xl border border-line/50 p-6 rounded-3xl shadow-sm flex items-center gap-4 mb-8">
 
-      <div className="bg-white/60 backdrop-blur-xl border border-white/40 p-6 rounded-3xl shadow-sm flex items-center gap-4 mb-8">
-
-        <div className="bg-slate-900 p-4 rounded-full text-white">
+        <div className="bg-fg p-4 rounded-full text-fg-inverse">
           <User className="w-8 h-8" />
         </div>
 
         <div className="flex-1 min-w-0">
-          <h2 className="text-lg font-bold text-slate-900 truncate">
+          <h2 className="text-lg font-bold text-fg truncate">
             {displayName}
           </h2>
 
-          <p className="text-xs text-slate-500 truncate">
+          <p className="text-xs text-fg-muted truncate">
             {user?.email}
           </p>
         </div>
 
         <button
           onClick={() => supabase.auth.signOut()}
-          className="inline-flex h-11 w-11 items-center justify-center rounded-xl bg-red-50/80 text-red-500 transition-colors hover:bg-red-100 hover:text-red-600 shrink-0"
+          className="inline-flex h-11 w-11 items-center justify-center rounded-xl bg-danger-soft text-danger transition-colors hover:bg-danger/20 shrink-0"
           aria-label="Sign out"
         >
           <LogOut className="h-5 w-5" />
@@ -173,10 +155,7 @@ export function ProfilePage({
       </div>
 
 
-      {/* ======================================================
-          SETUP BUTTONS
-      ====================================================== */}
-
+      {/* SETUP BUTTONS */}
       <div className="space-y-4">
 
         <SetupButton
@@ -211,7 +190,6 @@ export function ProfilePage({
           openModal={openModal}
         />
 
-        {/* P4.3 — Bills row navigates to the Commitments page */}
         <SetupButton
           id="commitments"
           title="Bills"
@@ -232,10 +210,7 @@ export function ProfilePage({
       </div>
 
 
-      {/* ======================================================
-          MODALS
-      ====================================================== */}
-
+      {/* MODALS */}
       {activeModal === 'personal_details' && (
         <PersonalDetailsModal
           user={user}

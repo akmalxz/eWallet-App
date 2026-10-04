@@ -6,30 +6,29 @@ import {
   CartesianGrid, Tooltip as RechartsTooltip, ReferenceLine
 } from 'recharts'
 import { formatMYR } from '../../utils/formatters'
-import {
-  toMYDate, startOfWeekMY, monthKey
-} from '../../utils/dateHelpers'
-import { COLORS } from '../../utils/analyticsColors'
+import { toMYDate, startOfWeekMY, monthKey } from '../../utils/dateHelpers'
+import { useChartTheme } from '../../hooks/useChartTheme'
 import { ChartTooltip, TransactionDrilldown, EmptyState } from './AnalyticsShared'
+import { SlidingSegmentedControl } from '../shared/SlidingSegmentedControl'
 
 const defaultGranularity = (period) => (period === 3 ? 'daily' : 'weekly')
 
 const GRANULARITY_OPTIONS = [
-  { id: 'daily', label: 'Daily' },
-  { id: 'weekly', label: 'Weekly' },
+  { id: 'daily',   label: 'Daily' },
+  { id: 'weekly',  label: 'Weekly' },
   { id: 'monthly', label: 'Monthly' }
 ]
 
 export const MainTrendChart = ({ expenses, periodMonths, accounts = [] }) => {
+  const theme = useChartTheme()
   const [granularity, setGranularity] = useState(defaultGranularity(periodMonths))
   const [selectedBucketKey, setSelectedBucketKey] = useState(null)
 
-  // Reset granularity when the period changes. Was a useMemo side effect.
   useEffect(() => {
     setGranularity(defaultGranularity(periodMonths))
   }, [periodMonths])
 
-  const { currentBuckets, previousBuckets, peakBucket, avg, isEmpty } = useMemo(() => {
+  const { currentBuckets, peakBucket, avg, isEmpty } = useMemo(() => {
     const now = new Date()
     const nowMY = toMYDate(now)
 
@@ -38,8 +37,7 @@ export const MainTrendChart = ({ expenses, periodMonths, accounts = [] }) => {
     if (granularity === 'daily') {
       bucketCount = periodMonths * 30
       bucketStartFn = (offset) => {
-        const d = new Date(Date.UTC(nowMY.getUTCFullYear(), nowMY.getUTCMonth(), nowMY.getUTCDate() - offset))
-        return d
+        return new Date(Date.UTC(nowMY.getUTCFullYear(), nowMY.getUTCMonth(), nowMY.getUTCDate() - offset))
       }
       bucketKeyFn = (d) => d.toISOString().slice(0, 10)
       bucketLabelFn = (d) =>
@@ -58,10 +56,7 @@ export const MainTrendChart = ({ expenses, periodMonths, accounts = [] }) => {
         d.toLocaleDateString('en-MY', { day: 'numeric', month: 'short', timeZone: 'UTC' })
     } else {
       bucketCount = periodMonths
-      bucketStartFn = (offset) => {
-        const d = new Date(Date.UTC(nowMY.getUTCFullYear(), nowMY.getUTCMonth() - offset, 1))
-        return d
-      }
+      bucketStartFn = (offset) => new Date(Date.UTC(nowMY.getUTCFullYear(), nowMY.getUTCMonth() - offset, 1))
       bucketKeyFn = (d) => `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, '0')}`
       bucketLabelFn = (d) =>
         d.toLocaleDateString('en-MY', { month: 'short', timeZone: 'UTC' })
@@ -147,59 +142,33 @@ export const MainTrendChart = ({ expenses, periodMonths, accounts = [] }) => {
       ? current.slice(0, -1).reduce((s, b) => s + b.total, 0) / Math.max(1, current.length - 1)
       : 0
 
-    return {
-      currentBuckets: merged,
-      previousBuckets: previous,
-      peakBucket: peak,
-      avg: avgVal,
-      isEmpty
-    }
+    return { currentBuckets: merged, peakBucket: peak, avg: avgVal, isEmpty }
   }, [expenses, periodMonths, granularity])
 
   const selectedBucket = selectedBucketKey
     ? currentBuckets.find((b) => b.key === selectedBucketKey)
     : null
 
-  const granularityIndex = GRANULARITY_OPTIONS.findIndex((o) => o.id === granularity)
-
   return (
-    <section className="bg-white/60 backdrop-blur-xl border border-white/40 rounded-3xl p-5 md:p-6 shadow-sm">
+    <section className="bg-surface/60 backdrop-blur-xl border border-line/50 rounded-3xl p-5 md:p-6 shadow-sm">
       <div className="flex flex-wrap items-start justify-between gap-3 mb-4">
         <div>
-          <h2 className="text-sm font-bold text-slate-800">Spending Trend</h2>
+          <h2 className="text-sm font-bold text-fg">Spending Trend</h2>
           {!isEmpty && peakBucket?.total > 0 && (
-            <p className="text-xs text-slate-500 mt-0.5">
+            <p className="text-xs text-fg-muted mt-0.5">
               Peak {granularity === 'daily' ? 'day' : granularity === 'weekly' ? 'week' : 'month'}:{' '}
               <strong>{peakBucket.label}</strong> at <strong>{formatMYR(peakBucket.total)}</strong>
             </p>
           )}
         </div>
 
-        <div className="relative flex items-center h-11 rounded-lg bg-slate-100/80 border border-slate-200/60 p-0.5">
-          <div
-            className="absolute top-0.5 bottom-0.5 left-0.5 pointer-events-none transition-transform duration-300 ease-[cubic-bezier(0.4,0,0.2,1)]"
-            style={{
-              width: `calc((100% - 0.25rem) / ${GRANULARITY_OPTIONS.length})`,
-              transform: `translateX(${granularityIndex * 100}%)`
-            }}
-          >
-            <div className="h-full w-full rounded-md bg-white shadow-[0_2px_6px_rgba(0,0,0,0.06),inset_0_1px_0_rgba(255,255,255,0.9)]" />
-          </div>
-
-          {GRANULARITY_OPTIONS.map((opt) => {
-            const isActive = granularity === opt.id
-            return (
-              <button
-                key={opt.id}
-                onClick={() => setGranularity(opt.id)}
-                className={`relative z-10 flex-1 px-2.5 h-full rounded-md text-xs font-bold transition-colors duration-200 ${
-                  isActive ? 'text-slate-800' : 'text-slate-500 hover:text-slate-700'
-                }`}
-              >
-                {opt.label}
-              </button>
-            )
-          })}
+        {/* Granularity selector — shared sliding pill, matches page-level controls */}
+        <div className="w-52 shrink-0">
+          <SlidingSegmentedControl
+            items={GRANULARITY_OPTIONS}
+            value={granularity}
+            onChange={setGranularity}
+          />
         </div>
       </div>
 
@@ -221,16 +190,16 @@ export const MainTrendChart = ({ expenses, periodMonths, accounts = [] }) => {
               }
             }}
           >
-            <CartesianGrid strokeDasharray="3 3" stroke={COLORS.grid} vertical={false} />
+            <CartesianGrid strokeDasharray="3 3" stroke={theme.grid} vertical={false} />
             <XAxis
               dataKey="label"
-              tick={{ fontSize: 11, fill: '#94a3b8' }}
+              tick={{ fontSize: 11, fill: theme.axis }}
               axisLine={false}
               tickLine={false}
               interval="preserveStartEnd"
             />
             <YAxis
-              tick={{ fontSize: 11, fill: '#94a3b8' }}
+              tick={{ fontSize: 11, fill: theme.axis }}
               axisLine={false}
               tickLine={false}
               tickFormatter={(v) => (v >= 1000 ? `${(v / 1000).toFixed(1)}k` : v)}
@@ -241,8 +210,8 @@ export const MainTrendChart = ({ expenses, periodMonths, accounts = [] }) => {
               content={
                 <ChartTooltip
                   rows={(d) => [
-                    { label: 'This period', value: d.total, color: COLORS.current },
-                    { label: 'Previous', value: d.previousTotal, color: COLORS.prev }
+                    { label: 'This period', value: d.total,         color: theme.current },
+                    { label: 'Previous',    value: d.previousTotal, color: theme.prev }
                   ]}
                   footer={(d) => {
                     const diff = d.total - d.previousTotal
@@ -252,20 +221,20 @@ export const MainTrendChart = ({ expenses, periodMonths, accounts = [] }) => {
                   }}
                 />
               }
-              cursor={{ stroke: '#cbd5e1', strokeWidth: 1, strokeDasharray: '3 3' }}
+              cursor={{ stroke: theme.cursor, strokeWidth: 1, strokeDasharray: '3 3' }}
             />
 
             {avg > 0 && (
               <ReferenceLine
                 y={avg}
-                stroke={COLORS.neutral}
+                stroke={theme.neutral}
                 strokeDasharray="4 4"
                 strokeWidth={1}
                 label={{
                   value: `avg ${formatMYR(avg)}`,
                   position: 'insideTopRight',
                   fontSize: 10,
-                  fill: COLORS.neutral
+                  fill: theme.neutral
                 }}
               />
             )}
@@ -273,7 +242,7 @@ export const MainTrendChart = ({ expenses, periodMonths, accounts = [] }) => {
             <Line
               type="monotone"
               dataKey="previousTotal"
-              stroke={COLORS.prev}
+              stroke={theme.prev}
               strokeWidth={1.5}
               strokeDasharray="4 4"
               dot={false}
@@ -283,7 +252,7 @@ export const MainTrendChart = ({ expenses, periodMonths, accounts = [] }) => {
             <Line
               type="monotone"
               dataKey="total"
-              stroke={COLORS.current}
+              stroke={theme.current}
               strokeWidth={3}
               dot={(props) => {
                 const isPeak = props.payload.key === peakBucket?.key
@@ -294,15 +263,20 @@ export const MainTrendChart = ({ expenses, periodMonths, accounts = [] }) => {
                       cx={props.cx}
                       cy={props.cy}
                       r={5}
-                      fill={COLORS.up}
-                      stroke="#fff"
+                      fill={theme.up}
+                      stroke={theme.dotStroke}
                       strokeWidth={2}
                     />
                   )
                 }
                 return <circle key={props.key} cx={props.cx} cy={props.cy} r={0} fill="transparent" />
               }}
-              activeDot={{ r: 6, fill: COLORS.current, stroke: '#fff', strokeWidth: 2 }}
+              activeDot={{
+                r: 6,
+                fill: theme.current,
+                stroke: theme.dotStroke,
+                strokeWidth: 2
+              }}
             />
           </LineChart>
         </ResponsiveContainer>

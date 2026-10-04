@@ -1,6 +1,7 @@
 // src/components/layouts/Header.jsx
 import { useState } from 'react'
-import { Settings, LogOut, Menu, X } from 'lucide-react'
+import { Settings, LogOut, Menu, X, SunMoon } from 'lucide-react'
+import { ThemeToggle } from '../shared/ThemeToggle'
 
 export const Header = ({ user, profile, currentView, setCurrentView, supabase }) => {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
@@ -18,8 +19,11 @@ export const Header = ({ user, profile, currentView, setCurrentView, supabase })
     user?.email?.split('@')[0] ||
     'there'
 
+  // Computed once, reused in both titles
+  const greetingLine = `${getGreeting()}, ${firstName}`
+
   const viewTitles = {
-    dashboard: `${getGreeting()}, ${firstName}`,
+    dashboard: greetingLine,
     log: 'Manual Entry',
     transactions: 'Ledger & Verification',
     commitments: 'Bills',
@@ -29,92 +33,122 @@ export const Header = ({ user, profile, currentView, setCurrentView, supabase })
     profile: 'Profile & Settings'
   }
 
+  // Mobile: page name (the only orientation cue, since pages hide their H1 on mobile)
   const mobileTitle = viewTitles[currentView] || 'FlowState'
+  // Desktop: always the greeting
+  const desktopTitle = greetingLine
 
   return (
-    <header
-      className="bg-gradient-to-b from-slate-50 via-slate-50/80 to-transparent backdrop-blur-xl border-none sticky top-0 z-20 pt-safe px-safe"
-    >
-      <div className="max-w-6xl mx-auto px-3 py-2 md:py-3">
-        <div className="flex items-center justify-between gap-2">
-          <button
-            onClick={() => setCurrentView('dashboard')}
-            className="flex items-center gap-2 hover:opacity-80 transition-opacity min-w-0"
-            aria-label="Go to dashboard"
-          >
-            <img
-              src="/favicon.svg"
-              alt=""
-              width="28"
-              height="28"
-              className="w-6 h-6 md:w-7 md:h-7 shrink-0"
-            />
-            <h1 className="text-base md:text-xl font-bold tracking-tight truncate">
-              <span className="md:hidden">{mobileTitle}</span>
-              <span className="hidden md:inline">FlowState</span>
-            </h1>
-          </button>
-
-          <div className="flex items-center gap-1 md:hidden shrink-0">
+    <header className="sticky top-0 z-20 pt-safe px-safe">
+      {/* Solid content bar */}
+      <div className="relative bg-page">
+        <div className="max-w-6xl mx-auto px-3 py-2 md:py-3">
+          <div className="flex items-center justify-between gap-2">
             <button
-              onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-              className="p-2 text-slate-500 hover:text-slate-700 rounded-lg transition-colors"
-              aria-label="Toggle menu"
-              style={{ minHeight: 44, minWidth: 44 }}
+              onClick={() => setCurrentView('dashboard')}
+              className="flex items-center gap-2 hover:opacity-80 transition-opacity min-w-0"
+              aria-label="Go to dashboard"
             >
-              {isMobileMenuOpen ? <X className="w-4 h-4" /> : <Menu className="w-4 h-4" />}
+              <img
+                src="/favicon.svg"
+                alt=""
+                width="28"
+                height="28"
+                className="w-6 h-6 md:w-7 md:h-7 shrink-0"
+              />
+              <h1 className="text-base md:text-xl font-bold tracking-tight truncate text-fg">
+                <span className="md:hidden">{mobileTitle}</span>
+                <span className="hidden md:inline">{desktopTitle}</span>
+              </h1>
             </button>
+
+            {/* Mobile: menu button only */}
+            <div className="flex items-center gap-1 md:hidden shrink-0">
+              <button
+                onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+                className="flex items-center justify-center w-11 h-11 p-0 text-fg-subtle hover:text-fg-muted rounded-lg transition-colors"
+                aria-label="Toggle menu"
+              >
+                {isMobileMenuOpen ? (
+                  <X className="w-4 h-4" />
+                ) : (
+                  <Menu className="w-4 h-4" />
+                )}
+              </button>
+            </div>
+
+            {/* Desktop: theme toggle + settings + sign out */}
+            <div className="hidden md:flex items-center gap-2">
+              <ThemeToggle />
+              <button
+                onClick={() => setCurrentView('profile')}
+                className={`p-2.5 rounded-full transition-colors ${
+                  currentView === 'profile'
+                    ? 'bg-brand-soft text-brand'
+                    : 'text-fg-subtle hover:bg-surface-2'
+                }`}
+                title="Settings"
+                aria-label="Settings"
+              >
+                <Settings className="w-4 h-4" />
+              </button>
+              <button
+                onClick={() => supabase.auth.signOut()}
+                className="p-2.5 text-fg-subtle hover:bg-danger-soft hover:text-danger rounded-full transition-colors ml-1"
+                title="Sign out"
+                aria-label="Sign out"
+              >
+                <LogOut className="w-4 h-4" />
+              </button>
+            </div>
           </div>
 
-          <div className="hidden md:flex items-center gap-2">
-            <button
-              onClick={() => setCurrentView('profile')}
-              className={`p-2.5 rounded-full transition-colors ${
-                currentView === 'profile' ? 'bg-blue-50 text-blue-600' : 'text-slate-500 hover:bg-slate-200/50'
-              }`}
-              title="Settings"
-              aria-label="Settings"
-            >
-              <Settings className="w-4 h-4" />
-            </button>
-            <button
-              onClick={() => supabase.auth.signOut()}
-              className="p-2.5 text-slate-400 hover:bg-red-50 hover:text-red-500 rounded-full transition-colors ml-1"
-              title="Sign out"
-              aria-label="Sign out"
-            >
-              <LogOut className="w-4 h-4" />
-            </button>
-          </div>
+          {isMobileMenuOpen && (
+            <div className="mt-2 bg-surface/95 backdrop-blur-md rounded-xl shadow-lg border border-line p-2 space-y-1 md:hidden animate-in slide-in-from-top-2 duration-200">
+
+              {/* Theme row */}
+              <div className="w-full flex items-center justify-between gap-3 px-3 py-2">
+                <div className="flex items-center gap-3 text-sm text-fg-muted">
+                  <SunMoon className="w-4 h-4 text-fg-subtle" />
+                  Theme
+                </div>
+                <ThemeToggle />
+              </div>
+
+              <button
+                onClick={() => {
+                  setCurrentView('profile')
+                  setIsMobileMenuOpen(false)
+                }}
+                className="w-full flex items-center gap-3 px-3 py-2.5 text-sm text-fg-muted hover:bg-surface-2 rounded-lg transition-colors"
+                style={{ minHeight: 44 }}
+              >
+                <Settings className="w-4 h-4 text-fg-subtle" />
+                Settings
+              </button>
+
+              <button
+                onClick={() => {
+                  supabase.auth.signOut()
+                  setIsMobileMenuOpen(false)
+                }}
+                className="w-full flex items-center gap-3 px-3 py-2.5 text-sm text-danger hover:bg-danger-soft rounded-lg transition-colors"
+                style={{ minHeight: 44 }}
+              >
+                <LogOut className="w-4 h-4" />
+                Sign Out
+              </button>
+
+            </div>
+          )}
         </div>
-
-        {isMobileMenuOpen && (
-          <div className="mt-2 bg-white/90 backdrop-blur-md rounded-xl shadow-lg border border-slate-100 p-2 space-y-1 md:hidden animate-in slide-in-from-top-2 duration-200">
-            <button
-              onClick={() => {
-                setCurrentView('profile')
-                setIsMobileMenuOpen(false)
-              }}
-              className="w-full flex items-center gap-3 px-3 py-2.5 text-sm text-slate-700 hover:bg-slate-50 rounded-lg transition-colors"
-              style={{ minHeight: 44 }}
-            >
-              <Settings className="w-4 h-4 text-slate-400" />
-              Settings
-            </button>
-            <button
-              onClick={() => {
-                supabase.auth.signOut()
-                setIsMobileMenuOpen(false)
-              }}
-              className="w-full flex items-center gap-3 px-3 py-2.5 text-sm text-red-600 hover:bg-red-50 rounded-lg transition-colors"
-              style={{ minHeight: 44 }}
-            >
-              <LogOut className="w-4 h-4" />
-              Sign Out
-            </button>
-          </div>
-        )}
       </div>
+
+      {/* Scrim strip below the content bar */}
+      <div
+        aria-hidden="true"
+        className="pointer-events-none absolute left-0 right-0 top-full h-4 bg-gradient-to-b from-page via-page/50 to-transparent backdrop-blur-md"
+      />
     </header>
   )
 }

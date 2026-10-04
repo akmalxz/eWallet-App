@@ -11,21 +11,14 @@ export const PersonalDetailsModal = ({
   showToast,
   refreshProfile
 }) => {
-  // ----------------------------------------------------------
-  // Form state (pre-filled from existing profile)
-  // ----------------------------------------------------------
   const [firstName, setFirstName] = useState(profile?.first_name || '')
   const [lastName, setLastName] = useState(profile?.last_name || '')
   const [username, setUsername] = useState(profile?.username || '')
   const [saving, setSaving] = useState(false)
 
-  // ----------------------------------------------------------
-  // Save handler
-  // ----------------------------------------------------------
   const handleSave = async (e) => {
     e.preventDefault()
 
-    // Client-side required check (HTML `required` also enforces this)
     if (!username.trim()) {
       showToast('Please choose a username', 'warning')
       return
@@ -34,7 +27,6 @@ export const PersonalDetailsModal = ({
     setSaving(true)
 
     try {
-      // 1. Pre-check username uniqueness (excluding self)
       const { data: existing, error: checkError } = await supabase
         .from('profiles')
         .select('id')
@@ -45,14 +37,10 @@ export const PersonalDetailsModal = ({
       if (checkError) throw checkError
 
       if (existing) {
-        showToast(
-          'That username is already taken. Please choose another.',
-          'warning'
-        )
+        showToast('That username is already taken. Please choose another.', 'warning')
         return
       }
 
-      // 2. Update profile
       const { error } = await supabase
         .from('profiles')
         .update({
@@ -63,17 +51,13 @@ export const PersonalDetailsModal = ({
         .eq('id', user.id)
 
       if (error) {
-        // Handle UNIQUE constraint race condition (someone claimed it in between)
         const isDuplicate =
           error.code === '23505' ||
           error.message?.toLowerCase().includes('duplicate') ||
           error.message?.toLowerCase().includes('unique')
 
         if (isDuplicate) {
-          showToast(
-            'That username is already taken. Please choose another.',
-            'warning'
-          )
+          showToast('That username is already taken. Please choose another.', 'warning')
           return
         }
 
@@ -82,10 +66,7 @@ export const PersonalDetailsModal = ({
 
       showToast('Personal details updated successfully!', 'success')
 
-      if (refreshProfile) {
-        await refreshProfile()
-      }
-
+      if (refreshProfile) await refreshProfile()
       closeModal()
     } catch (error) {
       showToast(error.message || 'Error updating profile', 'error')
@@ -94,9 +75,6 @@ export const PersonalDetailsModal = ({
     }
   }
 
-  // ----------------------------------------------------------
-  // Render
-  // ----------------------------------------------------------
   return (
     <ModalWrapper title="Personal Information" closeModal={closeModal}>
       <form onSubmit={handleSave} className="space-y-4">
@@ -104,7 +82,7 @@ export const PersonalDetailsModal = ({
         <div>
           <label
             htmlFor="pd-firstname"
-            className="block text-xs font-bold text-slate-500 uppercase mb-1.5"
+            className="block text-xs font-bold text-fg-subtle uppercase mb-1.5"
           >
             First Name
           </label>
@@ -114,7 +92,7 @@ export const PersonalDetailsModal = ({
             type="text"
             value={firstName}
             onChange={(e) => setFirstName(e.target.value)}
-            className="w-full bg-white/60 border border-white/40 rounded-xl py-2 px-3 text-sm outline-none focus:ring-2 focus:ring-blue-500"
+            className="w-full bg-surface-2 border border-line rounded-xl py-2 px-3 text-sm text-fg placeholder:text-fg-subtle outline-none focus:border-brand focus:ring-2 focus:ring-brand/30 transition-all"
             placeholder="e.g. Muhammad Akmal Hakim"
           />
         </div>
@@ -122,7 +100,7 @@ export const PersonalDetailsModal = ({
         <div>
           <label
             htmlFor="pd-lastname"
-            className="block text-xs font-bold text-slate-500 uppercase mb-1.5"
+            className="block text-xs font-bold text-fg-subtle uppercase mb-1.5"
           >
             Last Name
           </label>
@@ -132,7 +110,7 @@ export const PersonalDetailsModal = ({
             type="text"
             value={lastName}
             onChange={(e) => setLastName(e.target.value)}
-            className="w-full bg-white/60 border border-white/40 rounded-xl py-2 px-3 text-sm outline-none focus:ring-2 focus:ring-blue-500"
+            className="w-full bg-surface-2 border border-line rounded-xl py-2 px-3 text-sm text-fg placeholder:text-fg-subtle outline-none focus:border-brand focus:ring-2 focus:ring-brand/30 transition-all"
             placeholder="e.g. Hakim"
           />
         </div>
@@ -140,9 +118,9 @@ export const PersonalDetailsModal = ({
         <div>
           <label
             htmlFor="pd-username"
-            className="block text-xs font-bold text-slate-500 uppercase mb-1.5"
+            className="block text-xs font-bold text-fg-subtle uppercase mb-1.5"
           >
-            Username <span className="text-red-500">*</span>
+            Username <span className="text-danger">*</span>
           </label>
           <input
             id="pd-username"
@@ -151,10 +129,10 @@ export const PersonalDetailsModal = ({
             required
             value={username}
             onChange={(e) => setUsername(e.target.value)}
-            className="w-full bg-white/60 border border-white/40 rounded-xl py-2 px-3 text-sm outline-none focus:ring-2 focus:ring-blue-500"
+            className="w-full bg-surface-2 border border-line rounded-xl py-2 px-3 text-sm text-fg placeholder:text-fg-subtle outline-none focus:border-brand focus:ring-2 focus:ring-brand/30 transition-all"
             placeholder="e.g. akmalhakim"
           />
-          <p className="text-[10px] text-slate-400 mt-1.5">
+          <p className="text-[10px] text-fg-subtle mt-1.5">
             This is how others will find you in the network.
           </p>
         </div>
@@ -162,7 +140,7 @@ export const PersonalDetailsModal = ({
         <div>
           <label
             htmlFor="pd-email"
-            className="block text-xs font-bold text-slate-500 uppercase mb-1.5"
+            className="block text-xs font-bold text-fg-subtle uppercase mb-1.5"
           >
             Email
           </label>
@@ -172,14 +150,14 @@ export const PersonalDetailsModal = ({
             type="email"
             value={user?.email || ''}
             readOnly
-            className="w-full bg-slate-100 border border-slate-200 rounded-xl py-2 px-3 text-sm text-slate-500 cursor-not-allowed outline-none"
+            className="w-full bg-surface-3 border border-line rounded-xl py-2 px-3 text-sm text-fg-subtle cursor-not-allowed outline-none"
           />
         </div>
 
         <button
           type="submit"
           disabled={saving || !username.trim()}
-          className="w-full bg-slate-900 hover:bg-slate-800 text-white font-medium py-3 rounded-xl text-sm transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
+          className="w-full bg-brand-solid hover:bg-brand-solid-hover text-white font-medium py-3 rounded-xl text-sm transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
         >
           <Save className="w-4 h-4" />
           {saving ? 'Saving...' : 'Save Changes'}

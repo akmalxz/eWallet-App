@@ -2,11 +2,17 @@
 import { useState, useEffect, useMemo } from 'react'
 import { PlusCircle, AlertCircle } from 'lucide-react'
 import { supabase } from '../lib/supabaseClient'
+import { SlidingSegmentedControl } from '../components/shared/SlidingSegmentedControl'
+
+const TX_TYPE_ITEMS = [
+  { id: 'expense',  label: 'Expense' },
+  { id: 'income',   label: 'Income' },
+  { id: 'transfer', label: 'Transfer' }
+]
 
 export function LogItemPage({
   user, accounts, mainCategories, getSubCategories, fetchAllData, showToast
 }) {
-  // Form State
   const [txType, setTxType] = useState('expense')
   const [amount, setAmount] = useState('')
   const [desc, setDesc] = useState('')
@@ -16,9 +22,6 @@ export function LogItemPage({
   const [dest, setDest] = useState(accounts[1]?.id || accounts[0]?.id || '')
   const [saving, setSaving] = useState(false)
 
-  // ----------------------------------------------------------
-  // Split main categories into income vs expense branches
-  // ----------------------------------------------------------
   const incomeCategory = useMemo(
     () => mainCategories.find(c => c.name.toLowerCase() === 'income'),
     [mainCategories]
@@ -29,22 +32,14 @@ export function LogItemPage({
     [mainCategories]
   )
 
-  // ----------------------------------------------------------
-  // Reset the selected category whenever the transaction type
-  // changes so we never submit an invalid pairing.
-  // ----------------------------------------------------------
   useEffect(() => {
     setCategory('uncategorized')
   }, [txType])
 
-  // ----------------------------------------------------------
-  // Submit
-  // ----------------------------------------------------------
   const handleSubmit = async (e) => {
     e.preventDefault()
     setSaving(true)
     try {
-      // Transfers are not categorizable — force a distinct label
       const finalCategory =
         txType === 'transfer' ? 'Transfer' : (category || 'uncategorized')
 
@@ -74,14 +69,8 @@ export function LogItemPage({
     }
   }
 
-  // ----------------------------------------------------------
-  // Helper: should we render the category field?
-  // ----------------------------------------------------------
   const showCategory = txType !== 'transfer'
 
-  // ----------------------------------------------------------
-  // Helper: which tree to render for the current type
-  // ----------------------------------------------------------
   const renderCategoryTree = () => {
     if (txType === 'income') {
       if (!incomeCategory) {
@@ -106,7 +95,6 @@ export function LogItemPage({
       )
     }
 
-    // expense (default)
     if (expenseCategories.length === 0) {
       return (
         <option value="uncategorized" disabled>
@@ -131,14 +119,9 @@ export function LogItemPage({
     })
   }
 
-  // ----------------------------------------------------------
-  // Helper: category hint text
-  // ----------------------------------------------------------
   const categoryHint = () => {
     if (txType === 'income') {
-      if (!incomeCategory) {
-        return 'Set up income categories in Settings first.'
-      }
+      if (!incomeCategory) return 'Set up income categories in Settings first.'
       return null
     }
     if (txType === 'expense' && expenseCategories.length === 0) {
@@ -154,38 +137,26 @@ export function LogItemPage({
 
       {/* Page Header */}
       <div className="hidden md:block mb-5 px-1">
-        <h1 className="text-xl font-bold text-slate-800 tracking-tight">Manual Entry</h1>
-        <p className="text-xs text-slate-400 mt-1">Record a new income, expense, or transfer</p>
+        <h1 className="text-xl font-bold text-fg tracking-tight">Manual Entry</h1>
+        <p className="text-xs text-fg-subtle mt-1">Record a new income, expense, or transfer</p>
       </div>
 
-      <div className="bg-white/60 backdrop-blur-xl border border-white/40 rounded-3xl overflow-hidden shadow-sm p-5">
+      <div className="bg-surface/60 backdrop-blur-xl border border-line/50 rounded-3xl overflow-hidden shadow-sm p-5">
 
         <div className="flex items-center gap-4 mb-5">
-          <div className="p-2.5 rounded-xl bg-blue-500 text-white shadow-md">
+          <div className="p-2.5 rounded-xl bg-brand-solid text-white shadow-md">
             <PlusCircle className="w-5 h-5" />
           </div>
-          <span className="font-bold text-base text-slate-800">Log New Expense</span>
+          <span className="font-bold text-base text-fg">Log New Expense</span>
         </div>
 
-        {/* Segmented Type Controller */}
-        <div className="flex p-1 mb-6 bg-slate-100/80 backdrop-blur-md rounded-xl shadow-inner border border-slate-200/50 relative">
-          {['expense', 'income', 'transfer'].map((t) => (
-            <button
-              key={t}
-              type="button"
-              onClick={(e) => {
-                e.preventDefault()
-                setTxType(t)
-              }}
-              className={`flex-1 py-2 text-sm font-bold capitalize rounded-lg transition-all duration-300 z-10 ${
-                txType === t
-                  ? 'text-slate-800 shadow-sm bg-white'
-                  : 'text-slate-500 hover:text-slate-700'
-              }`}
-            >
-              {t}
-            </button>
-          ))}
+        {/* Segmented type controller — shared sliding pill */}
+        <div className="mb-6">
+          <SlidingSegmentedControl
+            items={TX_TYPE_ITEMS}
+            value={txType}
+            onChange={setTxType}
+          />
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-4">
@@ -193,7 +164,7 @@ export function LogItemPage({
             showCategory ? 'grid-cols-1 sm:grid-cols-3' : 'grid-cols-1 sm:grid-cols-2'
           }`}>
             <div>
-              <label htmlFor="tx-date" className="block text-xs font-bold text-slate-500 uppercase mb-1">Date</label>
+              <label htmlFor="tx-date" className="block text-xs font-bold text-fg-subtle uppercase mb-1">Date</label>
               <input
                 id="tx-date"
                 name="tx-date"
@@ -201,11 +172,11 @@ export function LogItemPage({
                 required
                 value={txDate}
                 onChange={(e) => setTxDate(e.target.value)}
-                className="w-full bg-white/60 border border-white/40 rounded-xl py-2 px-3 outline-none focus:ring-2 focus:ring-blue-500 text-xs sm:text-sm transition-all"
+                className="w-full bg-surface-2 border border-line rounded-xl py-2 px-3 outline-none focus:border-brand focus:ring-2 focus:ring-brand/30 text-xs sm:text-sm text-fg transition-all"
               />
             </div>
             <div>
-              <label htmlFor="tx-amount" className="block text-xs font-bold text-slate-500 uppercase mb-1">Amount</label>
+              <label htmlFor="tx-amount" className="block text-xs font-bold text-fg-subtle uppercase mb-1">Amount</label>
               <input
                 id="tx-amount"
                 name="tx-amount"
@@ -214,14 +185,14 @@ export function LogItemPage({
                 required
                 value={amount}
                 onChange={(e) => setAmount(e.target.value)}
-                className="w-full bg-white/60 border border-white/40 rounded-xl py-2 px-3 outline-none focus:ring-2 focus:ring-blue-500 transition-all text-sm"
+                className="w-full bg-surface-2 border border-line rounded-xl py-2 px-3 outline-none focus:border-brand focus:ring-2 focus:ring-brand/30 text-sm text-fg placeholder:text-fg-subtle transition-all"
                 placeholder="0.00"
               />
             </div>
 
             {showCategory && (
               <div>
-                <label htmlFor="tx-category" className="block text-xs font-bold text-slate-500 uppercase mb-1">
+                <label htmlFor="tx-category" className="block text-xs font-bold text-fg-subtle uppercase mb-1">
                   Category
                 </label>
                 <select
@@ -229,13 +200,13 @@ export function LogItemPage({
                   name="tx-category"
                   value={category}
                   onChange={(e) => setCategory(e.target.value)}
-                  className="w-full bg-white/60 border border-white/40 rounded-xl py-2 px-3 outline-none focus:ring-2 focus:ring-blue-500 text-sm transition-all"
+                  className="w-full bg-surface-2 border border-line rounded-xl py-2 px-3 outline-none focus:border-brand focus:ring-2 focus:ring-brand/30 text-sm text-fg transition-all"
                 >
                   <option value="uncategorized">Select...</option>
                   {renderCategoryTree()}
                 </select>
                 {hint && (
-                  <p className="text-[10px] text-amber-600 mt-1 flex items-center gap-1">
+                  <p className="text-[10px] text-warning-text mt-1 flex items-center gap-1">
                     <AlertCircle className="w-3 h-3" /> {hint}
                   </p>
                 )}
@@ -244,7 +215,7 @@ export function LogItemPage({
           </div>
 
           <div>
-            <label htmlFor="tx-desc" className="block text-xs font-bold text-slate-500 uppercase mb-1">Description</label>
+            <label htmlFor="tx-desc" className="block text-xs font-bold text-fg-subtle uppercase mb-1">Description</label>
             <input
               id="tx-desc"
               name="tx-desc"
@@ -252,7 +223,7 @@ export function LogItemPage({
               required
               value={desc}
               onChange={(e) => setDesc(e.target.value)}
-              className="w-full bg-white/60 border border-white/40 rounded-xl py-2 px-3 outline-none focus:ring-2 focus:ring-blue-500 transition-all"
+              className="w-full bg-surface-2 border border-line rounded-xl py-2 px-3 outline-none focus:border-brand focus:ring-2 focus:ring-brand/30 text-fg placeholder:text-fg-subtle transition-all"
               placeholder={
                 txType === 'transfer'
                   ? 'e.g. Move to savings'
@@ -265,7 +236,7 @@ export function LogItemPage({
 
           {txType !== 'transfer' ? (
             <div>
-              <label htmlFor="tx-source" className="block text-xs font-bold text-slate-500 uppercase mb-1">
+              <label htmlFor="tx-source" className="block text-xs font-bold text-fg-subtle uppercase mb-1">
                 {txType === 'income' ? 'Deposit To' : 'Pay From'}
               </label>
               <select
@@ -273,7 +244,7 @@ export function LogItemPage({
                 name="tx-source"
                 value={source}
                 onChange={(e) => setSource(e.target.value)}
-                className="w-full bg-white/60 border border-white/40 rounded-xl py-2 px-3 outline-none focus:ring-2 focus:ring-blue-500 transition-all"
+                className="w-full bg-surface-2 border border-line rounded-xl py-2 px-3 outline-none focus:border-brand focus:ring-2 focus:ring-brand/30 text-fg transition-all"
               >
                 {accounts.map(a => <option key={a.id} value={a.id}>{a.account_name}</option>)}
               </select>
@@ -281,25 +252,25 @@ export function LogItemPage({
           ) : (
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <label htmlFor="tx-transfer-from" className="block text-xs font-bold text-slate-500 uppercase mb-1">From</label>
+                <label htmlFor="tx-transfer-from" className="block text-xs font-bold text-fg-subtle uppercase mb-1">From</label>
                 <select
                   id="tx-transfer-from"
                   name="tx-transfer-from"
                   value={source}
                   onChange={(e) => setSource(e.target.value)}
-                  className="w-full bg-white/60 border border-white/40 rounded-xl py-2 px-3 outline-none focus:ring-2 focus:ring-blue-500 transition-all"
+                  className="w-full bg-surface-2 border border-line rounded-xl py-2 px-3 outline-none focus:border-brand focus:ring-2 focus:ring-brand/30 text-fg transition-all"
                 >
                   {accounts.map(a => <option key={a.id} value={a.id}>{a.account_name}</option>)}
                 </select>
               </div>
               <div>
-                <label htmlFor="tx-transfer-to" className="block text-xs font-bold text-slate-500 uppercase mb-1">To</label>
+                <label htmlFor="tx-transfer-to" className="block text-xs font-bold text-fg-subtle uppercase mb-1">To</label>
                 <select
                   id="tx-transfer-to"
                   name="tx-transfer-to"
                   value={dest}
                   onChange={(e) => setDest(e.target.value)}
-                  className="w-full bg-white/60 border border-white/40 rounded-xl py-2 px-3 outline-none focus:ring-2 focus:ring-blue-500 transition-all"
+                  className="w-full bg-surface-2 border border-line rounded-xl py-2 px-3 outline-none focus:border-brand focus:ring-2 focus:ring-brand/30 text-fg transition-all"
                 >
                   {accounts.map(a => <option key={a.id} value={a.id}>{a.account_name}</option>)}
                 </select>
@@ -310,7 +281,7 @@ export function LogItemPage({
           <button
             type="submit"
             disabled={saving}
-            className="w-full bg-slate-900 hover:bg-slate-800 text-white font-medium py-3 rounded-xl mt-4 transition-colors disabled:opacity-50"
+            className="w-full bg-brand-solid hover:bg-brand-solid-hover text-white font-medium py-3 rounded-xl mt-4 transition-colors disabled:opacity-50"
             style={{ minHeight: 44 }}
           >
             {saving ? 'Saving...' : 'Log Transaction'}

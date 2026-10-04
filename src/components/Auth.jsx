@@ -33,9 +33,9 @@ export default function Auth() {
   }
 
   return (
-    <div className="min-h-dvh bg-slate-50 flex flex-col justify-center items-center px-safe py-safe">
+    <div className="min-h-dvh bg-page flex flex-col justify-center items-center px-safe py-safe">
       <div
-        className="w-full bg-white rounded-3xl shadow-sm border border-slate-100 p-6 md:p-8"
+        className="w-full bg-surface rounded-3xl shadow-sm border border-line p-6 md:p-8"
         style={{
           maxWidth: '28rem',
           marginLeft: 'max(1rem, env(safe-area-inset-left, 0px))',
@@ -43,21 +43,21 @@ export default function Auth() {
         }}
       >
         <div className="flex flex-col items-center mb-8">
-          <div className="bg-slate-900 p-3 rounded-2xl mb-4 shadow-md">
-            <Activity className="text-white w-6 h-6" />
+          <div className="bg-fg p-3 rounded-2xl mb-4 shadow-md">
+            <Activity className="text-fg-inverse w-6 h-6" />
           </div>
-          <h1 className="text-2xl font-bold text-slate-900 tracking-tight">FlowState Finance</h1>
-          <p className="text-sm text-slate-500 mt-2 text-center">
+          <h1 className="text-2xl font-bold text-fg tracking-tight">FlowState Finance</h1>
+          <p className="text-sm text-fg-subtle mt-2 text-center">
             {isSignUp ? 'Create a secure vault to begin.' : 'Enter your credentials to access your vault.'}
           </p>
         </div>
 
         <form onSubmit={handleAuth} className="space-y-4">
           <div>
-            <label className="block text-sm font-medium text-slate-700 mb-1">Email</label>
+            <label className="block text-sm font-medium text-fg-muted mb-1">Email</label>
             <div className="relative">
               <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                <Mail className="h-5 w-5 text-slate-400" />
+                <Mail className="h-5 w-5 text-fg-subtle" />
               </div>
               <input
                 type="email"
@@ -65,17 +65,17 @@ export default function Auth() {
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 placeholder="you@example.com"
-                className="w-full bg-slate-50 border border-slate-200 rounded-xl py-3 pl-10 pr-4 text-sm focus:ring-2 focus:ring-slate-900 outline-none transition-all"
+                className="w-full bg-surface-2 border border-line rounded-xl py-3 pl-10 pr-4 text-sm text-fg placeholder:text-fg-subtle focus:ring-2 focus:ring-brand/40 focus:border-brand outline-none transition-all disabled:opacity-60"
                 disabled={loading}
               />
             </div>
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-slate-700 mb-1">Password</label>
+            <label className="block text-sm font-medium text-fg-muted mb-1">Password</label>
             <div className="relative">
               <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                <Lock className="h-5 w-5 text-slate-400" />
+                <Lock className="h-5 w-5 text-fg-subtle" />
               </div>
               <input
                 type={showPassword ? 'text' : 'password'}
@@ -84,13 +84,13 @@ export default function Auth() {
                 onChange={(e) => setPassword(e.target.value)}
                 placeholder="••••••••"
                 minLength={6}
-                className="w-full bg-slate-50 border border-slate-200 rounded-xl py-3 pl-10 pr-12 text-sm focus:ring-2 focus:ring-slate-900 outline-none transition-all"
+                className="w-full bg-surface-2 border border-line rounded-xl py-3 pl-10 pr-12 text-sm text-fg placeholder:text-fg-subtle focus:ring-2 focus:ring-brand/40 focus:border-brand outline-none transition-all disabled:opacity-60"
                 disabled={loading}
               />
               <button
                 type="button"
                 onClick={() => setShowPassword(!showPassword)}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 transition-colors"
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-fg-subtle hover:text-fg-muted transition-colors"
                 tabIndex="-1"
                 aria-label={showPassword ? 'Hide password' : 'Show password'}
               >
@@ -102,7 +102,7 @@ export default function Auth() {
           <button
             type="submit"
             disabled={loading || !email || !password}
-            className="w-full bg-slate-900 hover:bg-slate-800 text-white font-medium py-3 rounded-xl transition-colors disabled:opacity-50 flex justify-center items-center mt-2"
+            className="w-full bg-brand-solid hover:bg-brand-solid-hover text-white font-medium py-3 rounded-xl transition-colors disabled:opacity-50 flex justify-center items-center mt-2"
           >
             {loading ? 'Processing...' : (isSignUp ? 'Create Account' : 'Log In')}
           </button>
@@ -114,7 +114,7 @@ export default function Auth() {
               setIsSignUp(!isSignUp)
               setStatus({ type: '', message: '' })
             }}
-            className="text-sm text-slate-500 hover:text-slate-800 transition-colors"
+            className="text-sm text-fg-muted hover:text-fg transition-colors"
             type="button"
           >
             {isSignUp ? 'Already have an account? Log in' : "Don't have an account? Sign up"}
@@ -122,8 +122,16 @@ export default function Auth() {
         </div>
 
         {status.message && (
-          <div className={`mt-6 p-4 rounded-xl flex items-start gap-3 text-sm ${status.type === 'success' ? 'bg-emerald-50 text-emerald-700 border border-emerald-100' : 'bg-red-50 text-red-700 border border-red-100'}`}>
-            {status.type === 'success' ? <CheckCircle className="w-5 h-5 shrink-0" /> : <AlertCircle className="w-5 h-5 shrink-0" />}
+          <div
+            className={`mt-6 p-4 rounded-xl flex items-start gap-3 text-sm border ${
+              status.type === 'success'
+                ? 'bg-success-soft text-success-text border-success-border'
+                : 'bg-danger-soft text-danger-text border-danger-border'
+            }`}
+          >
+            {status.type === 'success'
+              ? <CheckCircle className="w-5 h-5 shrink-0" />
+              : <AlertCircle className="w-5 h-5 shrink-0" />}
             <p>{status.message}</p>
           </div>
         )}

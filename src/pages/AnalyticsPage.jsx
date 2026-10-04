@@ -10,6 +10,7 @@ import { CategoryMovement } from '../components/analytics/CategoryMovement'
 import { IncomeVsExpense } from '../components/analytics/IncomeVsExpense'
 import { toMYDate } from '../utils/dateHelpers'
 import { AccountSelector } from '../components/shared/AccountSelector'
+import { SlidingSegmentedControl } from '../components/shared/SlidingSegmentedControl'
 
 // ============================================================
 // ITEM DEFINITIONS
@@ -26,52 +27,6 @@ const TAB_ITEMS = [
   { id: 'categories', label: 'Categories' },
   { id: 'income', label: 'Income' }
 ]
-
-// ============================================================
-// SLIDING SEGMENTED CONTROL — liquid glass, matches bottom nav
-// ============================================================
-const SlidingSegmentedControl = ({ items, value, onChange }) => {
-  const activeIndex = items.findIndex(item => item.id === value)
-
-  return (
-    <div className="relative w-full h-11 rounded-2xl bg-white/5 backdrop-blur-2xl border border-white/25 shadow-[0_4px_16px_rgba(0,0,0,0.05)] overflow-hidden">
-      <div className="relative flex items-center h-full">
-
-        {/* Sliding black pill */}
-        {activeIndex >= 0 && (
-          <div
-            className="absolute inset-y-0 left-0 pointer-events-none transition-transform duration-500 ease-[cubic-bezier(0.34,1.56,0.64,1)]"
-            style={{
-              width: `${100 / items.length}%`,
-              transform: `translateX(${activeIndex * 100}%)`
-            }}
-          >
-            <div className="absolute inset-1 rounded-xl bg-gradient-to-b from-slate-900 to-slate-800 shadow-[0_4px_16px_rgba(0,0,0,0.18),inset_0_1px_0_rgba(255,255,255,0.08)]" />
-          </div>
-        )}
-
-        {/* Items */}
-        {items.map(item => {
-          const isActive = item.id === value
-          return (
-            <button
-              key={item.id}
-              onClick={() => onChange(item.id)}
-              className={`relative z-10 flex-1 h-full min-w-0 flex items-center justify-center px-2 transition-colors duration-300 text-xs font-bold ${
-                isActive
-                  ? 'text-white'
-                  : 'text-slate-500 hover:text-slate-700'
-              }`}
-            >
-              <span className="truncate">{item.label}</span>
-            </button>
-          )
-        })}
-
-      </div>
-    </div>
-  )
-}
 
 // ============================================================
 // HELPERS
@@ -161,19 +116,18 @@ export function AnalyticsPage({
       ====================================================== */}
       <button
         onClick={onBack}
-        className="flex items-center gap-1.5 text-sm font-bold text-slate-500 hover:text-slate-800 transition-colors px-1"
+        className="flex items-center gap-1.5 text-sm font-bold text-fg-muted hover:text-fg transition-colors px-1"
       >
         <ChevronLeft className="w-4 h-4" /> Back to Dashboard
       </button>
 
       {/* ======================================================
-          Desktop title row — Title on left, Period on right.
-          Hidden entirely on mobile.
+          Desktop title row
       ====================================================== */}
       <div className="hidden md:flex md:items-center md:justify-between md:gap-4 px-1">
         <div>
-          <h1 className="text-2xl font-bold text-slate-800 tracking-tight">Analytics</h1>
-          <p className="text-sm text-slate-500 mt-1">Deep dive into your financial trends.</p>
+          <h1 className="text-2xl font-bold text-fg tracking-tight">Analytics</h1>
+          <p className="text-sm text-fg-muted mt-1">Deep dive into your financial trends.</p>
         </div>
         <div className="w-56 shrink-0">
           <SlidingSegmentedControl
@@ -185,8 +139,7 @@ export function AnalyticsPage({
       </div>
 
       {/* ======================================================
-          Tabs row — sliding glass pill, matches bottom nav
-          Account filter appears on ALL tabs now.
+          Tabs row
       ====================================================== */}
       <div className="flex items-center gap-3">
         <div className="flex-1 min-w-0">
@@ -209,7 +162,6 @@ export function AnalyticsPage({
 
       {/* ======================================================
           Mobile-only filters block
-          Period + Account stacked, both full-width
       ====================================================== */}
       <div className="md:hidden space-y-3">
         <SlidingSegmentedControl
@@ -266,10 +218,10 @@ export function AnalyticsPage({
 
       {/* Loading / error */}
       {loading && periodScopedExpenses.length === 0 && (
-        <p className="text-center text-xs text-slate-400 py-6">Loading analytics…</p>
+        <p className="text-center text-xs text-fg-subtle py-6">Loading analytics…</p>
       )}
       {error && (
-        <p className="text-center text-xs text-red-500 py-6">Failed to load: {error}</p>
+        <p className="text-center text-xs text-danger py-6">Failed to load: {error}</p>
       )}
 
     </div>

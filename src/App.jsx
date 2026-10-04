@@ -500,16 +500,16 @@ export default function App() {
   // ============================================
   if (isAuthLoading) return <LoadingSpinner message="Loading secure vault..." />
   if (!isAuthenticated) return <Auth />
-  if (error)
+    if (error)
     return (
-      <div className="min-h-dvh bg-slate-50 flex items-center justify-center p-4 px-safe py-safe">
-        <div className="bg-white rounded-2xl shadow-sm border border-red-200 p-8 max-w-md w-full text-center">
-          <AlertTriangle className="w-12 h-12 text-red-500 mx-auto mb-4" />
-          <h2 className="text-xl font-bold text-slate-900 mb-2">Connection Error</h2>
-          <p className="text-sm text-slate-600 mb-4">{error}</p>
+      <div className="min-h-dvh bg-page flex items-center justify-center p-4 px-safe py-safe">
+        <div className="bg-surface rounded-2xl shadow-sm border border-danger-border p-8 max-w-md w-full text-center">
+          <AlertTriangle className="w-12 h-12 text-danger mx-auto mb-4" />
+          <h2 className="text-xl font-bold text-fg mb-2">Connection Error</h2>
+          <p className="text-sm text-fg-muted mb-4">{error}</p>
           <button
             onClick={() => window.location.reload()}
-            className="bg-slate-900 hover:bg-slate-800 text-white px-6 py-2 rounded-xl text-sm font-medium transition-colors"
+            className="bg-brand-solid hover:bg-brand-solid-hover text-white px-6 py-2 rounded-xl text-sm font-medium transition-colors"
           >
             Retry
           </button>
@@ -517,8 +517,8 @@ export default function App() {
       </div>
     )
 
-  return (
-    <div className="app-shell min-h-dvh bg-gradient-to-b from-slate-50 to-slate-100 font-sans text-slate-900">
+    return (
+    <div className="app-shell min-h-dvh bg-gradient-to-b from-page to-surface-2 font-sans text-fg">
       <div
         className="fixed right-4 z-50 space-y-2 max-w-[calc(100vw-2rem)]"
         style={{
@@ -553,14 +553,14 @@ export default function App() {
               {isLoading ? (
                 <div>
                   <div className="flex items-center justify-between mb-4">
-                    <span className="h-3 w-20 bg-slate-200 rounded-full animate-pulse" />
-                    <span className="h-3 w-24 bg-slate-200 rounded-full animate-pulse" />
+                    <span className="h-3 w-20 bg-surface-3 rounded-full animate-pulse" />
+                    <span className="h-3 w-24 bg-surface-3 rounded-full animate-pulse" />
                   </div>
                   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 md:gap-4">
                     {[1, 2, 3, 4].map((i) => (
                       <div
                         key={i}
-                        className="rounded-2xl bg-gradient-to-br from-slate-200 to-slate-300 animate-pulse h-[190px]"
+                        className="rounded-2xl bg-gradient-to-br from-surface-2 to-surface-3 animate-pulse h-[190px]"
                       />
                     ))}
                   </div>
@@ -581,39 +581,39 @@ export default function App() {
             <section className="grid grid-cols-3 gap-3 md:gap-4">
               <button
                 onClick={() => setCurrentView('network')}
-                className="bg-white/60 backdrop-blur-xl border border-white/40 p-4 rounded-2xl shadow-sm flex flex-col items-center justify-center gap-2 hover:bg-white/80 transition-all group"
+                className="bg-surface/60 backdrop-blur-xl border border-line/50 p-4 rounded-2xl shadow-sm flex flex-col items-center justify-center gap-2 hover:bg-surface/80 transition-all group"
               >
-                <div className="w-10 h-10 bg-slate-100 text-slate-900 rounded-full flex items-center justify-center group-hover:scale-110 transition-transform">
+                <div className="w-10 h-10 bg-surface-2 text-fg rounded-full flex items-center justify-center group-hover:scale-110 transition-transform">
                   <Users className="w-5 h-5" />
                 </div>
-                <span className="text-xs font-bold text-slate-700">Network</span>
+                <span className="text-xs font-bold text-fg-muted">Network</span>
               </button>
 
               <button
                 onClick={() => setCurrentView('split')}
-                className="bg-white/60 backdrop-blur-xl border border-white/40 p-4 rounded-2xl shadow-sm flex flex-col items-center justify-center gap-2 hover:bg-white/80 transition-all group"
+                className="bg-surface/60 backdrop-blur-xl border border-line/50 p-4 rounded-2xl shadow-sm flex flex-col items-center justify-center gap-2 hover:bg-surface/80 transition-all group"
               >
-                <div className="w-10 h-10 bg-slate-100 text-slate-900 rounded-full flex items-center justify-center group-hover:scale-110 transition-transform">
+                <div className="w-10 h-10 bg-surface-2 text-fg rounded-full flex items-center justify-center group-hover:scale-110 transition-transform">
                   <Receipt className="w-5 h-5" />
                 </div>
-                <span className="text-xs font-bold text-slate-700">Split Bill</span>
+                <span className="text-xs font-bold text-fg-muted">Split Bill</span>
               </button>
 
               <button
                 onClick={() => setCurrentView('analytics')}
-                className="bg-white/60 backdrop-blur-xl border border-white/40 p-4 rounded-2xl shadow-sm flex flex-col items-center justify-center gap-2 hover:bg-white/80 transition-all group"
+                className="bg-surface/60 backdrop-blur-xl border border-line/50 p-4 rounded-2xl shadow-sm flex flex-col items-center justify-center gap-2 hover:bg-surface/80 transition-all group"
               >
-                <div className="w-10 h-10 bg-slate-100 text-slate-900 rounded-full flex items-center justify-center group-hover:scale-110 transition-transform">
+                <div className="w-10 h-10 bg-surface-2 text-fg rounded-full flex items-center justify-center group-hover:scale-110 transition-transform">
                   <Activity className="w-5 h-5" />
                 </div>
-                <span className="text-xs font-bold text-slate-700">Analytics</span>
+                <span className="text-xs font-bold text-fg-muted">Analytics</span>
               </button>
             </section>
 
-            <section className="bg-white/70 backdrop-blur-xl border border-white/50 rounded-3xl shadow-sm overflow-hidden">
-              <div className="px-4 pt-4 pb-3 md:px-5 md:pt-5 md:pb-4 border-b border-slate-100">
+            <section className="bg-surface/70 backdrop-blur-xl border border-line/60 rounded-3xl shadow-sm overflow-hidden">
+              <div className="px-4 pt-4 pb-3 md:px-5 md:pt-5 md:pb-4 border-b border-line">
                 <div className="flex items-center justify-between gap-3 mb-3">
-                  <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">
+                  <span className="text-[11px] font-bold text-fg-subtle uppercase tracking-wider">
                     This month
                   </span>
                 </div>
@@ -635,7 +635,7 @@ export default function App() {
                 </div>
               </div>
 
-              <div className="grid grid-cols-1 lg:grid-cols-2 divide-y lg:divide-y-0 lg:divide-x divide-slate-100">
+              <div className="grid grid-cols-1 lg:grid-cols-2 divide-y lg:divide-y-0 lg:divide-x divide-line">
                 <div className="p-4 md:p-5">
                   <BurnRateWidget
                     velocityStats={velocityStats}

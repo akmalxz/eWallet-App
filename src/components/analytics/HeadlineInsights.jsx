@@ -1,27 +1,25 @@
 // src/components/analytics/HeadlineInsights.jsx
 import { useMemo } from 'react'
 import {
-  TrendingUp, TrendingDown, Calendar, Minus, Sparkles
+  TrendingUp, TrendingDown, Calendar, Sparkles
 } from 'lucide-react'
 import { formatMYR } from '../../utils/formatters'
 import {
   toMYDate, myWeekdayIndex, WEEKDAY_LABELS, monthKey, dayKey
 } from '../../utils/dateHelpers'
-import { COLORS } from '../../utils/analyticsColors'
+import { useChartTheme } from '../../hooks/useChartTheme'
 import { EmptyState } from './AnalyticsShared'
 
-// Threshold for minimum data
 const MIN_DAYS = 14
 const MIN_TX = 15
-const MIN_PCT = 15 // significance threshold
+const MIN_PCT = 15
 
 export const HeadlineInsights = ({ expenses, periodMonths, onNavigate }) => {
+  const theme = useChartTheme()
+
   const insights = useMemo(() => {
     if (!expenses.length) return []
 
-    // -----------------------------
-    // 1. Peak weekday (avg per occurrence)
-    // -----------------------------
     const now = new Date()
     const periodStart = new Date(now.getFullYear(), now.getMonth() - (periodMonths - 1), 1)
 
@@ -37,7 +35,6 @@ export const HeadlineInsights = ({ expenses, periodMonths, onNavigate }) => {
     const totalsByWeekday = [0, 0, 0, 0, 0, 0, 0]
     const occurrencesByWeekday = [0, 0, 0, 0, 0, 0, 0]
 
-    // Count occurrences of each weekday in the period
     const start = new Date(periodStart)
     while (start <= now) {
       occurrencesByWeekday[myWeekdayIndex(start)]++
@@ -55,9 +52,6 @@ export const HeadlineInsights = ({ expenses, periodMonths, onNavigate }) => {
     const peakIdx = avgByWeekday.indexOf(Math.max(...avgByWeekday))
     const peakAvg = avgByWeekday[peakIdx]
 
-    // -----------------------------
-    // 2. Weekend vs weekday
-    // -----------------------------
     const weekendDays = occurrencesByWeekday[5] + occurrencesByWeekday[6]
     const weekendTotal = totalsByWeekday[5] + totalsByWeekday[6]
     const weekendAvg = weekendDays > 0 ? weekendTotal / weekendDays : 0
@@ -70,9 +64,6 @@ export const HeadlineInsights = ({ expenses, periodMonths, onNavigate }) => {
       ? ((weekendAvg - weekdayAvg) / weekdayAvg) * 100
       : 0
 
-    // -----------------------------
-    // 3. Biggest category increase (this month vs last)
-    // -----------------------------
     const thisMonthKey = monthKey(now)
     const lastMonthDate = new Date(now.getFullYear(), now.getMonth() - 1, 1)
     const lastMonthKey = monthKey(lastMonthDate)
@@ -97,9 +88,6 @@ export const HeadlineInsights = ({ expenses, periodMonths, onNavigate }) => {
       }
     })
 
-    // -----------------------------
-    // 4. MTD pace
-    // -----------------------------
     const dayOfMonth = toMYDate(now).getUTCDate()
 
     const mtd = expenses
@@ -122,9 +110,6 @@ export const HeadlineInsights = ({ expenses, periodMonths, onNavigate }) => {
 
     const mtdPct = lastMTD > 0 ? ((mtd - lastMTD) / lastMTD) * 100 : null
 
-    // -----------------------------
-    // Build insight cards
-    // -----------------------------
     const cards = []
 
     if (peakAvg > 0) {
@@ -190,13 +175,12 @@ export const HeadlineInsights = ({ expenses, periodMonths, onNavigate }) => {
       })
     }
 
-    // Rank by score, keep top 4
     return cards.sort((a, b) => b.score - a.score).slice(0, 4)
   }, [expenses, periodMonths])
 
   if (insights.length === 0) {
     return (
-      <div className="bg-white/60 backdrop-blur-xl border border-white/40 rounded-3xl p-6 shadow-sm">
+      <div className="bg-surface/60 backdrop-blur-xl border border-line/50 rounded-3xl p-6 shadow-sm">
         <EmptyState
           icon={Sparkles}
           title="Keep logging to unlock insights"
@@ -207,9 +191,9 @@ export const HeadlineInsights = ({ expenses, periodMonths, onNavigate }) => {
   }
 
   const toneStyles = {
-    up: { color: COLORS.up, bg: 'bg-red-50', border: 'border-red-100' },
-    down: { color: COLORS.down, bg: 'bg-emerald-50', border: 'border-emerald-100' },
-    neutral: { color: COLORS.neutral, bg: 'bg-slate-50', border: 'border-slate-100' }
+    up:      { color: theme.up,      bg: 'bg-danger-soft',  border: 'border-danger-border' },
+    down:    { color: theme.down,    bg: 'bg-success-soft', border: 'border-success-border' },
+    neutral: { color: theme.neutral, bg: 'bg-surface-2',    border: 'border-line' }
   }
 
   return (
@@ -221,7 +205,7 @@ export const HeadlineInsights = ({ expenses, periodMonths, onNavigate }) => {
           <button
             key={card.id}
             onClick={() => card.navigateTo && onNavigate?.(card.navigateTo)}
-            className={`text-left bg-white/60 backdrop-blur-xl border ${tone.border} rounded-2xl p-4 shadow-sm hover:bg-white transition-all group flex items-start gap-3`}
+            className={`text-left bg-surface/60 backdrop-blur-xl border ${tone.border} rounded-2xl p-4 shadow-sm hover:bg-surface transition-all group flex items-start gap-3`}
           >
             <div
               className={`w-9 h-9 ${tone.bg} rounded-xl flex items-center justify-center shrink-0`}
@@ -229,7 +213,7 @@ export const HeadlineInsights = ({ expenses, periodMonths, onNavigate }) => {
             >
               <Icon className="w-4 h-4" />
             </div>
-            <p className="text-sm text-slate-700 leading-relaxed flex-1">
+            <p className="text-sm text-fg-muted leading-relaxed flex-1">
               {card.sentence}
             </p>
           </button>

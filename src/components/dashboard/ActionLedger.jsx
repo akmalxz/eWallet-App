@@ -30,7 +30,7 @@ export const ActionLedger = ({
   })
   const [editErrors, setEditErrors] = useState({})
   const [expandedGroups, setExpandedGroups] = useState({})
-  const [pendingDelete, setPendingDelete] = useState(null) // tx object
+  const [pendingDelete, setPendingDelete] = useState(null)
 
   const groupedTransactions = useMemo(() => {
     if (!recentTransactions || recentTransactions.length === 0) return []
@@ -179,25 +179,23 @@ export const ActionLedger = ({
   }
 
   const isEditing = (id) => editingId === id
-
   const accountFor = (id) => accounts.find((a) => a.id === id)
-
   const getDailyTotal = (transactions) =>
     transactions.reduce((sum, tx) => sum + Number(tx.amount), 0)
 
   if (!recentTransactions || recentTransactions.length === 0) {
     return (
-      <section className="bg-white rounded-2xl shadow-md border border-slate-100 flex flex-col overflow-hidden transition-all duration-300">
-        <div className="px-4 pt-4 pb-1 border-b border-slate-100 bg-slate-50/60 flex items-center justify-between flex-shrink-0">
+      <section className="bg-surface rounded-2xl shadow-md border border-line flex flex-col overflow-hidden transition-all duration-300">
+        <div className="px-4 pt-4 pb-1 border-b border-line bg-surface-2/60 flex items-center justify-between flex-shrink-0">
           <div className="flex items-center gap-3 px-1 mb-3">
-            <div className="p-2 rounded-xl bg-slate-200/60 text-slate-600 border border-slate-200/50">
+            <div className="p-2 rounded-xl bg-surface-2 text-fg-muted border border-line">
               <List className="w-5 h-5" />
             </div>
             <div>
-              <h2 className="text-base font-bold text-slate-800 leading-tight">
+              <h2 className="text-base font-bold text-fg leading-tight">
                 Action Ledger
               </h2>
-              <p className="text-[9px] font-bold uppercase tracking-wider text-slate-400">
+              <p className="text-[9px] font-bold uppercase tracking-wider text-fg-subtle">
                 Verified History
               </p>
             </div>
@@ -208,8 +206,8 @@ export const ActionLedger = ({
             disabled={isRefreshing}
             className={`ml-auto w-11 h-11 flex items-center justify-center rounded-lg transition-all ${
               isRefreshing
-                ? 'text-slate-300 cursor-not-allowed'
-                : 'text-slate-400 hover:text-slate-600 hover:bg-slate-100'
+                ? 'text-fg-subtle/50 cursor-not-allowed'
+                : 'text-fg-subtle hover:text-fg-muted hover:bg-surface-2'
             }`}
             title="Refresh transactions"
             aria-label="Refresh transactions"
@@ -218,17 +216,17 @@ export const ActionLedger = ({
           </button>
         </div>
 
-        <div className="flex-1 flex flex-col items-center justify-center p-8 text-slate-400">
-          <div className="w-14 h-14 bg-slate-50 border border-slate-100 rounded-2xl flex items-center justify-center mb-4 text-slate-300 shadow-sm shadow-slate-100/40">
+        <div className="flex-1 flex flex-col items-center justify-center p-8 text-fg-subtle">
+          <div className="w-14 h-14 bg-surface-2 border border-line rounded-2xl flex items-center justify-center mb-4 text-fg-subtle">
             <Inbox className="w-6 h-6" />
           </div>
-          <p className="text-sm font-bold text-slate-700">No Transactions Yet</p>
-          <p className="text-xs text-slate-400 text-center mt-1 max-w-xs leading-relaxed">
+          <p className="text-sm font-bold text-fg">No Transactions Yet</p>
+          <p className="text-xs text-fg-subtle text-center mt-1 max-w-xs leading-relaxed">
             Record a fast entry with the platform omnibar tools or choose the transaction button below.
           </p>
           <button
             onClick={onAddTransaction}
-            className="mt-4 inline-flex items-center justify-center gap-2 px-4 py-2.5 bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold rounded-xl shadow-sm transition-all"
+            className="mt-4 inline-flex items-center justify-center gap-2 px-4 py-2.5 bg-brand-solid hover:bg-brand-solid-hover text-white text-xs font-bold rounded-xl shadow-sm transition-all"
             style={{ minHeight: 44 }}
           >
             <Plus className="w-4 h-4" /> Log Transaction
@@ -240,17 +238,17 @@ export const ActionLedger = ({
 
   return (
     <>
-      <section className="bg-white rounded-2xl shadow-md border border-slate-100 flex flex-col overflow-hidden transition-all duration-300">
-        <div className="px-4 pt-4 pb-1 border-b border-slate-100 bg-slate-50/60 flex items-center justify-between flex-shrink-0">
+      <section className="bg-surface rounded-2xl shadow-md border border-line flex flex-col overflow-hidden transition-all duration-300">
+        <div className="px-4 pt-4 pb-1 border-b border-line bg-surface-2/60 flex items-center justify-between flex-shrink-0">
           <div className="flex items-center gap-3 px-1 mb-3">
-            <div className="p-2 rounded-xl bg-slate-200/60 text-slate-600 border border-slate-200/50">
+            <div className="p-2 rounded-xl bg-surface-2 text-fg-muted border border-line">
               <List className="w-5 h-5" />
             </div>
             <div>
-              <h2 className="text-base font-bold text-slate-800 leading-tight">
+              <h2 className="text-base font-bold text-fg leading-tight">
                 Action Ledger
               </h2>
-              <p className="text-[9px] font-bold uppercase tracking-wider text-slate-400">
+              <p className="text-[9px] font-bold uppercase tracking-wider text-fg-subtle">
                 Verified History
               </p>
             </div>
@@ -261,8 +259,8 @@ export const ActionLedger = ({
             disabled={isRefreshing}
             className={`ml-auto w-11 h-11 flex items-center justify-center rounded-lg transition-all ${
               isRefreshing
-                ? 'text-slate-300 cursor-not-allowed'
-                : 'text-slate-400 hover:text-slate-600 hover:bg-slate-100'
+                ? 'text-fg-subtle/50 cursor-not-allowed'
+                : 'text-fg-subtle hover:text-fg-muted hover:bg-surface-2'
             }`}
             title="Refresh transactions"
             aria-label="Refresh transactions"
@@ -280,30 +278,30 @@ export const ActionLedger = ({
             return (
               <div key={group.date} className="space-y-1.5">
                 <div
-                  className="flex items-center gap-3 px-2 py-1.5 cursor-pointer hover:bg-slate-50 rounded-lg transition-colors select-none"
+                  className="flex items-center gap-3 px-2 py-1.5 cursor-pointer hover:bg-surface-2 rounded-lg transition-colors select-none"
                   onClick={() => toggleGroup(group.date)}
                 >
                   <div className="flex items-center gap-2 flex-1 min-w-0">
-                    <Calendar className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+                    <Calendar className="w-3.5 h-3.5 text-fg-subtle shrink-0" />
                     <span
                       className={`text-xs font-bold truncate ${
-                        isToday ? 'text-blue-600' : 'text-slate-500'
+                        isToday ? 'text-brand' : 'text-fg-muted'
                       }`}
                     >
                       {group.label}
                     </span>
                     {!isExpanded && (
-                      <span className="text-[10px] font-medium text-slate-400 shrink-0">
+                      <span className="text-[10px] font-medium text-fg-subtle shrink-0">
                         ({group.transactions.length} txns)
                       </span>
                     )}
                   </div>
                   <div className="flex items-center gap-2 shrink-0">
-                    <span className="text-[10px] font-medium text-slate-400">
+                    <span className="text-[10px] font-medium text-fg-subtle">
                       {formatMYR(dailyTotal)}
                     </span>
                     <button
-                      className="w-11 h-11 flex items-center justify-center text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-lg transition-all"
+                      className="w-11 h-11 flex items-center justify-center text-fg-subtle hover:text-fg-muted hover:bg-surface-2 rounded-lg transition-all"
                       onClick={(e) => {
                         e.stopPropagation()
                         toggleGroup(group.date)
@@ -338,17 +336,17 @@ export const ActionLedger = ({
                       return (
                         <div
                           key={tx.id}
-                          className="relative overflow-hidden rounded-xl border border-slate-100 bg-white"
+                          className="relative overflow-hidden rounded-xl border border-line bg-surface"
                         >
                           {isEditingThis && (
-                            <div className="bg-slate-50/50 p-4 space-y-4 animate-fadeIn">
-                              <div className="flex justify-between items-center border-b border-slate-100 pb-2">
-                                <span className="text-[11px] font-bold uppercase tracking-wider text-slate-400">
+                            <div className="bg-surface-2/50 p-4 space-y-4 animate-fadeIn">
+                              <div className="flex justify-between items-center border-b border-line pb-2">
+                                <span className="text-[11px] font-bold uppercase tracking-wider text-fg-subtle">
                                   Editing
                                 </span>
                                 <button
                                   onClick={cancelEdit}
-                                  className="w-11 h-11 flex items-center justify-center text-slate-400 hover:text-slate-600 rounded-lg"
+                                  className="w-11 h-11 flex items-center justify-center text-fg-subtle hover:text-fg-muted rounded-lg"
                                   aria-label="Cancel editing"
                                 >
                                   <X className="w-3.5 h-3.5" />
@@ -356,7 +354,7 @@ export const ActionLedger = ({
                               </div>
 
                               <div>
-                                <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1.5">
+                                <label className="block text-[10px] font-bold text-fg-subtle uppercase tracking-wider mb-1.5">
                                   Description
                                 </label>
                                 <input
@@ -367,15 +365,15 @@ export const ActionLedger = ({
                                     setEditErrors({ ...editErrors, description: '' })
                                   }}
                                   onKeyDown={handleKeyDown}
-                                  className={`w-full bg-white border ${
+                                  className={`w-full bg-surface border ${
                                     editErrors.description
-                                      ? 'border-red-300 focus:ring-red-500'
-                                      : 'border-slate-200 focus:ring-slate-900'
-                                  } rounded-xl px-3 py-2.5 text-sm outline-none focus:ring-2 focus:border-transparent transition-all`}
+                                      ? 'border-danger-border focus:border-danger'
+                                      : 'border-line focus:border-brand'
+                                  } rounded-xl px-3 py-2.5 text-sm text-fg placeholder:text-fg-subtle outline-none focus:ring-2 focus:ring-brand/30 transition-all`}
                                   placeholder="Description"
                                 />
                                 {editErrors.description && (
-                                  <p className="mt-1 text-[11px] text-red-500 font-medium">
+                                  <p className="mt-1 text-[11px] text-danger font-medium">
                                     {editErrors.description}
                                   </p>
                                 )}
@@ -383,7 +381,7 @@ export const ActionLedger = ({
 
                               <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                                 <div>
-                                  <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1.5">
+                                  <label className="block text-[10px] font-bold text-fg-subtle uppercase tracking-wider mb-1.5">
                                     Date
                                   </label>
                                   <input
@@ -393,12 +391,12 @@ export const ActionLedger = ({
                                       setEditData({ ...editData, transaction_date: e.target.value })
                                     }
                                     onKeyDown={handleKeyDown}
-                                    className="w-full bg-white border border-slate-200 focus:ring-slate-900 rounded-xl px-3 py-2.5 text-sm outline-none focus:ring-2 focus:border-transparent transition-all"
+                                    className="w-full bg-surface border border-line focus:border-brand rounded-xl px-3 py-2.5 text-sm text-fg outline-none focus:ring-2 focus:ring-brand/30 transition-all"
                                   />
                                 </div>
 
                                 <div>
-                                  <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1.5">
+                                  <label className="block text-[10px] font-bold text-fg-subtle uppercase tracking-wider mb-1.5">
                                     Amount (RM)
                                   </label>
                                   <input
@@ -411,22 +409,22 @@ export const ActionLedger = ({
                                       setEditErrors({ ...editErrors, amount: '' })
                                     }}
                                     onKeyDown={handleKeyDown}
-                                    className={`w-full bg-white border ${
+                                    className={`w-full bg-surface border ${
                                       editErrors.amount
-                                        ? 'border-red-300 focus:ring-red-500'
-                                        : 'border-slate-200 focus:ring-slate-900'
-                                    } rounded-xl px-3 py-2.5 text-sm outline-none focus:ring-2 focus:border-transparent transition-all`}
+                                        ? 'border-danger-border focus:border-danger'
+                                        : 'border-line focus:border-brand'
+                                    } rounded-xl px-3 py-2.5 text-sm text-fg placeholder:text-fg-subtle outline-none focus:ring-2 focus:ring-brand/30 transition-all`}
                                     placeholder="0.00"
                                   />
                                   {editErrors.amount && (
-                                    <p className="mt-1 text-[11px] text-red-500 font-medium">
+                                    <p className="mt-1 text-[11px] text-danger font-medium">
                                       {editErrors.amount}
                                     </p>
                                   )}
                                 </div>
 
                                 <div>
-                                  <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1.5">
+                                  <label className="block text-[10px] font-bold text-fg-subtle uppercase tracking-wider mb-1.5">
                                     Category
                                   </label>
                                   <select
@@ -436,11 +434,11 @@ export const ActionLedger = ({
                                       setEditErrors({ ...editErrors, category: '' })
                                     }}
                                     onKeyDown={handleKeyDown}
-                                    className={`w-full bg-white border ${
+                                    className={`w-full bg-surface border ${
                                       editErrors.category
-                                        ? 'border-red-300 focus:ring-red-500'
-                                        : 'border-slate-200 focus:ring-slate-900'
-                                    } rounded-xl px-3 py-2.5 text-sm outline-none focus:ring-2 focus:border-transparent transition-all`}
+                                        ? 'border-danger-border focus:border-danger'
+                                        : 'border-line focus:border-brand'
+                                    } rounded-xl px-3 py-2.5 text-sm text-fg outline-none focus:ring-2 focus:ring-brand/30 transition-all`}
                                   >
                                     <option value="">Select category...</option>
                                     {mainCategories.map((main) => (
@@ -460,7 +458,7 @@ export const ActionLedger = ({
                                     ))}
                                   </select>
                                   {editErrors.category && (
-                                    <p className="mt-1 text-[11px] text-red-500 font-medium">
+                                    <p className="mt-1 text-[11px] text-danger font-medium">
                                       {editErrors.category}
                                     </p>
                                   )}
@@ -468,10 +466,10 @@ export const ActionLedger = ({
                               </div>
 
                               <div>
-                                <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1.5">
+                                <label className="block text-[10px] font-bold text-fg-subtle uppercase tracking-wider mb-1.5">
                                   Transaction Type
                                 </label>
-                                <div className="flex gap-1.5 bg-slate-200/50 p-1 rounded-xl border border-slate-100">
+                                <div className="flex gap-1.5 bg-surface-2/60 p-1 rounded-xl border border-line">
                                   <button
                                     type="button"
                                     onClick={() => {
@@ -484,8 +482,8 @@ export const ActionLedger = ({
                                     }}
                                     className={`flex-1 py-2 text-xs font-bold rounded-lg transition-all ${
                                       editIsExpense
-                                        ? 'bg-red-50 text-red-700 border border-red-200'
-                                        : 'text-slate-500 hover:text-slate-700'
+                                        ? 'bg-danger-soft text-danger-text border border-danger-border'
+                                        : 'text-fg-muted hover:text-fg'
                                     }`}
                                   >
                                     Expense
@@ -502,8 +500,8 @@ export const ActionLedger = ({
                                     }}
                                     className={`flex-1 py-2 text-xs font-bold rounded-lg transition-all ${
                                       editIsIncome
-                                        ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
-                                        : 'text-slate-500 hover:text-slate-700'
+                                        ? 'bg-success-soft text-success-text border border-success-border'
+                                        : 'text-fg-muted hover:text-fg'
                                     }`}
                                   >
                                     Income
@@ -521,8 +519,8 @@ export const ActionLedger = ({
                                     }}
                                     className={`flex-1 py-2 text-xs font-bold rounded-lg transition-all ${
                                       editIsTransfer
-                                        ? 'bg-blue-50 text-blue-700 border border-blue-200'
-                                        : 'text-slate-500 hover:text-slate-700'
+                                        ? 'bg-info-soft text-info-text border border-info-border'
+                                        : 'text-fg-muted hover:text-fg'
                                     }`}
                                   >
                                     Transfer
@@ -533,7 +531,7 @@ export const ActionLedger = ({
                               <div className="grid grid-cols-2 gap-3">
                                 {editIsExpense || editIsTransfer ? (
                                   <div>
-                                    <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1.5">
+                                    <label className="block text-[10px] font-bold text-fg-subtle uppercase tracking-wider mb-1.5">
                                       {editIsExpense ? 'Pay From' : 'From'}
                                     </label>
                                     <select
@@ -545,7 +543,7 @@ export const ActionLedger = ({
                                         })
                                         setEditErrors({ ...editErrors, accounts: '' })
                                       }}
-                                      className="w-full bg-white border border-slate-200 focus:ring-slate-900 rounded-xl px-3 py-2.5 text-sm outline-none focus:ring-2 focus:border-transparent transition-all"
+                                      className="w-full bg-surface border border-line focus:border-brand rounded-xl px-3 py-2.5 text-sm text-fg outline-none focus:ring-2 focus:ring-brand/30 transition-all"
                                     >
                                       {accounts.map((a) => (
                                         <option key={a.id} value={a.id}>
@@ -556,13 +554,13 @@ export const ActionLedger = ({
                                   </div>
                                 ) : (
                                   <div>
-                                    <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1.5">
+                                    <label className="block text-[10px] font-bold text-fg-subtle uppercase tracking-wider mb-1.5">
                                       Source
                                     </label>
                                     <select
                                       value=""
                                       disabled
-                                      className="w-full bg-slate-100 border border-slate-200 rounded-xl px-3 py-2.5 text-sm text-slate-400 cursor-not-allowed"
+                                      className="w-full bg-surface-2 border border-line rounded-xl px-3 py-2.5 text-sm text-fg-subtle cursor-not-allowed"
                                     >
                                       <option value="">None Required</option>
                                     </select>
@@ -571,7 +569,7 @@ export const ActionLedger = ({
 
                                 {editIsIncome || editIsTransfer ? (
                                   <div>
-                                    <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1.5">
+                                    <label className="block text-[10px] font-bold text-fg-subtle uppercase tracking-wider mb-1.5">
                                       {editIsIncome ? 'Deposit To' : 'To'}
                                     </label>
                                     <select
@@ -583,7 +581,7 @@ export const ActionLedger = ({
                                         })
                                         setEditErrors({ ...editErrors, accounts: '' })
                                       }}
-                                      className="w-full bg-white border border-slate-200 focus:ring-slate-900 rounded-xl px-3 py-2.5 text-sm outline-none focus:ring-2 focus:border-transparent transition-all"
+                                      className="w-full bg-surface border border-line focus:border-brand rounded-xl px-3 py-2.5 text-sm text-fg outline-none focus:ring-2 focus:ring-brand/30 transition-all"
                                     >
                                       {accounts.map((a) => (
                                         <option key={a.id} value={a.id}>
@@ -594,13 +592,13 @@ export const ActionLedger = ({
                                   </div>
                                 ) : (
                                   <div>
-                                    <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1.5">
+                                    <label className="block text-[10px] font-bold text-fg-subtle uppercase tracking-wider mb-1.5">
                                       Destination
                                     </label>
                                     <select
                                       value=""
                                       disabled
-                                      className="w-full bg-slate-100 border border-slate-200 rounded-xl px-3 py-2.5 text-sm text-slate-400 cursor-not-allowed"
+                                      className="w-full bg-surface-2 border border-line rounded-xl px-3 py-2.5 text-sm text-fg-subtle cursor-not-allowed"
                                     >
                                       <option value="">None Required</option>
                                     </select>
@@ -609,16 +607,16 @@ export const ActionLedger = ({
                               </div>
 
                               {editErrors.accounts && (
-                                <p className="text-[11px] text-red-500 font-medium">
+                                <p className="text-[11px] text-danger font-medium">
                                   {editErrors.accounts}
                                 </p>
                               )}
 
-                              <div className="flex gap-2 justify-end pt-2 border-t border-slate-100">
+                              <div className="flex gap-2 justify-end pt-2 border-t border-line">
                                 <button
                                   type="button"
                                   onClick={cancelEdit}
-                                  className="px-4 py-2.5 text-xs font-semibold text-slate-500 hover:bg-slate-100 rounded-xl transition-all"
+                                  className="px-4 py-2.5 text-xs font-semibold text-fg-muted hover:bg-surface-2 rounded-xl transition-all"
                                   style={{ minHeight: 44 }}
                                 >
                                   Cancel
@@ -626,7 +624,7 @@ export const ActionLedger = ({
                                 <button
                                   type="button"
                                   onClick={saveEdit}
-                                  className="px-4 py-2.5 text-xs font-bold bg-slate-900 hover:bg-slate-800 text-white rounded-xl transition-all flex items-center justify-center gap-1.5 shadow-md"
+                                  className="px-4 py-2.5 text-xs font-bold bg-brand-solid hover:bg-brand-solid-hover text-white rounded-xl transition-all flex items-center justify-center gap-1.5 shadow-md"
                                   style={{ minHeight: 44 }}
                                 >
                                   <Save className="w-3.5 h-3.5" /> Save Changes
@@ -638,16 +636,16 @@ export const ActionLedger = ({
                           {!isEditingThis && (
                             <div
                               id={`tx-${globalIndex}`}
-                              className="flex items-center justify-between p-3.5 hover:bg-slate-50/60 transition-all duration-200 border-b border-slate-50 group last:border-none"
+                              className="flex items-center justify-between p-3.5 hover:bg-surface-2/60 transition-all duration-200 border-b border-line group last:border-none"
                             >
                               <div className="flex items-center gap-3.5 min-w-0 flex-1">
                                 <div
                                   className={`w-8 h-8 flex items-center justify-center rounded-xl shrink-0 ${
                                     isIncome
-                                      ? 'bg-emerald-50 text-emerald-600'
+                                      ? 'bg-success-soft text-success'
                                       : isTransfer
-                                        ? 'bg-blue-50 text-blue-600'
-                                        : 'bg-slate-50 text-slate-600'
+                                        ? 'bg-info-soft text-info'
+                                        : 'bg-surface-2 text-fg-muted'
                                   }`}
                                 >
                                   {isIncome ? (
@@ -659,17 +657,17 @@ export const ActionLedger = ({
                                   )}
                                 </div>
                                 <div className="min-w-0 flex-1">
-                                  <p className="text-sm font-semibold text-slate-700 truncate">
+                                  <p className="text-sm font-semibold text-fg truncate">
                                     {tx.description}
                                   </p>
-                                  <p className="text-xs text-slate-400">
+                                  <p className="text-xs text-fg-subtle">
                                     {tx.category || 'Uncategorized'}
                                   </p>
 
                                   <div className="flex items-center gap-1.5 mt-1 min-w-0">
                                     {isIncome && (
                                       <>
-                                        <span className="text-[10px] font-bold text-slate-400 shrink-0">
+                                        <span className="text-[10px] font-bold text-fg-subtle shrink-0">
                                           →
                                         </span>
                                         {accountFor(tx.destination_account_id) ? (
@@ -679,7 +677,7 @@ export const ActionLedger = ({
                                             showIcon={false}
                                           />
                                         ) : (
-                                          <span className="text-[10px] text-slate-400">
+                                          <span className="text-[10px] text-fg-subtle">
                                             Unknown
                                           </span>
                                         )}
@@ -695,11 +693,11 @@ export const ActionLedger = ({
                                             showIcon={false}
                                           />
                                         ) : (
-                                          <span className="text-[10px] text-slate-400">
+                                          <span className="text-[10px] text-fg-subtle">
                                             Unknown
                                           </span>
                                         )}
-                                        <span className="text-[10px] font-bold text-slate-400 shrink-0">
+                                        <span className="text-[10px] font-bold text-fg-subtle shrink-0">
                                           →
                                         </span>
                                         {accountFor(tx.destination_account_id) ? (
@@ -709,7 +707,7 @@ export const ActionLedger = ({
                                             showIcon={false}
                                           />
                                         ) : (
-                                          <span className="text-[10px] text-slate-400">
+                                          <span className="text-[10px] text-fg-subtle">
                                             Unknown
                                           </span>
                                         )}
@@ -718,7 +716,7 @@ export const ActionLedger = ({
 
                                     {!isIncome && !isTransfer && (
                                       <>
-                                        <span className="text-[10px] font-bold text-slate-400 shrink-0">
+                                        <span className="text-[10px] font-bold text-fg-subtle shrink-0">
                                           ←
                                         </span>
                                         {accountFor(tx.source_account_id) ? (
@@ -728,7 +726,7 @@ export const ActionLedger = ({
                                             showIcon={false}
                                           />
                                         ) : (
-                                          <span className="text-[10px] text-slate-400">
+                                          <span className="text-[10px] text-fg-subtle">
                                             Unknown
                                           </span>
                                         )}
@@ -741,10 +739,10 @@ export const ActionLedger = ({
                                 <span
                                   className={`text-sm font-black whitespace-nowrap ${
                                     isIncome
-                                      ? 'text-emerald-600'
+                                      ? 'text-success'
                                       : isTransfer
-                                        ? 'text-slate-600'
-                                        : 'text-slate-800'
+                                        ? 'text-fg-muted'
+                                        : 'text-fg'
                                   }`}
                                 >
                                   {isIncome ? '+' : isTransfer ? '' : '-'}
@@ -754,7 +752,7 @@ export const ActionLedger = ({
                                 <div className="flex items-center md:opacity-0 md:group-hover:opacity-100 focus-within:opacity-100 transition-opacity gap-0.5">
                                   <button
                                     onClick={() => startEdit(tx)}
-                                    className="w-9 h-9 flex items-center justify-center text-slate-400 hover:text-slate-700 hover:bg-slate-100 rounded-lg transition-all"
+                                    className="w-9 h-9 flex items-center justify-center text-fg-subtle hover:text-fg hover:bg-surface-2 rounded-lg transition-all"
                                     title="Edit transaction"
                                     aria-label="Edit transaction"
                                   >
@@ -762,7 +760,7 @@ export const ActionLedger = ({
                                   </button>
                                   <button
                                     onClick={() => setPendingDelete(tx)}
-                                    className="w-9 h-9 flex items-center justify-center text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-all"
+                                    className="w-9 h-9 flex items-center justify-center text-fg-subtle hover:text-danger hover:bg-danger-soft rounded-lg transition-all"
                                     title="Delete transaction"
                                     aria-label="Delete transaction"
                                   >

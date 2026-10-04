@@ -31,6 +31,47 @@
   --color-brand: var(--brand);
   --color-brand-hover: var(--brand-hover);
   --color-brand-soft: var(--brand-soft);
+  --color-brand-solid: var(--brand-solid);
+  --color-brand-solid-hover: var(--brand-solid-hover);
+
+  /* Glass */
+  --color-glass-bg: var(--glass-bg);
+  --color-glass-border: var(--glass-border);
+  --color-glass-active: var(--glass-active);
+
+  /* Semantic status */
+  --color-success: var(--success);
+  --color-success-soft: var(--success-soft);
+  --color-success-border: var(--success-border);
+  --color-success-text: var(--success-text);
+
+  --color-warning: var(--warning);
+  --color-warning-soft: var(--warning-soft);
+  --color-warning-border: var(--warning-border);
+  --color-warning-text: var(--warning-text);
+
+  --color-danger: var(--danger);
+  --color-danger-soft: var(--danger-soft);
+  --color-danger-border: var(--danger-border);
+  --color-danger-text: var(--danger-text);
+  --color-danger-solid: var(--danger-solid);
+  --color-danger-solid-hover: var(--danger-solid-hover);
+
+  --color-info: var(--info);
+  --color-info-soft: var(--info-soft);
+  --color-info-border: var(--info-border);
+  --color-info-text: var(--info-text);
+
+  --color-purple: var(--purple);
+  --color-purple-soft: var(--purple-soft);
+  --color-orange: var(--orange);
+  --color-orange-soft: var(--orange-soft);
+
+  --color-success-solid: var(--success-solid);
+  --color-success-solid-hover: var(--success-solid-hover);
+
+  --color-warning-solid: var(--warning-solid);
+  --color-warning-solid-hover: var(--warning-solid-hover);
 }
 
 /* ============================================
@@ -90,6 +131,22 @@
   --chart-4: #ef4444;
   --chart-5: #8b5cf6;
   --chart-6: #64748b;
+
+  --brand-solid: #3b82f6;
+  --brand-solid-hover: #2563eb;
+
+  --glass-bg: rgba(255, 255, 255, 0.10);
+  --glass-border: rgba(255, 255, 255, 0.25);
+  --glass-active: rgba(255, 255, 255, 0.35);
+
+  --danger-solid: #ef4444;
+  --danger-solid-hover: #dc2626;
+
+  --success-solid: #10b981;
+  --success-solid-hover: #059669;
+
+  --warning-solid: #f59e0b;
+  --warning-solid-hover: #d97706;
 }
 
 /* ============================================
@@ -141,6 +198,22 @@
 
   --orange:      #fb923c;
   --orange-soft: rgba(251, 146, 60, 0.12);
+
+  --brand-solid: #2563eb;       /* darker than --brand (#60a5fa) */
+  --brand-solid-hover: #1d4ed8;
+
+  --glass-bg: rgba(15, 23, 42, 0.60);
+  --glass-border: rgba(148, 163, 184, 0.20);
+  --glass-active: rgba(148, 163, 184, 0.30);
+
+  --danger-solid: #dc2626;
+  --danger-solid-hover: #b91c1c;
+
+  --success-solid: #059669;
+  --success-solid-hover: #047857;
+
+  --warning-solid: #b45309;
+  --warning-solid-hover: #92400e;
 }
 
 /* ============================================
@@ -229,6 +302,22 @@ html { background-color: var(--page); }
 html, body, #root {
   color: var(--fg);
   transition: background-color 0.2s ease, color 0.2s ease;
+}
+
+/* ============================================
+   AUTOFILL FIX — browsers hardcode a pale yellow
+   background on autofilled inputs, which breaks
+   dark mode. Force it to the theme surface.
+   ============================================ */
+input:-webkit-autofill,
+input:-webkit-autofill:hover,
+input:-webkit-autofill:focus,
+input:-webkit-autofill:active {
+  -webkit-text-fill-color: var(--fg);
+  -webkit-box-shadow: 0 0 0 1000px var(--surface-2) inset;
+  box-shadow: 0 0 0 1000px var(--surface-2) inset;
+  caret-color: var(--fg);
+  transition: background-color 5000s ease-in-out 0s;
 }
 
 /* ============================================

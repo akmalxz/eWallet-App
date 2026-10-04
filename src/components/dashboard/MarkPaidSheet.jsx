@@ -7,7 +7,7 @@ import { Sheet } from '../shared/Sheet'
 
 export const MarkPaidSheet = ({
   commitment,
-  period, // { year, month }
+  period,
   accounts = [],
   onConfirm,
   onCancel,
@@ -34,7 +34,6 @@ export const MarkPaidSheet = ({
     ? monthFullName(new Date(Date.UTC(period.year, period.month - 1, 1)))
     : null
 
-  // Month-diff hint (P1.1)
   const paidMY = paidDate ? toMYDate(new Date(`${paidDate}T12:00:00+08:00`)) : null
   const nowMY = toMYDate(new Date())
   const isDifferentMonth =
@@ -78,20 +77,20 @@ export const MarkPaidSheet = ({
       hasUnsavedChanges={hasChanges}
     >
       {periodLabel && (
-        <p className="text-xs text-slate-500">
-          For <strong className="text-slate-700">{periodLabel}</strong>
+        <p className="text-xs text-fg-muted">
+          For <strong className="text-fg">{periodLabel}</strong>
         </p>
       )}
 
-      <div className="bg-slate-50 border border-slate-100 rounded-xl p-3.5">
-        <p className="text-sm font-bold text-slate-800 truncate">{commitment?.name}</p>
-        <p className="text-xs text-slate-500 mt-0.5 truncate">From {accountName}</p>
+      <div className="bg-surface-2 border border-line rounded-xl p-3.5">
+        <p className="text-sm font-bold text-fg truncate">{commitment?.name}</p>
+        <p className="text-xs text-fg-muted mt-0.5 truncate">From {accountName}</p>
       </div>
 
       <div>
         <label
           htmlFor="mark-paid-amount"
-          className="block text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-1.5"
+          className="block text-[11px] font-bold text-fg-subtle uppercase tracking-wider mb-1.5"
         >
           Amount
         </label>
@@ -108,12 +107,12 @@ export const MarkPaidSheet = ({
           }}
           autoFocus
           disabled={saving}
-          className={`w-full bg-white border rounded-xl py-3 px-3 text-sm outline-none transition-all disabled:bg-slate-50 ${
-            amountValid ? 'border-slate-200 focus:border-blue-500' : 'border-red-300 focus:border-red-500'
+          className={`w-full bg-surface border rounded-xl py-3 px-3 text-sm text-fg placeholder:text-fg-subtle outline-none transition-all disabled:bg-surface-2 disabled:opacity-70 ${
+            amountValid ? 'border-line focus:border-brand' : 'border-danger-border focus:border-danger'
           }`}
         />
         {amountChanged && amountValid && (
-          <p className="text-[11px] text-slate-500 mt-1">
+          <p className="text-[11px] text-fg-muted mt-1">
             Original: {formatMYR(commitment.amount)} · Override applied
           </p>
         )}
@@ -122,7 +121,7 @@ export const MarkPaidSheet = ({
       <div>
         <label
           htmlFor="mark-paid-date"
-          className="block text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-1.5"
+          className="block text-[11px] font-bold text-fg-subtle uppercase tracking-wider mb-1.5"
         >
           Paid on
         </label>
@@ -136,12 +135,12 @@ export const MarkPaidSheet = ({
             if (localError) setLocalError(null)
           }}
           disabled={saving}
-          className="w-full bg-white border border-slate-200 rounded-xl py-3 px-3 text-sm outline-none focus:border-blue-500 disabled:bg-slate-50"
+          className="w-full bg-surface border border-line rounded-xl py-3 px-3 text-sm text-fg outline-none focus:border-brand disabled:bg-surface-2 disabled:opacity-70"
         />
         {isDifferentMonth && (
-          <p className="mt-1.5 text-[11px] text-slate-500">
+          <p className="mt-1.5 text-[11px] text-fg-muted">
             This will count towards{' '}
-            <strong className="text-slate-700">
+            <strong className="text-fg">
               {monthFullName(new Date(`${paidDate}T12:00:00+08:00`))}
             </strong>
             .
@@ -150,9 +149,9 @@ export const MarkPaidSheet = ({
       </div>
 
       {wouldGoNegative && (
-        <div className="bg-amber-50 border border-amber-200 rounded-xl p-3 flex items-start gap-2">
-          <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
-          <p className="text-xs text-amber-800 leading-relaxed">
+        <div className="bg-warning-soft border border-warning-border rounded-xl p-3 flex items-start gap-2">
+          <AlertTriangle className="w-4 h-4 text-warning shrink-0 mt-0.5" />
+          <p className="text-xs text-warning-text leading-relaxed">
             This will take <strong>{accountName}</strong> below zero (balance{' '}
             {formatMYR(accountBalance)}, payment {formatMYR(amountNum)}).
           </p>
@@ -160,9 +159,9 @@ export const MarkPaidSheet = ({
       )}
 
       {displayError && (
-        <div className="bg-red-50 border border-red-200 rounded-xl p-3 flex items-start gap-2">
-          <AlertCircle className="w-4 h-4 text-red-600 shrink-0 mt-0.5" />
-          <p className="text-xs text-red-700 font-medium leading-relaxed">{displayError}</p>
+        <div className="bg-danger-soft border border-danger-border rounded-xl p-3 flex items-start gap-2">
+          <AlertCircle className="w-4 h-4 text-danger shrink-0 mt-0.5" />
+          <p className="text-xs text-danger-text font-medium leading-relaxed">{displayError}</p>
         </div>
       )}
 
@@ -171,7 +170,7 @@ export const MarkPaidSheet = ({
           type="button"
           onClick={onCancel}
           disabled={saving}
-          className="flex-1 py-3 rounded-xl text-sm font-semibold text-slate-500 hover:bg-slate-100 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+          className="flex-1 py-3 rounded-xl text-sm font-semibold text-fg-muted hover:bg-surface-2 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
           style={{ minHeight: 44 }}
         >
           Cancel
@@ -180,7 +179,7 @@ export const MarkPaidSheet = ({
           type="button"
           onClick={handleConfirm}
           disabled={saving || !amountValid}
-          className="flex-1 py-3 rounded-xl text-sm font-bold bg-emerald-500 hover:bg-emerald-600 text-white transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+          className="flex-1 py-3 rounded-xl text-sm font-bold bg-success-solid hover:bg-success-solid-hover text-white transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
           style={{ minHeight: 44 }}
         >
           {saving ? 'Saving…' : (<><Check className="w-4 h-4" /> Paid</>)}
