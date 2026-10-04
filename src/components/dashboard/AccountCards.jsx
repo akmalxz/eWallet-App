@@ -79,7 +79,7 @@ export const AccountCards = ({
           return (
             <div
               key={acc.id}
-              className="transition-all duration-500 ease-[cubic-bezier(0.34,1.56,0.64,1)] md:!transform-none md:!static"
+              className="account-card-cell transition-all duration-500 ease-[cubic-bezier(0.34,1.56,0.64,1)]"
               style={{
                 transform: `translateY(${mobileTranslateY}px)`,
                 zIndex: isExpanded ? 30 : index + 1,
