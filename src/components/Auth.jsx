@@ -71,8 +71,8 @@ export default function Auth() {
   const passwordsMatch = !isSignUp || (confirmPassword.length > 0 && password === confirmPassword)
   const canSubmit = (() => {
     if (loading) return false
+    if (isForgot) return !!email          // forgot only needs an email
     if (!email || !password) return false
-    if (isForgot) return true
     if (isSignUp) {
       return strength.score >= 2 && passwordsMatch && strength.checks[0].ok && strength.checks[3].ok
     }
