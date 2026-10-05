@@ -45,23 +45,68 @@ export const ChartTooltip = ({ active, payload, title, rows, footer }) => {
 
 // ============================================================
 // ONE SHARED TRANSACTION DRILL-DOWN
+// Default behavior (unchanged): top 5 by amount, "+N more" line.
+// Opt-in (scrollable + sortBy="date"): all rows in a fixed-height
+// scroll region, chronological. Used by CalendarHeatmap and
+// DayOfWeekBars; MainTrendChart keeps the defaults because
+// weekly/monthly buckets are for outlier-spotting, not reading.
 // ============================================================
 export const TransactionDrilldown = ({
   title,
   total,
   transactions,
   accounts = [],
-  onClose
+  onClose,
+  sortBy = 'amount',
+  scrollable = false
 }) => {
   if (!transactions || transactions.length === 0) return null
 
-  const sorted = [...transactions].sort((a, b) => b.amount - a.amount)
-  const top5 = sorted.slice(0, 5)
+  const sorted = [...transactions].sort((a, b) => {
+    if (sortBy === 'date') {
+      return new Date(b.transaction_date) - new Date(a.transaction_date)
+    }
+    return b.amount - a.amount
+  })
+  const visible = scrollable ? sorted : sorted.slice(0, 5)
+  const hidden = scrollable ? 0 : Math.max(0, sorted.length - 5)
   const accountFor = (id) => accounts.find(a => a.id === id)
 
+  const listBody = (
+    <>
+      {visible.map(tx => {
+        const sourceAccount = accountFor(tx.source_account_id)
+        return (
+          <div
+            key={tx.id}
+            className="flex items-center justify-between bg-surface border border-line rounded-lg px-3 py-2"
+          >
+            <div className="min-w-0 flex-1 pr-2">
+              <p className="text-xs font-bold text-fg truncate">
+                {tx.description || 'Untitled'}
+              </p>
+              <div className="flex items-center gap-2 mt-0.5 min-w-0">
+                <span className="text-[10px] text-fg-subtle truncate shrink min-w-0">
+                  {tx.category || 'Uncategorized'}
+                </span>
+                {sourceAccount && (
+                  <AccountCard account={sourceAccount} size="chip" showIcon={false} />
+                )}
+              </div>
+            </div>
+            <span className="text-xs font-black text-fg shrink-0">
+              {formatMYR(tx.amount)}
+            </span>
+          </div>
+        )
+      })}
+    </>
+  )
+
   return (
-    <div className="mt-4 bg-surface-2/70 border border-line rounded-2xl p-4 animate-fadeIn">
-      <div className="flex items-start justify-between mb-3">
+    <div className="mt-4 bg-surface-2/70 border border-line rounded-2xl animate-fadeIn">
+      {/* Header stays fixed while the list scrolls */}
+      <div className="flex items-start justify-between px-4 pt-4 pb-3">
         <div>
           <p className="text-[10px] font-bold text-fg-subtle uppercase tracking-wider">
             {title}
@@ -79,39 +124,19 @@ export const TransactionDrilldown = ({
         </button>
       </div>
 
-      <div className="space-y-1.5">
-        {top5.map(tx => {
-          const sourceAccount = accountFor(tx.source_account_id)
-          return (
-            <div
-              key={tx.id}
-              className="flex items-center justify-between bg-surface border border-line rounded-lg px-3 py-2"
-            >
-              <div className="min-w-0 flex-1 pr-2">
-                <p className="text-xs font-bold text-fg truncate">
-                  {tx.description || 'Untitled'}
-                </p>
-                <div className="flex items-center gap-2 mt-0.5 min-w-0">
-                  <span className="text-[10px] text-fg-subtle truncate shrink min-w-0">
-                    {tx.category || 'Uncategorized'}
-                  </span>
-                  {sourceAccount && (
-                    <AccountCard account={sourceAccount} size="chip" showIcon={false} />
-                  )}
-                </div>
-              </div>
-              <span className="text-xs font-black text-fg shrink-0">
-                {formatMYR(tx.amount)}
-              </span>
-            </div>
-          )
-        })}
-      </div>
-
-      {sorted.length > 5 && (
-        <p className="text-[11px] font-semibold text-fg-subtle text-center mt-3">
-          + {sorted.length - 5} more transactions
-        </p>
+      {scrollable ? (
+        <div className="max-h-72 overflow-y-auto overscroll-contain scrollbar-thin px-4 pb-4 space-y-1.5">
+          {listBody}
+        </div>
+      ) : (
+        <>
+          <div className="px-4 pb-4 space-y-1.5">{listBody}</div>
+          {hidden > 0 && (
+            <p className="text-[11px] font-semibold text-fg-subtle text-center pb-4 -mt-1">
+              + {hidden} more transactions
+            </p>
+          )}
+        </>
       )}
     </div>
   )

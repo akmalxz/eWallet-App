@@ -23,7 +23,7 @@ const weekdayFromShifted = (shiftedDate) => {
 // ============================================================
 // Day-of-week bars
 // ============================================================
-const DayOfWeekBars = ({ expenses }) => {
+const DayOfWeekBars = ({ expenses, accounts }) => {
   const theme = useChartTheme()
   const [selectedDay, setSelectedDay] = useState(null)
 
@@ -65,7 +65,7 @@ const DayOfWeekBars = ({ expenses }) => {
     const averages = totals.map((t, i) => dayOccurrences[i] > 0 ? t / dayOccurrences[i] : 0)
     const peakIdx = averages.indexOf(Math.max(...averages))
 
-    return { averages, counts, transactionsByDay, categoryByDay, peakIdx }
+    return { averages, counts, totals, transactionsByDay, categoryByDay, peakIdx }
   }, [expenses])
 
   if (!data) {
@@ -136,32 +136,46 @@ const DayOfWeekBars = ({ expenses }) => {
       </div>
 
       {selectedDay != null && (
-        <div className="mt-4 bg-surface-2 border border-line rounded-2xl p-4 animate-fadeIn">
-          <div className="flex justify-between items-start">
-            <div>
-              <p className="text-[10px] font-bold text-fg-subtle uppercase tracking-wider">
-                {WEEKDAY_LABELS[selectedDay]}s
-              </p>
-              <p className="text-base font-black text-fg mt-0.5">
-                {formatMYR(data.averages[selectedDay])} avg ·{' '}
-                {data.counts[selectedDay]} txns total
-              </p>
-              {topCategory && (
-                <p className="text-xs text-fg-muted mt-1">
-                  Top category: <strong>{topCategory[0]}</strong> ({formatMYR(topCategory[1])})
+        <>
+          <div className="mt-4 bg-surface-2 border border-line rounded-2xl p-4 animate-fadeIn">
+            <div className="flex justify-between items-start">
+              <div>
+                <p className="text-[10px] font-bold text-fg-subtle uppercase tracking-wider">
+                  {WEEKDAY_LABELS[selectedDay]}s
                 </p>
-              )}
+                <p className="text-base font-black text-fg mt-0.5">
+                  {formatMYR(data.averages[selectedDay])} avg ·{' '}
+                  {data.counts[selectedDay]} txns total
+                </p>
+                {topCategory && (
+                  <p className="text-xs text-fg-muted mt-1">
+                    Top category: <strong>{topCategory[0]}</strong> ({formatMYR(topCategory[1])})
+                  </p>
+                )}
+              </div>
+              <button
+                onClick={() => setSelectedDay(null)}
+                className="text-xs font-bold text-fg-subtle hover:text-fg px-3 py-2 rounded-lg hover:bg-surface transition-colors"
+                style={{ minHeight: 44 }}
+                aria-label="Close day details"
+              >
+                Close
+              </button>
             </div>
-            <button
-              onClick={() => setSelectedDay(null)}
-              className="text-xs font-bold text-fg-subtle hover:text-fg px-3 py-2 rounded-lg hover:bg-surface transition-colors"
-              style={{ minHeight: 44 }}
-              aria-label="Close day details"
-            >
-              Close
-            </button>
           </div>
-        </div>
+
+          {data.transactionsByDay[selectedDay].length > 0 && (
+            <TransactionDrilldown
+              title={`${WEEKDAY_LABELS[selectedDay]}s`}
+              total={data.totals[selectedDay]}
+              transactions={data.transactionsByDay[selectedDay]}
+              accounts={accounts}
+              sortBy="date"
+              scrollable
+              onClose={() => setSelectedDay(null)}
+            />
+          )}
+        </>
       )}
     </div>
   )
@@ -233,6 +247,20 @@ const CalendarHeatmap = ({ expenses, accounts }) => {
 
   const selectedCell = monthData.cells.find((c) => c && c.day === selectedDayKey)
 
+  // MY-local "today" and the cursor's month — computed once, used for
+  // every cell's isFuture check. Previously this used raw local-time
+  // comparisons, which could highlight the wrong day for users not on
+  // a MY-timezone device.
+  const todayMY = toMYDate(new Date())
+  const cursorMY = toMYDate(cursor)
+  const isFutureMonth =
+    cursorMY.getUTCFullYear() > todayMY.getUTCFullYear() ||
+    (cursorMY.getUTCFullYear() === todayMY.getUTCFullYear() &&
+      cursorMY.getUTCMonth() > todayMY.getUTCMonth())
+  const isCurrentMonth =
+    cursorMY.getUTCFullYear() === todayMY.getUTCFullYear() &&
+    cursorMY.getUTCMonth() === todayMY.getUTCMonth()
+
   const go = (delta) => {
     setCursor((c) => {
       const n = new Date(c)
@@ -283,15 +311,8 @@ const CalendarHeatmap = ({ expenses, accounts }) => {
         {monthData.cells.map((cell, i) => {
           if (!cell) return <div key={`blank-${i}`} />
           const isSelected = selectedDayKey === cell.day
-          const isFuture = (() => {
-            const t = new Date()
-            return (
-              cursor.getFullYear() > t.getFullYear() ||
-              (cursor.getFullYear() === t.getFullYear() &&
-                (cursor.getMonth() > t.getMonth() ||
-                  (cursor.getMonth() === t.getMonth() && cell.day > t.getDate())))
-            )
-          })()
+          const isFuture =
+            isFutureMonth || (isCurrentMonth && cell.day > todayMY.getUTCDate())
           return (
             <button
               key={cell.day}
@@ -329,6 +350,8 @@ const CalendarHeatmap = ({ expenses, accounts }) => {
           total={selectedCell.total}
           transactions={selectedCell.txns}
           accounts={accounts}
+          sortBy="date"
+          scrollable
           onClose={() => setSelectedDayKey(null)}
         />
       )}
