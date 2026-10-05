@@ -20,10 +20,10 @@ export const useAuth = () => {
     try {
       const { data, error } = await supabase
         .from('profiles')
-        .select('*')
+        .select('id, first_name, last_name, username, currency, timezone, theme, has_completed_onboarding, created_at, updated_at')
         .eq('id', userId)
         .single()
-
+        
       if (error) throw error
       setProfile(data)
     } catch (error) {
