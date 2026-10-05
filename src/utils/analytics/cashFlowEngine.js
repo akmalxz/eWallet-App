@@ -1,6 +1,6 @@
 // src/utils/analytics/cashFlowEngine.js
 import { toMYDate, monthKey, getDayOfMonthMY } from '../dateHelpers'
-import { rollUpToMain, getCategoryColor, OTHER_COLOR } from './categoryColors'
+import { rollUpToMain } from './categoryColors'
 import { resolveAccountScope } from '../accounts/accountScope'
 
 const TOP_N = 5
@@ -10,12 +10,16 @@ const MIN_SHARE = 0.03
  * Cash flow breakdown for the dashboard heatmap.
  *
  * Returns rows shaped for CashFlowHeatmap:
- *   { name, value, comparison, color, isOther? }
+ *   { name, value, comparison, txns, isOther? }
  * where `comparison` is null, or { diff, pct, isNew }.
+ *
+ * Color is intentionally NOT included — the caller assigns it from the
+ * active theme palette so light/dark modes can differ.
  *
  * - Current-month spend per main category, sorted desc.
  * - Top 5 (with a 3% minimum share), remainder rolled up as "Other".
  * - `comparison` compares against the same day-range of last month.
+ * - `txns` carries the underlying transactions for drill-down.
  */
 export const computeCashFlow = ({
   accounts = [],
@@ -35,6 +39,7 @@ export const computeCashFlow = ({
 
   const thisByCat = {}
   const lastByCat = {}
+  const txByCat = {}
 
   for (const tx of expenses) {
     if (!accountIds.has(tx.source_account_id)) continue
@@ -47,6 +52,8 @@ export const computeCashFlow = ({
 
     if (k === thisKey) {
       thisByCat[cat] = (thisByCat[cat] || 0) + amt
+      if (!txByCat[cat]) txByCat[cat] = []
+      txByCat[cat].push(tx)
     } else if (k === lastKey) {
       const d = toMYDate(tx.transaction_date)
       if (d.getUTCDate() <= dayOfMonth) {
@@ -68,7 +75,7 @@ export const computeCashFlow = ({
       } else if (last === 0 && value > 0) {
         comparison = { diff: value, pct: null, isNew: true }
       }
-      return { name, value, comparison }
+      return { name, value, comparison, txns: txByCat[name] || [] }
     })
     .sort((a, b) => b.value - a.value)
 
@@ -80,16 +87,20 @@ export const computeCashFlow = ({
   if (rest.length > 0) {
     const otherTotal = rest.reduce((s, r) => s + r.value, 0)
     const otherLast = rest.reduce((s, r) => s + (lastByCat[r.name] || 0), 0)
+    const otherTxns = rest.flatMap(r => r.txns)
     let comparison = null
     if (otherLast > 0) {
       const diff = otherTotal - otherLast
       comparison = { diff, pct: (diff / otherLast) * 100, isNew: false }
     }
-    top.push({ name: 'Other', value: otherTotal, comparison, isOther: true })
+    top.push({
+      name: 'Other',
+      value: otherTotal,
+      comparison,
+      isOther: true,
+      txns: otherTxns
+    })
   }
 
-  return top.map(r => ({
-    ...r,
-    color: r.isOther ? OTHER_COLOR : getCategoryColor(r.name)
-  }))
+  return top
 }

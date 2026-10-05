@@ -3,6 +3,8 @@ import { useState, useMemo } from 'react'
 import { TrendingUp, TrendingDown, Plus, ArrowRight, PieChart } from 'lucide-react'
 import { PieChart as RechartsPie, Pie, Cell, ResponsiveContainer } from 'recharts'
 import { formatMYR } from '../../utils/formatters'
+import { useChartTheme } from '../../hooks/useChartTheme'
+import { TransactionDrilldown } from '../analytics/AnalyticsShared'
 
 const compactMYR = (n) => {
   const abs = Math.abs(n)
@@ -13,11 +15,25 @@ const compactMYR = (n) => {
 
 const MOBILE_LIMIT = 6
 
+// Deterministic hash — a category always lands on the same palette slot
+// across renders, so toggling light/dark or reordering by rank doesn't
+// reshuffle the color legend.
+const hashCategory = (name) => {
+  let h = 0
+  for (let i = 0; i < name.length; i++) {
+    h = ((h << 5) - h) + name.charCodeAt(i)
+    h |= 0
+  }
+  return Math.abs(h)
+}
+
 export const CashFlowHeatmap = ({
   cashFlowData = [],
+  accounts = [],
   onAddTransaction,
   onSeeTrends
 }) => {
+  const theme = useChartTheme()
   const [activeName, setActiveName] = useState(null)
   const [showAll, setShowAll] = useState(false)
 
@@ -26,8 +42,20 @@ export const CashFlowHeatmap = ({
     [cashFlowData]
   )
 
+  // Assign theme-aware colors here, not in the engine. This keeps the
+  // engine pure and lets the donut adapt to light/dark mode.
+  const coloredData = useMemo(
+    () => cashFlowData.map(row => ({
+      ...row,
+      color: row.isOther
+        ? theme.neutral
+        : theme.category[hashCategory(row.name) % theme.category.length]
+    })),
+    [cashFlowData, theme]
+  )
+
   const activeItem = activeName
-    ? cashFlowData.find(i => i.name === activeName)
+    ? coloredData.find(i => i.name === activeName)
     : null
 
   const handleSelect = (name) => {
@@ -40,7 +68,7 @@ export const CashFlowHeatmap = ({
       {/* Accent strip */}
       <div className="absolute top-0 left-0 right-0 h-1 bg-brand rounded-full" />
 
-      {!cashFlowData || cashFlowData.length === 0 ? (
+      {!coloredData || coloredData.length === 0 ? (
         <div className="pt-1">
           <div className="mb-5">
             <h2 className="text-sm font-bold text-fg">Where your money went</h2>
@@ -85,7 +113,7 @@ export const CashFlowHeatmap = ({
               <ResponsiveContainer width="100%" height="100%">
                 <RechartsPie>
                   <Pie
-                    data={cashFlowData}
+                    data={coloredData}
                     cx="50%"
                     cy="50%"
                     innerRadius={58}
@@ -94,13 +122,13 @@ export const CashFlowHeatmap = ({
                     dataKey="value"
                     onClick={(entry) => handleSelect(entry.name)}
                   >
-                    {cashFlowData.map((entry, idx) => {
+                    {coloredData.map((entry, idx) => {
                       const isActive = activeName === entry.name
                       const dim = activeName && !isActive
                       return (
                         <Cell
                           key={`cell-${idx}`}
-                          fill={entry.color || '#94a3b8'}
+                          fill={entry.color}
                           stroke="var(--surface)"
                           strokeWidth={2}
                           className="outline-none transition-opacity duration-200 cursor-pointer"
@@ -127,7 +155,7 @@ export const CashFlowHeatmap = ({
                 <p className="text-[10px] font-bold text-brand mt-0.5">
                   {activeItem
                     ? `${((activeItem.value / totalExpenses) * 100).toFixed(1)}%`
-                    : `${cashFlowData.length} categories`
+                    : `${coloredData.length} categories`
                   }
                 </p>
               </button>
@@ -136,7 +164,7 @@ export const CashFlowHeatmap = ({
             {/* Ledger list */}
             <div className="flex-1 w-full">
               <div className={`space-y-1.5 ${showAll ? 'md:max-h-64 md:overflow-y-auto md:pr-1' : ''}`}>
-                {(showAll ? cashFlowData : cashFlowData.slice(0, MOBILE_LIMIT)).map((item) => {
+                {(showAll ? coloredData : coloredData.slice(0, MOBILE_LIMIT)).map((item) => {
                   const pct = ((item.value / totalExpenses) * 100).toFixed(1)
                   const isActive = activeName === item.name
                   const cmp = item.comparison
@@ -191,17 +219,32 @@ export const CashFlowHeatmap = ({
                 })}
               </div>
 
-              {cashFlowData.length > MOBILE_LIMIT && (
+              {coloredData.length > MOBILE_LIMIT && (
                 <button
                   onClick={() => setShowAll(s => !s)}
                   className="md:hidden w-full mt-2 py-2 text-xs font-bold text-fg-muted hover:text-fg transition-colors"
                   style={{ minHeight: 44 }}
                 >
-                  {showAll ? 'Show less' : `Show ${cashFlowData.length - MOBILE_LIMIT} more`}
+                  {showAll ? 'Show less' : `Show ${coloredData.length - MOBILE_LIMIT} more`}
                 </button>
               )}
             </div>
           </div>
+
+          {/* Drill-down for the selected category */}
+          {activeItem && activeItem.txns && activeItem.txns.length > 0 && (
+            <div className="mt-4">
+              <TransactionDrilldown
+                title={activeItem.name}
+                total={activeItem.value}
+                transactions={activeItem.txns}
+                accounts={accounts}
+                sortBy="date"
+                scrollable
+                onClose={() => setActiveName(null)}
+              />
+            </div>
+          )}
         </>
       )}
 

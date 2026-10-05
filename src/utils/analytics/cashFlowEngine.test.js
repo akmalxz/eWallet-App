@@ -204,4 +204,48 @@ describe('computeCashFlow', () => {
     expect(result.map(r => r.name)).toEqual(['A', 'B', 'C', 'D', 'Other'])
     expect(result[4].value).toBe(30)
   })
+
+  it('attaches transactions to each category row', () => {
+    const result = computeCashFlow({
+      accounts: [ACC_A],
+      expenses: [
+        tx(50, d(2026, 9, 5), 'acc-a'),
+        tx(30, d(2026, 9, 10), 'acc-a')
+      ],
+      scopeAccountId: 'all',
+      now: d(2026, 9, 15)
+    })
+    expect(result).toHaveLength(1)
+    expect(result[0].txns).toHaveLength(2)
+  })
+
+  it('flattens all sub-threshold transactions into the Other row', () => {
+    const mk = (cat, amt) => tx(amt, d(2026, 9, 5), 'acc-a', { category: cat })
+    const result = computeCashFlow({
+      accounts: [ACC_A],
+      expenses: [
+        mk('A', 1000), mk('B', 1000), mk('C', 1000),
+        mk('D', 1000), mk('E', 20), mk('F', 10)
+      ],
+      scopeAccountId: 'all',
+      now: d(2026, 9, 15)
+    })
+    const other = result.find(r => r.name === 'Other')
+    expect(other.txns).toHaveLength(2)
+  })
+
+  it('excludes last-month transactions from the txns list', () => {
+    const result = computeCashFlow({
+      accounts: [ACC_A],
+      expenses: [
+        tx(100, d(2026, 8, 10), 'acc-a'),  // last month
+        tx(150, d(2026, 9, 5), 'acc-a')    // current month
+      ],
+      scopeAccountId: 'all',
+      now: d(2026, 9, 15)
+    })
+    expect(result).toHaveLength(1)
+    expect(result[0].txns).toHaveLength(1)
+    expect(result[0].txns[0].amount).toBe(150)
+  })
 })

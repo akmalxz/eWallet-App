@@ -73,9 +73,14 @@ export const useTransactions = (user, showToast) => {
           .select('*')
           .eq('user_id', user.id),
 
+        // monthlyExpenses — feeds burn rate, cash flow, and the
+        // CashFlowHeatmap drilldown. The drilldown renders tx.description
+        // and sorts by transaction_date with created_at as a tiebreaker,
+        // so both columns must be selected even though the engines
+        // themselves don't read them.
         supabase
           .from('transactions')
-          .select('id, amount, source_account_id, destination_account_id, category, transaction_date, needs_review, metadata')
+          .select('id, amount, source_account_id, destination_account_id, category, transaction_date, description, needs_review, created_at, metadata')
           .eq('user_id', user.id)
           .is('destination_account_id', null)
           .gte('transaction_date', startOfLastMonth),
