@@ -2,11 +2,48 @@
 import { useState, useMemo } from 'react'
 import {
   ArrowDownRight, ArrowUpRight, RefreshCw, List,
-  Trash2, Edit2, X, Save, Plus, Inbox, Calendar, ChevronDown, ChevronUp
+  Trash2, Edit2, Plus, Inbox, Calendar, ChevronDown, ChevronUp
 } from 'lucide-react'
 import { formatMYR } from '../../utils/formatters'
+import { toMYDate, dayKey } from '../../utils/dateHelpers'
 import { AccountCard } from '../shared/AccountCard'
 import { ConfirmSheet } from '../shared/ConfirmSheet'
+import { LedgerEditForm } from './LedgerEditForm'
+
+// Format a YYYY-MM-DD MY date key as a compact group label.
+// "Today" / "Yesterday" for the last two days; otherwise "Wed, 15 Oct",
+// dropping the year for the current MY year.
+const formatGroupLabel = (dateKey, todayKey, yesterdayKey) => {
+  if (dateKey === todayKey) return 'Today'
+  if (dateKey === yesterdayKey) return 'Yesterday'
+  const [y, m, d] = dateKey.split('-').map(Number)
+  const date = new Date(Date.UTC(y, m - 1, d))
+  const isThisYear = y === toMYDate(new Date()).getUTCFullYear()
+  return date.toLocaleDateString('en-MY', {
+    weekday: 'short',
+    day: 'numeric',
+    month: 'short',
+    year: isThisYear ? undefined : 'numeric',
+    timeZone: 'UTC'
+  })
+}
+
+// Sum money-in (income) and money-out (expense) for a day's transactions.
+// Transfers (both source and destination set) are neither — excluded from
+// both totals.
+const getDailyTotals = (transactions) => {
+  let moneyIn = 0
+  let moneyOut = 0
+  for (const tx of transactions) {
+    const hasSource = !!tx.source_account_id
+    const hasDest = !!tx.destination_account_id
+    const amt = Number(tx.amount) || 0
+    if (hasSource && hasDest) continue          // transfer
+    if (!hasSource && hasDest) moneyIn += amt   // income
+    else if (hasSource && !hasDest) moneyOut += amt // expense
+  }
+  return { moneyIn, moneyOut }
+}
 
 export const ActionLedger = ({
   recentTransactions,
@@ -20,47 +57,28 @@ export const ActionLedger = ({
   onAddTransaction
 }) => {
   const [editingId, setEditingId] = useState(null)
-  const [editData, setEditData] = useState({
-    description: '',
-    category: '',
-    amount: '',
-    transaction_date: '',
-    source_account_id: '',
-    destination_account_id: ''
-  })
-  const [editErrors, setEditErrors] = useState({})
   const [expandedGroups, setExpandedGroups] = useState({})
   const [pendingDelete, setPendingDelete] = useState(null)
 
   const groupedTransactions = useMemo(() => {
     if (!recentTransactions || recentTransactions.length === 0) return []
 
+    const todayKey = dayKey(new Date())
+    const yesterdayKey = dayKey(new Date(Date.now() - 24 * 60 * 60 * 1000))
+
     const groups = {}
-    const today = new Date()
-    const yesterday = new Date(today)
-    yesterday.setDate(yesterday.getDate() - 1)
 
     recentTransactions.forEach((tx) => {
-      const date = new Date(tx.transaction_date || tx.created_at)
-      const dateKey = date.toISOString().split('T')[0]
-
-      let label
-      if (dateKey === today.toISOString().split('T')[0]) {
-        label = 'Today'
-      } else if (dateKey === yesterday.toISOString().split('T')[0]) {
-        label = 'Yesterday'
-      } else {
-        label = date.toLocaleDateString('en-MY', {
-          weekday: 'long',
-          day: 'numeric',
-          month: 'long',
-          year: 'numeric'
-        })
-      }
+      const dateKey = dayKey(tx.transaction_date || tx.created_at)
+      const label = formatGroupLabel(dateKey, todayKey, yesterdayKey)
 
       if (!groups[dateKey]) {
-        const isToday = dateKey === today.toISOString().split('T')[0]
-        groups[dateKey] = { label, date: dateKey, transactions: [], isExpanded: isToday }
+        groups[dateKey] = {
+          label,
+          date: dateKey,
+          isToday: dateKey === todayKey,
+          transactions: []
+        }
       }
       groups[dateKey].transactions.push(tx)
     })
@@ -73,115 +91,16 @@ export const ActionLedger = ({
   }
 
   const isGroupExpanded = (group) => {
-    if (group.label === 'Today') return true
+    if (group.isToday) return true
     return expandedGroups[group.date] ?? false
   }
 
-  const startEdit = (tx) => {
-    const rawDate = tx.transaction_date || tx.created_at
-    const formattedDate = rawDate
-      ? new Date(rawDate).toISOString().split('T')[0]
-      : new Date().toISOString().split('T')[0]
+  // Parent-side: track which transaction's form is open.
+  // Everything else about editing lives inside LedgerEditForm.
+  const beginEdit = (id) => setEditingId(id)
+  const endEdit = () => setEditingId(null)
 
-    setEditingId(tx.id)
-    setEditData({
-      description: tx.description || '',
-      category: tx.category || '',
-      amount: tx.amount || '',
-      transaction_date: formattedDate,
-      source_account_id: tx.source_account_id || '',
-      destination_account_id: tx.destination_account_id || ''
-    })
-    setEditErrors({})
-  }
-
-  const cancelEdit = () => {
-    setEditingId(null)
-    setEditData({
-      description: '',
-      category: '',
-      amount: '',
-      transaction_date: '',
-      source_account_id: '',
-      destination_account_id: ''
-    })
-    setEditErrors({})
-  }
-
-  const validateEdit = () => {
-    const errors = {}
-
-    if (!editData.description || editData.description.trim().length < 2) {
-      errors.description = 'Description must be at least 2 characters'
-    }
-
-    if (!editData.category || editData.category === 'uncategorized') {
-      errors.category = 'Please select a category'
-    }
-
-    const amountNum = parseFloat(editData.amount)
-    if (!editData.amount || isNaN(amountNum) || amountNum <= 0) {
-      errors.amount = 'Please enter a valid amount greater than 0'
-    }
-
-    const isIncome = !editData.source_account_id && editData.destination_account_id
-    const isExpense = editData.source_account_id && !editData.destination_account_id
-    const isTransfer = editData.source_account_id && editData.destination_account_id
-
-    if (!isIncome && !isExpense && !isTransfer) {
-      errors.accounts = 'Please select at least one account'
-    }
-
-    if (isTransfer && editData.source_account_id === editData.destination_account_id) {
-      errors.accounts = 'Source and destination accounts must be different'
-    }
-
-    setEditErrors(errors)
-    return Object.keys(errors).length === 0
-  }
-
-  const saveEdit = () => {
-    if (!validateEdit()) return
-
-    const amountNum = parseFloat(editData.amount)
-    const isIncome = !editData.source_account_id && editData.destination_account_id
-    const isExpense = editData.source_account_id && !editData.destination_account_id
-    const isTransfer = editData.source_account_id && editData.destination_account_id
-
-    handleEditTransaction(editingId, {
-      description: editData.description.trim(),
-      category: editData.category,
-      amount: Math.abs(amountNum),
-      transaction_date: editData.transaction_date,
-      source_account_id: editData.source_account_id || null,
-      destination_account_id: editData.destination_account_id || null,
-      transaction_type: isIncome ? 'income' : isExpense ? 'expense' : 'transfer'
-    })
-
-    setEditingId(null)
-    setEditData({
-      description: '',
-      category: '',
-      amount: '',
-      source_account_id: '',
-      destination_account_id: ''
-    })
-    setEditErrors({})
-  }
-
-  const handleKeyDown = (e) => {
-    if (e.key === 'Enter' && !e.shiftKey) {
-      e.preventDefault()
-      saveEdit()
-    } else if (e.key === 'Escape') {
-      cancelEdit()
-    }
-  }
-
-  const isEditing = (id) => editingId === id
   const accountFor = (id) => accounts.find((a) => a.id === id)
-  const getDailyTotal = (transactions) =>
-    transactions.reduce((sum, tx) => sum + Number(tx.amount), 0)
 
   if (!recentTransactions || recentTransactions.length === 0) {
     return (
@@ -271,8 +190,9 @@ export const ActionLedger = ({
 
         <div className="flex-1 overflow-y-auto space-y-3 p-3">
           {groupedTransactions.map((group) => {
-            const dailyTotal = getDailyTotal(group.transactions)
-            const isToday = group.label === 'Today'
+            const { moneyIn, moneyOut } = getDailyTotals(group.transactions)
+            const hasFlow = moneyIn > 0 || moneyOut > 0
+            const isToday = group.isToday
             const isExpanded = isGroupExpanded(group)
 
             return (
@@ -297,9 +217,19 @@ export const ActionLedger = ({
                     )}
                   </div>
                   <div className="flex items-center gap-2 shrink-0">
-                    <span className="text-[10px] font-medium text-fg-subtle">
-                      {formatMYR(dailyTotal)}
-                    </span>
+                    {hasFlow && (
+                      <div className="flex items-center gap-1 text-[10px] font-semibold whitespace-nowrap">
+                        {moneyIn > 0 && (
+                          <span className="text-success">+{formatMYR(moneyIn)}</span>
+                        )}
+                        {moneyIn > 0 && moneyOut > 0 && (
+                          <span className="text-fg-subtle font-normal">·</span>
+                        )}
+                        {moneyOut > 0 && (
+                          <span className="text-fg">-{formatMYR(moneyOut)}</span>
+                        )}
+                      </div>
+                    )}
                     <button
                       className="w-11 h-11 flex items-center justify-center text-fg-subtle hover:text-fg-muted hover:bg-surface-2 rounded-lg transition-all"
                       onClick={(e) => {
@@ -323,15 +253,8 @@ export const ActionLedger = ({
                     {group.transactions.map((tx) => {
                       const isIncome = !tx.source_account_id && tx.destination_account_id
                       const isTransfer = tx.source_account_id && tx.destination_account_id
-                      const isEditingThis = isEditing(tx.id)
+                      const isEditingThis = editingId === tx.id
                       const globalIndex = recentTransactions.findIndex((t) => t.id === tx.id)
-
-                      const editIsIncome =
-                        !editData.source_account_id && editData.destination_account_id
-                      const editIsExpense =
-                        editData.source_account_id && !editData.destination_account_id
-                      const editIsTransfer =
-                        editData.source_account_id && editData.destination_account_id
 
                       return (
                         <div
@@ -339,298 +262,18 @@ export const ActionLedger = ({
                           className="relative overflow-hidden rounded-xl border border-line bg-surface"
                         >
                           {isEditingThis && (
-                            <div className="bg-surface-2/50 p-4 space-y-4 animate-fadeIn">
-                              <div className="flex justify-between items-center border-b border-line pb-2">
-                                <span className="text-[11px] font-bold uppercase tracking-wider text-fg-subtle">
-                                  Editing
-                                </span>
-                                <button
-                                  onClick={cancelEdit}
-                                  className="w-11 h-11 flex items-center justify-center text-fg-subtle hover:text-fg-muted rounded-lg"
-                                  aria-label="Cancel editing"
-                                >
-                                  <X className="w-3.5 h-3.5" />
-                                </button>
-                              </div>
-
-                              <div>
-                                <label className="block text-[10px] font-bold text-fg-subtle uppercase tracking-wider mb-1.5">
-                                  Description
-                                </label>
-                                <input
-                                  type="text"
-                                  value={editData.description}
-                                  onChange={(e) => {
-                                    setEditData({ ...editData, description: e.target.value })
-                                    setEditErrors({ ...editErrors, description: '' })
-                                  }}
-                                  onKeyDown={handleKeyDown}
-                                  className={`w-full bg-surface border ${
-                                    editErrors.description
-                                      ? 'border-danger-border focus:border-danger'
-                                      : 'border-line focus:border-brand'
-                                  } rounded-xl px-3 py-2.5 text-sm text-fg placeholder:text-fg-subtle outline-none focus:ring-2 focus:ring-brand/30 transition-all`}
-                                  placeholder="Description"
-                                />
-                                {editErrors.description && (
-                                  <p className="mt-1 text-[11px] text-danger font-medium">
-                                    {editErrors.description}
-                                  </p>
-                                )}
-                              </div>
-
-                              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                                <div>
-                                  <label className="block text-[10px] font-bold text-fg-subtle uppercase tracking-wider mb-1.5">
-                                    Date
-                                  </label>
-                                  <input
-                                    type="date"
-                                    value={editData.transaction_date}
-                                    onChange={(e) =>
-                                      setEditData({ ...editData, transaction_date: e.target.value })
-                                    }
-                                    onKeyDown={handleKeyDown}
-                                    className="w-full bg-surface border border-line focus:border-brand rounded-xl px-3 py-2.5 text-sm text-fg outline-none focus:ring-2 focus:ring-brand/30 transition-all"
-                                  />
-                                </div>
-
-                                <div>
-                                  <label className="block text-[10px] font-bold text-fg-subtle uppercase tracking-wider mb-1.5">
-                                    Amount (RM)
-                                  </label>
-                                  <input
-                                    type="number"
-                                    step="0.01"
-                                    min="0.01"
-                                    value={editData.amount}
-                                    onChange={(e) => {
-                                      setEditData({ ...editData, amount: e.target.value })
-                                      setEditErrors({ ...editErrors, amount: '' })
-                                    }}
-                                    onKeyDown={handleKeyDown}
-                                    className={`w-full bg-surface border ${
-                                      editErrors.amount
-                                        ? 'border-danger-border focus:border-danger'
-                                        : 'border-line focus:border-brand'
-                                    } rounded-xl px-3 py-2.5 text-sm text-fg placeholder:text-fg-subtle outline-none focus:ring-2 focus:ring-brand/30 transition-all`}
-                                    placeholder="0.00"
-                                  />
-                                  {editErrors.amount && (
-                                    <p className="mt-1 text-[11px] text-danger font-medium">
-                                      {editErrors.amount}
-                                    </p>
-                                  )}
-                                </div>
-
-                                <div>
-                                  <label className="block text-[10px] font-bold text-fg-subtle uppercase tracking-wider mb-1.5">
-                                    Category
-                                  </label>
-                                  <select
-                                    value={editData.category}
-                                    onChange={(e) => {
-                                      setEditData({ ...editData, category: e.target.value })
-                                      setEditErrors({ ...editErrors, category: '' })
-                                    }}
-                                    onKeyDown={handleKeyDown}
-                                    className={`w-full bg-surface border ${
-                                      editErrors.category
-                                        ? 'border-danger-border focus:border-danger'
-                                        : 'border-line focus:border-brand'
-                                    } rounded-xl px-3 py-2.5 text-sm text-fg outline-none focus:ring-2 focus:ring-brand/30 transition-all`}
-                                  >
-                                    <option value="">Select category...</option>
-                                    {mainCategories.map((main) => (
-                                      <optgroup key={main.id} label={main.name}>
-                                        {getSubCategories(main.id).map((sub) => (
-                                          <option
-                                            key={sub.id}
-                                            value={`${main.name} > ${sub.name}`}
-                                          >
-                                            {sub.name}
-                                          </option>
-                                        ))}
-                                        {getSubCategories(main.id).length === 0 && (
-                                          <option value={main.name}>{main.name}</option>
-                                        )}
-                                      </optgroup>
-                                    ))}
-                                  </select>
-                                  {editErrors.category && (
-                                    <p className="mt-1 text-[11px] text-danger font-medium">
-                                      {editErrors.category}
-                                    </p>
-                                  )}
-                                </div>
-                              </div>
-
-                              <div>
-                                <label className="block text-[10px] font-bold text-fg-subtle uppercase tracking-wider mb-1.5">
-                                  Transaction Type
-                                </label>
-                                <div className="flex gap-1.5 bg-surface-2/60 p-1 rounded-xl border border-line">
-                                  <button
-                                    type="button"
-                                    onClick={() => {
-                                      setEditData({
-                                        ...editData,
-                                        source_account_id: accounts[0]?.id || '',
-                                        destination_account_id: ''
-                                      })
-                                      setEditErrors({ ...editErrors, accounts: '' })
-                                    }}
-                                    className={`flex-1 py-2 text-xs font-bold rounded-lg transition-all ${
-                                      editIsExpense
-                                        ? 'bg-danger-soft text-danger-text border border-danger-border'
-                                        : 'text-fg-muted hover:text-fg'
-                                    }`}
-                                  >
-                                    Expense
-                                  </button>
-                                  <button
-                                    type="button"
-                                    onClick={() => {
-                                      setEditData({
-                                        ...editData,
-                                        source_account_id: '',
-                                        destination_account_id: accounts[0]?.id || ''
-                                      })
-                                      setEditErrors({ ...editErrors, accounts: '' })
-                                    }}
-                                    className={`flex-1 py-2 text-xs font-bold rounded-lg transition-all ${
-                                      editIsIncome
-                                        ? 'bg-success-soft text-success-text border border-success-border'
-                                        : 'text-fg-muted hover:text-fg'
-                                    }`}
-                                  >
-                                    Income
-                                  </button>
-                                  <button
-                                    type="button"
-                                    onClick={() => {
-                                      setEditData({
-                                        ...editData,
-                                        source_account_id: accounts[0]?.id || '',
-                                        destination_account_id:
-                                          accounts[1]?.id || accounts[0]?.id || ''
-                                      })
-                                      setEditErrors({ ...editErrors, accounts: '' })
-                                    }}
-                                    className={`flex-1 py-2 text-xs font-bold rounded-lg transition-all ${
-                                      editIsTransfer
-                                        ? 'bg-info-soft text-info-text border border-info-border'
-                                        : 'text-fg-muted hover:text-fg'
-                                    }`}
-                                  >
-                                    Transfer
-                                  </button>
-                                </div>
-                              </div>
-
-                              <div className="grid grid-cols-2 gap-3">
-                                {editIsExpense || editIsTransfer ? (
-                                  <div>
-                                    <label className="block text-[10px] font-bold text-fg-subtle uppercase tracking-wider mb-1.5">
-                                      {editIsExpense ? 'Pay From' : 'From'}
-                                    </label>
-                                    <select
-                                      value={editData.source_account_id}
-                                      onChange={(e) => {
-                                        setEditData({
-                                          ...editData,
-                                          source_account_id: e.target.value
-                                        })
-                                        setEditErrors({ ...editErrors, accounts: '' })
-                                      }}
-                                      className="w-full bg-surface border border-line focus:border-brand rounded-xl px-3 py-2.5 text-sm text-fg outline-none focus:ring-2 focus:ring-brand/30 transition-all"
-                                    >
-                                      {accounts.map((a) => (
-                                        <option key={a.id} value={a.id}>
-                                          {a.account_name}
-                                        </option>
-                                      ))}
-                                    </select>
-                                  </div>
-                                ) : (
-                                  <div>
-                                    <label className="block text-[10px] font-bold text-fg-subtle uppercase tracking-wider mb-1.5">
-                                      Source
-                                    </label>
-                                    <select
-                                      value=""
-                                      disabled
-                                      className="w-full bg-surface-2 border border-line rounded-xl px-3 py-2.5 text-sm text-fg-subtle cursor-not-allowed"
-                                    >
-                                      <option value="">None Required</option>
-                                    </select>
-                                  </div>
-                                )}
-
-                                {editIsIncome || editIsTransfer ? (
-                                  <div>
-                                    <label className="block text-[10px] font-bold text-fg-subtle uppercase tracking-wider mb-1.5">
-                                      {editIsIncome ? 'Deposit To' : 'To'}
-                                    </label>
-                                    <select
-                                      value={editData.destination_account_id}
-                                      onChange={(e) => {
-                                        setEditData({
-                                          ...editData,
-                                          destination_account_id: e.target.value
-                                        })
-                                        setEditErrors({ ...editErrors, accounts: '' })
-                                      }}
-                                      className="w-full bg-surface border border-line focus:border-brand rounded-xl px-3 py-2.5 text-sm text-fg outline-none focus:ring-2 focus:ring-brand/30 transition-all"
-                                    >
-                                      {accounts.map((a) => (
-                                        <option key={a.id} value={a.id}>
-                                          {a.account_name}
-                                        </option>
-                                      ))}
-                                    </select>
-                                  </div>
-                                ) : (
-                                  <div>
-                                    <label className="block text-[10px] font-bold text-fg-subtle uppercase tracking-wider mb-1.5">
-                                      Destination
-                                    </label>
-                                    <select
-                                      value=""
-                                      disabled
-                                      className="w-full bg-surface-2 border border-line rounded-xl px-3 py-2.5 text-sm text-fg-subtle cursor-not-allowed"
-                                    >
-                                      <option value="">None Required</option>
-                                    </select>
-                                  </div>
-                                )}
-                              </div>
-
-                              {editErrors.accounts && (
-                                <p className="text-[11px] text-danger font-medium">
-                                  {editErrors.accounts}
-                                </p>
-                              )}
-
-                              <div className="flex gap-2 justify-end pt-2 border-t border-line">
-                                <button
-                                  type="button"
-                                  onClick={cancelEdit}
-                                  className="px-4 py-2.5 text-xs font-semibold text-fg-muted hover:bg-surface-2 rounded-xl transition-all"
-                                  style={{ minHeight: 44 }}
-                                >
-                                  Cancel
-                                </button>
-                                <button
-                                  type="button"
-                                  onClick={saveEdit}
-                                  className="px-4 py-2.5 text-xs font-bold bg-brand-solid hover:bg-brand-solid-hover text-white rounded-xl transition-all flex items-center justify-center gap-1.5 shadow-md"
-                                  style={{ minHeight: 44 }}
-                                >
-                                  <Save className="w-3.5 h-3.5" /> Save Changes
-                                </button>
-                              </div>
-                            </div>
+                            <LedgerEditForm
+                              key={tx.id}
+                              transaction={tx}
+                              accounts={accounts}
+                              mainCategories={mainCategories}
+                              getSubCategories={getSubCategories}
+                              onSave={(updates) => {
+                                handleEditTransaction(tx.id, updates)
+                                endEdit()
+                              }}
+                              onCancel={endEdit}
+                            />
                           )}
 
                           {!isEditingThis && (
@@ -751,7 +394,7 @@ export const ActionLedger = ({
 
                                 <div className="flex items-center md:opacity-0 md:group-hover:opacity-100 focus-within:opacity-100 transition-opacity gap-0.5">
                                   <button
-                                    onClick={() => startEdit(tx)}
+                                    onClick={() => beginEdit(tx.id)}
                                     className="w-9 h-9 flex items-center justify-center text-fg-subtle hover:text-fg hover:bg-surface-2 rounded-lg transition-all"
                                     title="Edit transaction"
                                     aria-label="Edit transaction"
