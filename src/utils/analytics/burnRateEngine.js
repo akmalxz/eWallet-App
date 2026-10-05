@@ -57,7 +57,8 @@ export const computeBurnRate = ({
   payments = [],
   scopeAccountId = 'all',
   now = new Date(),
-  isHoliday = () => false
+  isHoliday = () => false,
+  receivablesThisMonth = 0
 }) => {
   // ------------------------------------------------------------
   // 1. Scope (P3.2 — shared with the radar)
@@ -145,9 +146,19 @@ export const computeBurnRate = ({
   }
 
   // ------------------------------------------------------------
+  // 6b. Accounts Receivable adjustment
+  //     Pending split debts reduce true spending: money you'll get
+  //     back isn't money you spent. Clamp at 0 so a user who didn't
+  //     log the underlying payment doesn't see negative spend.
+  // ------------------------------------------------------------
+  const receivablesOffset = Math.max(0, Number(receivablesThisMonth) || 0)
+  const netThisMonthEveryday = Math.max(0, thisMonthEveryday - receivablesOffset)
+
+
+  // ------------------------------------------------------------
   // 7. Daily average + early-month blend (Phase 5.6, 5.7)
   // ------------------------------------------------------------
-  const rawDailyAvg = daysPassed > 0 ? thisMonthEveryday / daysPassed : 0
+  const rawDailyAvg = daysPassed > 0 ? netThisMonthEveryday / daysPassed : 0
   const lastMonthDailyAvg = lastMonthLength > 0
     ? lastMonthEverydayTotal / lastMonthLength
     : 0
@@ -221,10 +232,10 @@ export const computeBurnRate = ({
 
   if (paydayToday) {
     status = 'payday_today'
-  } else if (thisMonthEveryday === 0 && billCount === 0) {
+  } else if (netThisMonthEveryday === 0 && billCount === 0) {
     // No everyday spending AND no bills — nothing to show
     status = 'no_data'
-  } else if (thisMonthEveryday === 0) {
+  } else if (netThisMonthEveryday === 0) {
     // No everyday spending but there are bills — treat as no_data for the average
     // but still expose free money. Status remains 'no_data'.
     status = 'no_data'
@@ -257,7 +268,9 @@ export const computeBurnRate = ({
     balance,
     billsBeforePayday,
     freeMoney,
-    everydaySpentThisMonth: thisMonthEveryday,
+    everydaySpentThisMonth: netThisMonthEveryday,
+    rawEverydaySpentThisMonth: thisMonthEveryday,
+    receivablesOffset,
     dailyAverage,
     safeDailySpend,
     runwayDays,

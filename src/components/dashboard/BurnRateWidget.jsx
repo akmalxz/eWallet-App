@@ -44,6 +44,8 @@ export const BurnRateWidget = ({ velocityStats, onSeeTrends, onOpenHelp }) => {
     billsBeforePayday = 0,
     freeMoney = 0,
     everydaySpentThisMonth = 0,
+    rawEverydaySpentThisMonth = 0,
+    receivablesOffset = 0,
     dailyAverage = 0,
     safeDailySpend = 0,
     runwayDays = 9999,
@@ -99,7 +101,6 @@ export const BurnRateWidget = ({ velocityStats, onSeeTrends, onOpenHelp }) => {
     ? Math.min(100, (runwayDays / daysToPayday) * 100)
     : 100
 
-  // Identity colors from COLORS — remain hardcoded across themes by design.
   const markerColor = (() => {
     if (!runsOutBeforePayday) return COLORS.down
     if (runwayDays < CRITICAL_RUNWAY_DAYS) return COLORS.up
@@ -363,6 +364,32 @@ export const BurnRateWidget = ({ velocityStats, onSeeTrends, onOpenHelp }) => {
                 Free money divided by {daysToPayday} day{daysToPayday === 1 ? '' : 's'} to payday.
               </p>
             </div>
+
+            {/* Accounts Receivable — only when there's an adjustment */}
+            {receivablesOffset > 0 && (
+              <>
+                <div className="bg-surface-2/60 p-3.5 rounded-xl border border-line">
+                  <p className="text-[11px] text-fg-subtle uppercase font-bold tracking-wider">
+                    Spent this month
+                  </p>
+                  <p className="text-sm font-black text-fg mt-1">
+                    {formatMYR(rawEverydaySpentThisMonth)}
+                  </p>
+                </div>
+
+                <div className="bg-success-soft p-3.5 rounded-xl border border-success-border">
+                  <p className="text-[11px] text-success-text uppercase font-bold tracking-wider">
+                    Owed back to you
+                  </p>
+                  <p className="text-sm font-black text-success-text mt-1">
+                    − {formatMYR(receivablesOffset)}
+                  </p>
+                  <p className="text-[10px] text-success-text/80 mt-1 leading-relaxed">
+                    Net spend this month: {formatMYR(everydaySpentThisMonth)}.
+                  </p>
+                </div>
+              </>
+            )}
 
             <div className="bg-surface-2/60 p-3.5 rounded-xl border border-line">
               <p className="text-[11px] text-fg-subtle uppercase font-bold tracking-wider">Your daily average</p>

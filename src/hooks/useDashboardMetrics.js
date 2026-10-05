@@ -9,7 +9,8 @@ export function useDashboardMetrics({
   commitments,
   commitmentPayments,
   monthlyExpenses,
-  scopeAccountId = 'all'
+  scopeAccountId = 'all',
+  receivablesThisMonth = 0
 }) {
   // Radar always shows the global view — its own scope selector lives on
   // the radar page and doesn't exist yet.
@@ -47,9 +48,17 @@ export function useDashboardMetrics({
       commitments,
       payments: commitmentPayments,
       scopeAccountId,
-      now: new Date()
+      now: new Date(),
+      receivablesThisMonth
     })
-  }, [accounts, monthlyExpenses, commitments, commitmentPayments, scopeAccountId])
+  }, [
+    accounts,
+    monthlyExpenses,
+    commitments,
+    commitmentPayments,
+    scopeAccountId,
+    receivablesThisMonth
+  ])
 
   const cashFlowData = useMemo(
     () => computeCashFlow({

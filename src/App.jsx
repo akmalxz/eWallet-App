@@ -11,6 +11,7 @@ import { LoadingSpinner } from './components/shared/LoadingSpinner'
 import { Header } from './components/layouts/Header'
 import { NavigationBar } from './components/layouts/NavigationBar'
 import { BurnRateHelpSheet } from './components/dashboard/BurnRateHelpSheet'
+import { ReceivablesBanner } from './components/dashboard/ReceivablesBanner'
 
 // Pages
 import { DashboardPage } from './pages/DashboardPage'
@@ -29,6 +30,7 @@ import { useLedgerMutations } from './hooks/useLedgerMutations'
 import { useDashboardMetrics } from './hooks/useDashboardMetrics'
 import { useTransactionParser } from './hooks/useTransactionParser'
 import { useAccountActions } from './hooks/useAccountActions'
+import { useNotifications } from './hooks/useNotifications'
 
 const AnalyticsPage = lazy(() =>
   import('./pages/AnalyticsPage').then(m => ({ default: m.AnalyticsPage }))
@@ -37,26 +39,16 @@ const AnalyticsPage = lazy(() =>
 export default function App() {
   const { user, profile, refreshProfile, isAuthenticated, isAuthLoading } = useAuth()
 
-  // ============================================
-  // PASSWORD RECOVERY MODE
-  // When the user clicks the reset link in their email, Supabase fires
-  // a PASSWORD_RECOVERY auth event. We show the reset form instead of the
-  // app so the user can immediately set a new password.
-  // ============================================
   const [isRecovery, setIsRecovery] = useState(false)
 
   useEffect(() => {
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event) => {
-      if (event === 'PASSWORD_RECOVERY') {
-        setIsRecovery(true)
-      }
+      if (event === 'PASSWORD_RECOVERY') setIsRecovery(true)
     })
     return () => subscription.unsubscribe()
   }, [])
 
-  // ============================================
-  // TOASTS
-  // ============================================
+  // Toasts
   const [toasts, setToasts] = useState([])
   const showToast = useCallback((message, type = 'info') => {
     const id = Date.now()
@@ -64,14 +56,13 @@ export default function App() {
     setTimeout(() => setToasts((prev) => prev.filter((t) => t.id !== id)), 5000)
   }, [])
 
-  // ============================================
-  // DATA
-  // ============================================
+  // Data
   const {
     accounts, recentTransactions, setRecentTransactions,
     commitments, setCommitments,
     commitmentPayments, setCommitmentPayments,
     monthlyExpenses,
+    pendingReceivables,
     categories, classifications, isLoading, error, fetchAllData
   } = useTransactions(user, showToast)
 
@@ -82,14 +73,20 @@ export default function App() {
     showToast
   })
 
-  // ============================================
-  // VIEW STATE
-  // ============================================
+  // Notifications
+  const notifications = useNotifications(user)
+
+  // View state
   const [currentView, setCurrentView] = useState('dashboard')
   const [homeAccountId, setHomeAccountId] = useState('all')
   const [showBurnRateHelp, setShowBurnRateHelp] = useState(false)
+  const [splitInitialTab, setSplitInitialTab] = useState('new')
 
-  // Initial load — fetch once per session
+  useEffect(() => {
+    if (currentView !== 'split') setSplitInitialTab('new')
+  }, [currentView])
+
+  // Initial load
   const hasFetchedRef = useRef(false)
   useEffect(() => {
     if (isAuthenticated && user && !hasFetchedRef.current) {
@@ -98,9 +95,16 @@ export default function App() {
     }
   }, [isAuthenticated, user, fetchAllData])
 
-  // ============================================
-  // FEATURE HOOKS
-  // ============================================
+  // Receivables
+  const pendingReceivablesThisMonth = (pendingReceivables || [])
+    .filter(r => r.isThisMonth)
+    .reduce((s, r) => s + r.amount, 0)
+
+  const pendingReceivablesCount = (pendingReceivables || [])
+    .filter(r => r.isThisMonth)
+    .length
+
+  // Feature hooks
   const ledgerApi = useLedgerMutations({
     user,
     showToast,
@@ -120,7 +124,8 @@ export default function App() {
     commitments,
     commitmentPayments,
     monthlyExpenses,
-    scopeAccountId: homeAccountId
+    scopeAccountId: homeAccountId,
+    receivablesThisMonth: pendingReceivablesThisMonth
   })
 
   const accountApi = useAccountActions({
@@ -132,9 +137,7 @@ export default function App() {
     showToast
   })
 
-  // ============================================
-  // SEE TRENDS — dashboard → analytics with tab preselected
-  // ============================================
+  // See trends
   const handleSeeTrends = useCallback((tab) => {
     const url = new URL(window.location.href)
     url.searchParams.set('at', tab || 'overview')
@@ -143,9 +146,17 @@ export default function App() {
     setCurrentView('analytics')
   }, [])
 
-  // ============================================
-  // RENDER
-  // ============================================
+  // Notification navigation — bell sheet routes here
+  const handleNavigateFromNotifications = useCallback((target) => {
+    if (target === 'network') {
+      setCurrentView('network')
+    } else if (target === 'debts') {
+      setSplitInitialTab('debts')
+      setCurrentView('split')
+    }
+  }, [])
+
+  // Render
   if (isAuthLoading) return <LoadingSpinner message="Loading secure vault..." />
 
   if (isRecovery) {
@@ -203,11 +214,30 @@ export default function App() {
         currentView={currentView}
         setCurrentView={setCurrentView}
         supabase={supabase}
+        youOwe={notifications.youOwe}
+        awaitingConfirm={notifications.awaitingConfirm}
+        openDisputes={notifications.openDisputes}
+        resolvedDisputes={notifications.resolvedDisputes}
+        youOweTotal={notifications.youOweTotal}
+        owedToYouTotal={notifications.owedToYouTotal}
+        actionableCount={notifications.actionableCount}
+        onNavigate={handleNavigateFromNotifications}
       />
 
       <NavigationBar currentView={currentView} setCurrentView={setCurrentView} />
 
       <main className="max-w-6xl mx-auto px-3 md:px-4 py-4 md:py-8">
+        {currentView === 'dashboard' && pendingReceivablesThisMonth > 0 && (
+          <ReceivablesBanner
+            amount={pendingReceivablesThisMonth}
+            count={pendingReceivablesCount}
+            onView={() => {
+              setSplitInitialTab('debts')
+              setCurrentView('split')
+            }}
+          />
+        )}
+
         {currentView === 'dashboard' && (
           <DashboardPage
             isLoading={isLoading}
@@ -298,6 +328,7 @@ export default function App() {
             profile={profile}
             showToast={showToast}
             onBack={() => setCurrentView('dashboard')}
+            initialTab={splitInitialTab}
           />
         )}
 

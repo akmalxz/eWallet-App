@@ -1,6 +1,7 @@
 // src/hooks/useTransactions.js
 import { useState, useCallback } from 'react'
 import { supabase } from '../lib/supabaseClient'
+import { monthKey } from '../utils/dateHelpers'
 
 export const useTransactions = (user, showToast) => {
   const [accounts, setAccounts] = useState([])
@@ -8,6 +9,7 @@ export const useTransactions = (user, showToast) => {
   const [commitments, setCommitments] = useState([])
   const [commitmentPayments, setCommitmentPayments] = useState([])
   const [monthlyExpenses, setMonthlyExpenses] = useState([])
+  const [pendingReceivables, setPendingReceivables] = useState([])
   const [categories, setCategories] = useState([])
   const [classifications, setClassifications] = useState([])
   const [isLoading, setIsLoading] = useState(true)
@@ -23,16 +25,12 @@ export const useTransactions = (user, showToast) => {
     setError(null)
 
     try {
-      // ============================================================
-      // FIRE ALL INDEPENDENT FETCHES IN PARALLEL
-      // ============================================================
       const startOfLastMonth = new Date(
         new Date().getFullYear(),
         new Date().getMonth() - 1,
         1
       ).toISOString()
 
-      // Payments: fetch the last ~13 months. Simpler filter: year >= last year.
       const minPaymentYear = new Date().getFullYear() - 1
 
       const [
@@ -89,23 +87,22 @@ export const useTransactions = (user, showToast) => {
           .gte('period_year', minPaymentYear)
       ])
 
-      // Surface hard errors early
       if (accResult.error) throw accResult.error
       if (catResult.error) throw catResult.error
       if (txResult.error) throw txResult.error
       if (commResult.error) throw commResult.error
 
-      // ============================================================
+      // ------------------------------------------------------------
       // NORMALIZE ACCOUNTS
-      // ============================================================
+      // ------------------------------------------------------------
       let normalizedAccounts = (accResult.data || []).map(acc => {
         const { account_id, ...rest } = acc
         return { id: account_id, ...rest }
       })
 
-      // ============================================================
+      // ------------------------------------------------------------
       // SEEDING — ACCOUNTS
-      // ============================================================
+      // ------------------------------------------------------------
       if (normalizedAccounts.length === 0) {
         const defaultAccounts = [
           { user_id: user.id, account_name: 'Maybank', classification: 'hub' },
@@ -132,9 +129,9 @@ export const useTransactions = (user, showToast) => {
 
       setAccounts(normalizedAccounts)
 
-      // ============================================================
+      // ------------------------------------------------------------
       // SEEDING — CATEGORIES
-      // ============================================================
+      // ------------------------------------------------------------
       let finalCategories = catResult.data || []
 
       if (finalCategories.length === 0) {
@@ -172,9 +169,9 @@ export const useTransactions = (user, showToast) => {
 
       setCategories(finalCategories)
 
-      // ============================================================
+      // ------------------------------------------------------------
       // SEEDING — CLASSIFICATIONS
-      // ============================================================
+      // ------------------------------------------------------------
       let finalClassifications = classResult.data || []
 
       if (!finalClassifications || finalClassifications.length === 0) {
@@ -209,9 +206,9 @@ export const useTransactions = (user, showToast) => {
 
       setClassifications(finalClassifications)
 
-      // ============================================================
-      // TRANSACTIONS, COMMITMENTS, MONTHLY EXPENSES, PAYMENTS
-      // ============================================================
+      // ------------------------------------------------------------
+      // CORE TRANSACTION DATA
+      // ------------------------------------------------------------
       setRecentTransactions(txResult.data || [])
       setCommitments(commResult.data || [])
 
@@ -221,6 +218,50 @@ export const useTransactions = (user, showToast) => {
 
       if (!paymentResult.error) {
         setCommitmentPayments(paymentResult.data || [])
+      }
+
+      // ------------------------------------------------------------
+      // PENDING RECEIVABLES (Accounts Receivable adjustment)
+      // Debts owed TO this user. Enriched with the session's month
+      // so the burn rate engine can scope which receivables apply
+      // to the current calendar month.
+      // ------------------------------------------------------------
+      try {
+        const { data: debts, error: debtsErr } = await supabase
+          .from('split_debts')
+          .select('id, amount, session_id')
+          .eq('creditor_id', user.id)
+          .in('status', ['pending', 'pending_confirmation'])
+
+        if (!debtsErr && debts && debts.length > 0) {
+          const sessionIds = [...new Set(debts.map(d => d.session_id).filter(Boolean))]
+
+          const { data: sessions } = sessionIds.length
+            ? await supabase
+                .from('split_sessions')
+                .select('id, created_at')
+                .in('id', sessionIds)
+            : { data: [] }
+
+          const sessionMonth = new Map(
+            (sessions || []).map(s => [s.id, monthKey(s.created_at)])
+          )
+          const thisMonthK = monthKey(new Date())
+
+          const enriched = debts.map(d => ({
+            id: d.id,
+            amount: Number(d.amount) || 0,
+            sessionId: d.session_id,
+            sessionMonth: sessionMonth.get(d.session_id) || null,
+            isThisMonth: sessionMonth.get(d.session_id) === thisMonthK
+          }))
+
+          setPendingReceivables(enriched)
+        } else {
+          setPendingReceivables([])
+        }
+      } catch {
+        setPendingReceivables([])
       }
 
     } catch (error) {
@@ -237,6 +278,7 @@ export const useTransactions = (user, showToast) => {
     commitments,
     commitmentPayments,
     monthlyExpenses,
+    pendingReceivables,
     categories,
     classifications,
     isLoading,
@@ -246,6 +288,7 @@ export const useTransactions = (user, showToast) => {
     setCommitments,
     setCommitmentPayments,
     setMonthlyExpenses,
+    setPendingReceivables,
     setCategories,
     setClassifications,
     setIsLoading,
