@@ -11,6 +11,8 @@
     "test": "vitest"
   },
   "dependencies": {
+    "@dicebear/collection": "^9.4.2",
+    "@dicebear/core": "^9.4.3",
     "@supabase/supabase-js": "^2.108.2",
     "lucide-react": "^1.21.0",
     "react": "^19.2.7",

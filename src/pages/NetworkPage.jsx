@@ -7,6 +7,7 @@ import {
 import { supabase } from '../lib/supabaseClient'
 import { ConfirmSheet } from '../components/shared/ConfirmSheet'
 import { useFriendRequests } from '../hooks/useFriendRequests'
+import { Avatar } from '../components/shared/Avatar'
 
 export function NetworkPage({
   user,
@@ -254,20 +255,23 @@ export function NetworkPage({
                     return (
                       <div
                         key={result.id}
-                        className="flex items-center justify-between p-3 bg-surface-2/50 border border-line rounded-xl"
+                        className="flex items-center justify-between p-3 bg-surface-2/50 border border-line rounded-xl gap-3"
                       >
-                        <div className="min-w-0 flex-1">
-                          <p className="text-sm font-bold text-fg truncate">
-                            {displayName(result)}
-                          </p>
-                          {result.username && (
-                            <p className="text-xs text-fg-muted truncate">
-                              @{result.username}
+                        <div className="flex items-center gap-3 min-w-0 flex-1">
+                          <Avatar profile={result} size="sm" />
+                          <div className="min-w-0 flex-1">
+                            <p className="text-sm font-bold text-fg truncate">
+                              {displayName(result)}
                             </p>
-                          )}
+                            {result.username && (
+                              <p className="text-xs text-fg-muted truncate">
+                                @{result.username}
+                              </p>
+                            )}
+                          </div>
                         </div>
 
-                        <div className="shrink-0 ml-2">
+                        <div className="shrink-0">
                           {rel === 'friends' && (
                             <span className="inline-flex items-center gap-1 text-xs font-bold text-success-text bg-success-soft border border-success-border px-2.5 py-1 rounded-lg">
                               <UserCheck className="w-3.5 h-3.5" /> Friends
@@ -340,15 +344,18 @@ export function NetworkPage({
                     key={req.id}
                     className="flex items-center justify-between p-3 bg-surface-2/50 border border-line rounded-xl gap-3"
                   >
-                    <div className="min-w-0 flex-1">
-                      <p className="text-sm font-bold text-fg truncate">
-                        {displayName(req.other_user)}
-                      </p>
-                      {req.other_user?.username && (
-                        <p className="text-xs text-fg-muted truncate">
-                          @{req.other_user.username}
+                    <div className="flex items-center gap-3 min-w-0 flex-1">
+                      <Avatar profile={req.other_user} size="sm" />
+                      <div className="min-w-0 flex-1">
+                        <p className="text-sm font-bold text-fg truncate">
+                          {displayName(req.other_user)}
                         </p>
-                      )}
+                        {req.other_user?.username && (
+                          <p className="text-xs text-fg-muted truncate">
+                            @{req.other_user.username}
+                          </p>
+                        )}
+                      </div>
                     </div>
 
                     <div className="flex items-center gap-1.5 shrink-0">
@@ -404,15 +411,18 @@ export function NetworkPage({
                     key={req.id}
                     className="flex items-center justify-between p-3 bg-surface-2/50 border border-line rounded-xl gap-3"
                   >
-                    <div className="min-w-0 flex-1">
-                      <p className="text-sm font-bold text-fg truncate">
-                        {displayName(req.other_user)}
-                      </p>
-                      {req.other_user?.username && (
-                        <p className="text-xs text-fg-muted truncate">
-                          @{req.other_user.username}
+                    <div className="flex items-center gap-3 min-w-0 flex-1">
+                      <Avatar profile={req.other_user} size="sm" />
+                      <div className="min-w-0 flex-1">
+                        <p className="text-sm font-bold text-fg truncate">
+                          {displayName(req.other_user)}
                         </p>
-                      )}
+                        {req.other_user?.username && (
+                          <p className="text-xs text-fg-muted truncate">
+                            @{req.other_user.username}
+                          </p>
+                        )}
+                      </div>
                     </div>
 
                     <button
@@ -468,15 +478,18 @@ export function NetworkPage({
                     key={f.id}
                     className="flex items-center justify-between p-3 bg-surface-2/50 border border-line rounded-xl gap-3"
                   >
-                    <div className="min-w-0 flex-1">
-                      <p className="text-sm font-bold text-fg truncate">
-                        {displayName(f.other_user)}
-                      </p>
-                      {f.other_user?.username && (
-                        <p className="text-xs text-fg-muted truncate">
-                          @{f.other_user.username}
+                    <div className="flex items-center gap-3 min-w-0 flex-1">
+                      <Avatar profile={f.other_user} size="sm" />
+                      <div className="min-w-0 flex-1">
+                        <p className="text-sm font-bold text-fg truncate">
+                          {displayName(f.other_user)}
                         </p>
-                      )}
+                        {f.other_user?.username && (
+                          <p className="text-xs text-fg-muted truncate">
+                            @{f.other_user.username}
+                          </p>
+                        )}
+                      </div>
                     </div>
 
                     <button

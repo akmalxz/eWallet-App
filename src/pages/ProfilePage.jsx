@@ -2,7 +2,7 @@
 import { useState, useEffect } from 'react'
 import { supabase } from '../lib/supabaseClient'
 import {
-  User, LogOut, Layers, Building2, TrendingUp, TrendingDown,
+  LogOut, Layers, Building2, TrendingUp, TrendingDown,
   ChevronRight, Zap, Info
 } from 'lucide-react'
 
@@ -12,12 +12,10 @@ import { IncomeCategoriesModal } from '../components/modals/IncomeCategoriesModa
 import { ExpenseCategoriesModal } from '../components/modals/ExpenseCategoriesModal'
 import { AutomationModal } from '../components/modals/AutomationModal'
 import { PersonalDetailsModal } from '../components/modals/PersonalDetailsModal'
+import { AvatarPickerModal } from '../components/modals/AvatarPickerModal'
 import { AppFooter } from '../components/shared/AppFooter'
+import { Avatar } from '../components/shared/Avatar'
 
-
-// ============================================================
-// SETUP BUTTON
-// ============================================================
 
 const SetupButton = ({
   id,
@@ -44,7 +42,6 @@ const SetupButton = ({
       style={{ minHeight: 44 }}
     >
       <div className="flex items-center gap-4">
-
         <div
           className={`p-2.5 rounded-xl transition-colors duration-300 ${
             isThisActive
@@ -54,16 +51,10 @@ const SetupButton = ({
         >
           <Icon className="w-5 h-5" />
         </div>
-
-        <span
-          className={`font-bold text-base transition-colors ${
-            isThisActive ? 'text-fg' : 'text-fg'
-          }`}
-        >
+        <span className="font-bold text-base text-fg">
           {title}
         </span>
       </div>
-
       <ChevronRight
         className={`w-5 h-5 transition-transform duration-300 ${
           isThisActive
@@ -75,10 +66,6 @@ const SetupButton = ({
   )
 }
 
-
-// ============================================================
-// PROFILE PAGE
-// ============================================================
 
 export function ProfilePage({
   user,
@@ -95,35 +82,20 @@ export function ProfilePage({
   initialModal = null,
   onNavigate
 }) {
-
   const [activeModal, setActiveModal] = useState(initialModal)
 
   useEffect(() => {
-    if (initialModal) {
-      setActiveModal(initialModal)
-    }
+    if (initialModal) setActiveModal(initialModal)
   }, [initialModal])
 
-  const openModal = (section) => {
-    setActiveModal(section)
-  }
-
-  const closeModal = () => {
-    setActiveModal(null)
-  }
-
-  const handleOpenApiModal = () => {
-    openModal('api')
-  }
+  const openModal = (section) => setActiveModal(section)
+  const closeModal = () => setActiveModal(null)
+  const handleOpenApiModal = () => openModal('api')
 
   const displayName =
     profile?.username?.trim() ||
     user?.email?.split('@')[0] ||
     'Your Vault'
-
-  // ============================================================
-  // RENDER
-  // ============================================================
 
   return (
     <div className="max-w-xl mx-auto animate-in fade-in slide-in-from-bottom-4 duration-500 pb-12">
@@ -131,15 +103,17 @@ export function ProfilePage({
       {/* PROFILE HEADER */}
       <div className="bg-surface/60 backdrop-blur-xl border border-line/50 p-6 rounded-3xl shadow-sm flex items-center gap-4 mb-8">
 
-        <div className="bg-fg p-4 rounded-full text-fg-inverse">
-          <User className="w-8 h-8" />
-        </div>
+        <Avatar
+          profile={profile}
+          size="lg"
+          onClick={() => openModal('avatar')}
+          showEditBadge
+        />
 
         <div className="flex-1 min-w-0">
           <h2 className="text-lg font-bold text-fg truncate">
             {displayName}
           </h2>
-
           <p className="text-xs text-fg-muted truncate">
             {user?.email}
           </p>
@@ -154,7 +128,6 @@ export function ProfilePage({
         </button>
 
       </div>
-
 
       {/* SETUP BUTTONS */}
       <div className="space-y-4">
@@ -210,8 +183,17 @@ export function ProfilePage({
 
       </div>
 
-
       {/* MODALS */}
+      {activeModal === 'avatar' && (
+        <AvatarPickerModal
+          user={user}
+          profile={profile}
+          closeModal={closeModal}
+          showToast={showToast}
+          refreshProfile={refreshProfile}
+        />
+      )}
+
       {activeModal === 'personal_details' && (
         <PersonalDetailsModal
           user={user}

@@ -10,6 +10,11 @@ export const useAuth = () => {
 
   // ----------------------------------------------------------
   // Fetch profile (safe helper)
+  //
+  // NOTE: this column list must stay in sync with the profiles
+  // table. If you add a new column and forget to add it here,
+  // it'll silently be undefined in the app. The three avatar_*
+  // columns were added for the avatar customization feature.
   // ----------------------------------------------------------
   const fetchProfile = useCallback(async (userId) => {
     if (!userId) {
@@ -20,10 +25,10 @@ export const useAuth = () => {
     try {
       const { data, error } = await supabase
         .from('profiles')
-        .select('id, first_name, last_name, username, currency, timezone, theme, has_completed_onboarding, created_at, updated_at')
+        .select('id, first_name, last_name, username, email, currency, timezone, theme, avatar_kind, avatar_value, avatar_color, has_completed_onboarding, created_at, updated_at')
         .eq('id', userId)
         .single()
-        
+
       if (error) throw error
       setProfile(data)
     } catch (error) {
