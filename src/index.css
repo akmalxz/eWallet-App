@@ -389,7 +389,7 @@ html, body { overscroll-behavior-y: none; }
 
 .header-safe-top {
   padding-top: max(0.5rem, env(safe-area-inset-top, 0px));
-  padding-top: calc(round(nearest, env(safe-area-inset-top, 0px), 1px) + 14px);
+  padding-top: calc(round(nearest, env(safe-area-inset-top, 0px), 1.5px) + 14px);
 }
 
 @keyframes slideIn {
