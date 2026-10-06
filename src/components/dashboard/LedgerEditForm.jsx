@@ -1,6 +1,6 @@
 // src/components/dashboard/LedgerEditForm.jsx
 import { useState } from 'react'
-import { X, Save } from 'lucide-react'
+import { X, Save, AlertCircle } from 'lucide-react'
 
 // Build the editable shape from a transaction. Uses the same date
 // derivation the old startEdit() used, so the input pre-fills identically.
@@ -214,6 +214,12 @@ export const LedgerEditForm = ({
           {errors.category && (
             <p className="mt-1 text-[11px] text-danger font-medium">
               {errors.category}
+            </p>
+          )}
+          {mainCategories.length === 0 && !errors.category && (
+            <p className="mt-1 text-[11px] text-warning-text flex items-center gap-1">
+              <AlertCircle className="w-3 h-3 shrink-0" />
+              No categories yet — set them up in Profile → Expense Categories.
             </p>
           )}
         </div>

@@ -1,6 +1,6 @@
 // src/components/commitments/CommitmentFormSheet.jsx
 import { useState, useEffect, useRef } from 'react'
-import { Save, AlertCircle } from 'lucide-react'
+import { Save, AlertCircle, Wallet } from 'lucide-react'
 import { Sheet } from '../shared/Sheet'
 import { formatMYR } from '../../utils/formatters'
 
@@ -90,6 +90,42 @@ export const CommitmentFormSheet = ({
   const setField = (field) => (e) => {
     setDraft((d) => ({ ...d, [field]: e.target.value }))
     if (errors[field]) setErrors((p) => ({ ...p, [field]: undefined }))
+  }
+
+  // ------------------------------------------------------------
+  // Empty state — can't add a bill without an active account.
+  // Editing an existing bill assumes the account already exists,
+  // so this only fires for new bills.
+  // ------------------------------------------------------------
+  const activeAccounts = accounts.filter(a => !a.is_archived)
+  if (!isEdit && activeAccounts.length === 0) {
+    return (
+      <Sheet
+        title="New bill"
+        onClose={onCancel}
+        saving={saving}
+      >
+        <div className="text-center py-4">
+          <div className="w-14 h-14 bg-surface-2 border border-line rounded-2xl flex items-center justify-center mx-auto mb-4 text-fg-subtle">
+            <Wallet className="w-6 h-6" />
+          </div>
+          <p className="text-sm font-bold text-fg">No accounts yet</p>
+          <p className="text-xs text-fg-subtle mt-1 max-w-[280px] mx-auto leading-relaxed">
+            Bills are paid from an account. Add one in{' '}
+            <strong className="text-fg-muted">Profile → Bank Accounts</strong>{' '}
+            first, then come back here.
+          </p>
+          <button
+            type="button"
+            onClick={onCancel}
+            className="mt-5 w-full py-3 rounded-xl text-sm font-semibold bg-surface-2 text-fg-muted hover:bg-surface-3 transition-colors"
+            style={{ minHeight: 44 }}
+          >
+            Close
+          </button>
+        </div>
+      </Sheet>
+    )
   }
 
   return (

@@ -155,6 +155,18 @@ export const ExpenseCategoriesModal = ({
     <>
       <ModalWrapper title="Expense Setup" closeModal={closeModal}>
         <div className="space-y-4">
+
+          {/* Empty state — only shown when the user has no expense categories yet */}
+          {expenseCategories.length === 0 && (
+            <div className="text-center py-6 px-4 bg-surface-2/50 border border-dashed border-line-strong rounded-xl">
+              <p className="text-sm font-bold text-fg">No categories yet</p>
+              <p className="text-xs text-fg-subtle mt-1 max-w-[260px] mx-auto leading-relaxed">
+                Import the common ones, or add your own below. You'll need at
+                least one before you can log a transaction.
+              </p>
+            </div>
+          )}
+
           <div className="flex items-center gap-2">
             <button
               onClick={handleImportPredefined}

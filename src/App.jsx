@@ -32,6 +32,9 @@ import { useTransactionParser } from './hooks/useTransactionParser'
 import { useAccountActions } from './hooks/useAccountActions'
 import { useNotifications } from './hooks/useNotifications'
 
+// Utils
+import { CLASSIFICATIONS } from './utils/accounts/accountClassifications'
+
 const AnalyticsPage = lazy(() =>
   import('./pages/AnalyticsPage').then(m => ({ default: m.AnalyticsPage }))
 )
@@ -63,7 +66,7 @@ export default function App() {
     commitmentPayments, setCommitmentPayments,
     monthlyExpenses,
     pendingReceivables,
-    categories, classifications, isLoading, error, fetchAllData
+    categories, isLoading, error, fetchAllData
   } = useTransactions(user, showToast)
 
   const commitmentsApi = useCommitments({
@@ -244,7 +247,7 @@ export default function App() {
             accounts={accountApi.sortedAccounts}
             activeAccounts={accountApi.activeAccounts}
             allAccounts={accounts}
-            classifications={classifications}
+            classifications={CLASSIFICATIONS}
             homeAccountId={homeAccountId}
             onHomeAccountChange={setHomeAccountId}
             velocityStats={velocityStats}
@@ -341,7 +344,7 @@ export default function App() {
             activeAccounts={accountApi.activeAccounts}
             categories={categories}
             getSubCategories={getSubCategories}
-            classifications={classifications}
+            classifications={CLASSIFICATIONS}
             commitments={commitments}
             fetchAllData={fetchAllData}
             showToast={showToast}
