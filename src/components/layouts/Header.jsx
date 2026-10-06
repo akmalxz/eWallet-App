@@ -107,9 +107,9 @@ export const Header = ({
         sits cleanly at the notch edge — never further.
       */}
       <header
-        className="sticky top-0 z-20 bg-page header-crisp"
+        className="sticky top-0 z-20 bg-page"
         style={{
-          paddingTop: '59px',
+          paddingTop: 'max(0.5rem, env(safe-area-inset-top, 0px))',
           paddingBottom: '0.5rem',
           paddingLeft: 'max(0.75rem, env(safe-area-inset-left, 0px))',
           paddingRight: 'max(0.75rem, env(safe-area-inset-right, 0px))'
