@@ -1,7 +1,7 @@
 // src/hooks/useTransactions.js
 import { useState, useCallback } from 'react'
 import { supabase } from '../lib/supabaseClient'
-import { monthKey } from '../utils/dateHelpers'
+import { enrichReceivablesByMonth } from '../utils/receivables'
 
 export const useTransactions = (user, showToast) => {
   const [accounts, setAccounts] = useState([])
@@ -112,10 +112,13 @@ export const useTransactions = (user, showToast) => {
       }
 
       // ------------------------------------------------------------
-      // PENDING RECEIVABLES (Accounts Receivable adjustment)
-      // Debts owed TO this user. Enriched with the session's month
-      // so the burn rate engine can scope which receivables apply
-      // to the current calendar month.
+      // PENDING RECEIVABLES
+      // Debts owed TO this user, enriched with their session's month
+      // so the burn-rate engine can scope which receivables apply to
+      // the current calendar month.
+      //
+      // Enrichment is a pure helper in utils/receivables.js so the
+      // month-matching logic is testable without mocking Supabase.
       // ------------------------------------------------------------
       try {
         const { data: debts, error: debtsErr } = await supabase
@@ -134,20 +137,7 @@ export const useTransactions = (user, showToast) => {
                 .in('id', sessionIds)
             : { data: [] }
 
-          const sessionMonth = new Map(
-            (sessions || []).map(s => [s.id, monthKey(s.created_at)])
-          )
-          const thisMonthK = monthKey(new Date())
-
-          const enriched = debts.map(d => ({
-            id: d.id,
-            amount: Number(d.amount) || 0,
-            sessionId: d.session_id,
-            sessionMonth: sessionMonth.get(d.session_id) || null,
-            isThisMonth: sessionMonth.get(d.session_id) === thisMonthK
-          }))
-
-          setPendingReceivables(enriched)
+          setPendingReceivables(enrichReceivablesByMonth(debts, sessions))
         } else {
           setPendingReceivables([])
         }

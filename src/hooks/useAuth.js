@@ -15,6 +15,12 @@ export const useAuth = () => {
   // table. If you add a new column and forget to add it here,
   // it'll silently be undefined in the app. The three avatar_*
   // columns were added for the avatar customization feature.
+  //
+  // Uses .maybeSingle() so a missing profile doesn't throw 406.
+  // The handle_new_user() DB trigger normally creates the row on
+  // signup; if it hasn't fired yet (or the user predates the
+  // trigger), profile stays null and the UI degrades gracefully
+  // (e.g. displayName falls back to the email prefix).
   // ----------------------------------------------------------
   const fetchProfile = useCallback(async (userId) => {
     if (!userId) {
@@ -27,10 +33,10 @@ export const useAuth = () => {
         .from('profiles')
         .select('id, first_name, last_name, username, email, currency, timezone, theme, avatar_kind, avatar_value, avatar_color, has_completed_onboarding, created_at, updated_at')
         .eq('id', userId)
-        .single()
+        .maybeSingle()
 
       if (error) throw error
-      setProfile(data)
+      setProfile(data || null)
     } catch (error) {
       console.error('Error fetching user profile:', error.message)
       setProfile(null)
