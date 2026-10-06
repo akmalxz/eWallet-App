@@ -112,7 +112,8 @@ export const Header = ({
           paddingTop: 'max(0.5rem, env(safe-area-inset-top, 0px))',
           paddingBottom: '0.5rem',
           paddingLeft: 'max(0.75rem, env(safe-area-inset-left, 0px))',
-          paddingRight: 'max(0.75rem, env(safe-area-inset-right, 0px))'
+          paddingRight: 'max(0.75rem, env(safe-area-inset-right, 0px))',
+          willChange: 'transform'
         }}
       >
         <div className="relative">
