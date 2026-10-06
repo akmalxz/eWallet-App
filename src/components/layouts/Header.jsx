@@ -1,5 +1,5 @@
 // src/components/layouts/Header.jsx
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import {
   Settings, LogOut, Menu, X, SunMoon, Bell, HandCoins, Wallet
 } from 'lucide-react'
@@ -26,8 +26,25 @@ export const Header = ({
 }) => {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
   const [isNotificationsOpen, setIsNotificationsOpen] = useState(false)
+  const [headerHeight, setHeaderHeight] = useState(0)
+  const headerRef = useRef(null)
 
   const { count: requestCount } = useFriendRequests(user)
+
+  // Measure the fixed header's rendered height so the spacer below it
+  // reserves exactly the right amount of vertical space. ResizeObserver
+  // catches every layout change — debt pill appearing, font scaling,
+  // safe-area changes when rotating — without a hardcoded height.
+  useEffect(() => {
+    const el = headerRef.current
+    if (!el) return
+    const ro = new ResizeObserver(([entry]) => {
+      const h = entry.borderBoxSize?.[0]?.blockSize ?? entry.contentRect.height
+      setHeaderHeight(h)
+    })
+    ro.observe(el)
+    return () => ro.disconnect()
+  }, [])
 
   useEffect(() => {
     if (typeof window === 'undefined') return
@@ -100,20 +117,19 @@ export const Header = ({
   return (
     <>
       {/*
-        Safe-area padding is applied here via `max()` so the base visual
-        padding never stacks on top of the safe inset. In portrait the
-        inset is 0, so the values below are just the base paddings. In
-        landscape the left/right insets take over (notch), and content
-        sits cleanly at the notch edge — never further.
+        Fixed instead of sticky. iOS PWA downsamples sticky headers'
+        composited layers at reduced DPR in standalone mode; fixed
+        headers are composited permanently at full DPR. The spacer
+        below reserves the header's height in the layout flow.
       */}
       <header
-        className="sticky top-0 z-20 bg-page"
+        ref={headerRef}
+        className="fixed top-0 left-0 right-0 z-20 bg-page"
         style={{
           paddingTop: 'max(0.5rem, env(safe-area-inset-top, 0px))',
           paddingBottom: '0.5rem',
           paddingLeft: 'max(0.75rem, env(safe-area-inset-left, 0px))',
-          paddingRight: 'max(0.75rem, env(safe-area-inset-right, 0px))',
-          willChange: 'transform'
+          paddingRight: 'max(0.75rem, env(safe-area-inset-right, 0px))'
         }}
       >
         <div className="relative">
@@ -189,7 +205,7 @@ export const Header = ({
               </div>
             </div>
 
-            {/* Header debt pill — hidden when both totals are zero */}
+            {/* Header debt pill */}
             {hasAnyDebt && (
               <div className="flex items-center gap-2 mt-2 md:mt-2.5">
                 {youOweTotal > 0 && (
@@ -287,7 +303,12 @@ export const Header = ({
         </div>
       </header>
 
-      {/* Notifications sheet — rendered outside the sticky header to escape its stacking context */}
+      {/* Spacer — reserves the fixed header's height in the layout flow.
+          Height is measured live so it tracks the debt pill, rotation,
+          and dynamic type without hardcoding. */}
+      <div aria-hidden="true" style={{ height: headerHeight }} />
+
+      {/* Notifications sheet */}
       {isNotificationsOpen && (
         <NotificationsSheet
           friendRequestCount={requestCount}
