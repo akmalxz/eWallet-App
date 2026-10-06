@@ -284,11 +284,6 @@ export const Header = ({
             </div>
           )}
         </div>
-
-        <div
-          aria-hidden="true"
-          className="pointer-events-none absolute left-0 right-0 top-full h-4 bg-gradient-to-b from-page via-page/50 to-transparent"
-        />
       </header>
 
       {/* Notifications sheet — rendered outside the sticky header to escape its stacking context */}
