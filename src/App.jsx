@@ -194,10 +194,17 @@ export default function App() {
 
   return (
     <div className="app-shell min-h-dvh bg-page font-sans text-fg">
+      {/*
+        Toast container. Fixed to the viewport, aligned right, offset from
+        the top by `1rem + safe-area-inset-top` so it clears the Dynamic
+        Island / status bar. Toasts inside are unpositioned and stack via
+        the container's `space-y-2`. The inline `right` uses `max()` so
+        the container slides inward when the notch intrudes in landscape.
+      */}
       <div
-        className="fixed right-4 z-50 space-y-2 max-w-[calc(100vw-2rem)]"
+        className="fixed pt-5 z-[200] space-y-2 max-w-[calc(100vw-2rem)]"
         style={{
-          top: 'calc(1rem + env(safe-area-inset-top, 0px))',
+          top: 'calc(round(nearest, env(safe-area-inset-top, 0px), 1px) + 22px)',
           right: 'max(1rem, env(safe-area-inset-right, 0px))'
         }}
       >

@@ -1,5 +1,5 @@
 // src/components/layouts/Header.jsx
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect } from 'react'
 import {
   Settings, LogOut, Menu, X, SunMoon, Bell, HandCoins, Wallet
 } from 'lucide-react'
@@ -26,25 +26,8 @@ export const Header = ({
 }) => {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
   const [isNotificationsOpen, setIsNotificationsOpen] = useState(false)
-  const [headerHeight, setHeaderHeight] = useState(0)
-  const headerRef = useRef(null)
 
   const { count: requestCount } = useFriendRequests(user)
-
-  // Measure the fixed header's rendered height so the spacer below it
-  // reserves exactly the right amount of vertical space. ResizeObserver
-  // catches every layout change — debt pill appearing, font scaling,
-  // safe-area changes when rotating — without a hardcoded height.
-  useEffect(() => {
-    const el = headerRef.current
-    if (!el) return
-    const ro = new ResizeObserver(([entry]) => {
-      const h = entry.borderBoxSize?.[0]?.blockSize ?? entry.contentRect.height
-      setHeaderHeight(h)
-    })
-    ro.observe(el)
-    return () => ro.disconnect()
-  }, [])
 
   useEffect(() => {
     if (typeof window === 'undefined') return
@@ -117,16 +100,17 @@ export const Header = ({
   return (
     <>
       {/*
-        Fixed instead of sticky. iOS PWA downsamples sticky headers'
-        composited layers at reduced DPR in standalone mode; fixed
-        headers are composited permanently at full DPR. The spacer
-        below reserves the header's height in the layout flow.
+        Sticky header. The `header-safe-top` class applies a rounded
+        padding-top via CSS `round()`, which snaps env(safe-area-inset-top)
+        to an integer. iOS PWA reports that inset fractionally (e.g.
+        62.3333px) in standalone mode, and a fractional header height
+        causes the composited layer to rasterize at 1x DPR — everything
+        inside looks blurry. Rounding fixes it without changing the
+        visual padding.
       */}
       <header
-        ref={headerRef}
-        className="fixed top-0 left-0 right-0 z-20 bg-page"
+        className="sticky top-0 z-20 bg-page border-b border-line/40 header-safe-top"
         style={{
-          paddingTop: 'max(0.5rem, env(safe-area-inset-top, 0px))',
           paddingBottom: '0.5rem',
           paddingLeft: 'max(0.75rem, env(safe-area-inset-left, 0px))',
           paddingRight: 'max(0.75rem, env(safe-area-inset-right, 0px))'
@@ -205,7 +189,7 @@ export const Header = ({
               </div>
             </div>
 
-            {/* Header debt pill */}
+            {/* Header debt pill — hidden when both totals are zero */}
             {hasAnyDebt && (
               <div className="flex items-center gap-2 mt-2 md:mt-2.5">
                 {youOweTotal > 0 && (
@@ -247,7 +231,7 @@ export const Header = ({
           {/* Mobile dropdown menu */}
           {isMobileMenuOpen && (
             <div className="absolute left-0 right-0 top-full z-10 md:hidden pointer-events-none">
-              <div className="mt-1 pointer-events-auto bg-surface/95 backdrop-blur-md rounded-xl shadow-lg border border-line p-2 space-y-1 animate-in slide-in-from-top-2 duration-200">
+              <div className="mt-1 pointer-events-auto bg-surface rounded-xl shadow-lg border border-line p-2 space-y-1 animate-in slide-in-from-top-2 duration-200">
 
                 <button
                   onClick={handleOpenNotifications}
@@ -301,14 +285,21 @@ export const Header = ({
             </div>
           )}
         </div>
+
+        {/*
+          Bottom fade — softens the header/content boundary during scroll.
+          Positioned below the header's border-box (`top-full`), so it
+          doesn't affect the header's composited layer height. Kept
+          without backdrop-blur, since blur on the fade triggered iOS's
+          downsampling path in PWA mode.
+        */}
+        <div
+          aria-hidden="true"
+          className="pointer-events-none absolute left-0 right-0 top-full h-4 bg-gradient-to-b from-page via-page/50 to-transparent"
+        />
       </header>
 
-      {/* Spacer — reserves the fixed header's height in the layout flow.
-          Height is measured live so it tracks the debt pill, rotation,
-          and dynamic type without hardcoding. */}
-      <div aria-hidden="true" style={{ height: headerHeight }} />
-
-      {/* Notifications sheet */}
+      {/* Notifications sheet — rendered outside the sticky header to escape its stacking context */}
       {isNotificationsOpen && (
         <NotificationsSheet
           friendRequestCount={requestCount}

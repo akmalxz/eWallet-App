@@ -387,11 +387,13 @@ html, body { overscroll-behavior-y: none; }
   }
 }
 
-.header-crisp {
-  /* Force a fresh rasterization of the header's composited layer.
-     iOS PWA sometimes downsamples sticky headers whose computed height
-     lands on a fractional value; contain:paint forces the browser to
-     composite the header independently, which recomputes at the
-     correct device pixel ratio. */
-  contain: paint;
+.header-safe-top {
+  padding-top: max(0.5rem, env(safe-area-inset-top, 0px));
+  padding-top: calc(round(nearest, env(safe-area-inset-top, 0px), 1px) + 14px);
 }
+
+@keyframes slideIn {
+  from { opacity: 0; transform: translateX(16px); }
+  to   { opacity: 1; transform: translateX(0); }
+}
+.animate-slide-in { animation: slideIn 0.25s ease-out; }

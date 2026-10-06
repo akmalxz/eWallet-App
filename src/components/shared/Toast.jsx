@@ -24,9 +24,13 @@ export const ToastNotification = ({ message, type, onClose }) => {
     info: <Activity className="w-5 h-5" />
   }
 
+  // Positioned by the parent container in App.jsx, which respects
+  // safe-area insets. This element intentionally has no positioning
+  // of its own — adding `fixed`/`absolute` here would override the
+  // container's placement and break on notched devices.
   return (
     <div
-      className={`fixed top-4 right-4 z-50 p-4 rounded-xl border shadow-lg flex items-center gap-3 max-w-md animate-slide-in ${
+      className={`p-4 rounded-xl border shadow-lg flex items-center gap-3 max-w-md animate-slide-in ${
         styles[type] || styles.info
       }`}
     >
