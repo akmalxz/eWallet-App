@@ -99,9 +99,24 @@ export const Header = ({
 
   return (
     <>
-      <header className="sticky top-0 z-20 pt-safe px-safe bg-page">
-        <div className="relative bg-page">
-          <div className="max-w-6xl mx-auto px-3 py-2 md:py-3">
+      {/*
+        Safe-area padding is applied here via `max()` so the base visual
+        padding never stacks on top of the safe inset. In portrait the
+        inset is 0, so the values below are just the base paddings. In
+        landscape the left/right insets take over (notch), and content
+        sits cleanly at the notch edge — never further.
+      */}
+      <header
+        className="sticky top-0 z-20 bg-page"
+        style={{
+          paddingTop: 'max(0.5rem, env(safe-area-inset-top, 0px))',
+          paddingBottom: '0.5rem',
+          paddingLeft: 'max(0.75rem, env(safe-area-inset-left, 0px))',
+          paddingRight: 'max(0.75rem, env(safe-area-inset-right, 0px))'
+        }}
+      >
+        <div className="relative">
+          <div className="max-w-6xl mx-auto">
             <div className="flex items-center justify-between gap-2">
               <button
                 onClick={() => setCurrentView('dashboard')}
@@ -215,7 +230,7 @@ export const Header = ({
           {/* Mobile dropdown menu */}
           {isMobileMenuOpen && (
             <div className="absolute left-0 right-0 top-full z-10 md:hidden pointer-events-none">
-              <div className="mx-3 mt-1 pointer-events-auto bg-surface/95 backdrop-blur-md rounded-xl shadow-lg border border-line p-2 space-y-1 animate-in slide-in-from-top-2 duration-200">
+              <div className="mt-1 pointer-events-auto bg-surface/95 backdrop-blur-md rounded-xl shadow-lg border border-line p-2 space-y-1 animate-in slide-in-from-top-2 duration-200">
 
                 <button
                   onClick={handleOpenNotifications}

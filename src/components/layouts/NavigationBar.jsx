@@ -76,10 +76,21 @@ export const NavigationBar = ({ currentView, setCurrentView }) => {
         </nav>
       </div>
 
-      {/* MOBILE — Fixed liquid glass pill */}
+      {/*
+        MOBILE — Fixed liquid glass pill.
+        - `left` and `right` use max() so the nav clears the notch in
+          landscape while keeping a 1rem minimum in portrait.
+        - `bottom` is additive (1.5rem + safe inset) so the nav floats
+          *above* the home indicator, not into it. Different intent
+          from the sides — do not convert to max().
+      */}
       <nav
-        className="md:hidden fixed left-4 right-4 z-50 rounded-3xl bg-glass-bg backdrop-blur-2xl border border-glass-border shadow-[0_8px_30px_rgba(0,0,0,0.08)] dark:shadow-[0_8px_30px_rgba(0,0,0,0.5)]"
-        style={{ bottom: 'calc(1.5rem + env(safe-area-inset-bottom, 0px))' }}
+        className="md:hidden fixed z-50 rounded-3xl bg-glass-bg backdrop-blur-2xl border border-glass-border shadow-[0_8px_30px_rgba(0,0,0,0.08)] dark:shadow-[0_8px_30px_rgba(0,0,0,0.5)]"
+        style={{
+          left: 'max(1rem, env(safe-area-inset-left, 0px))',
+          right: 'max(1rem, env(safe-area-inset-right, 0px))',
+          bottom: 'calc(1.5rem + env(safe-area-inset-bottom, 0px))'
+        }}
       >
         <div className="relative flex items-center h-16">
           {activeIndex >= 0 && (
