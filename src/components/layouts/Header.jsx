@@ -107,7 +107,7 @@ export const Header = ({
         sits cleanly at the notch edge — never further.
       */}
       <header
-        className="sticky top-0 z-20 bg-page"
+        className="fixed top-0 z-20 bg-page"
         style={{
           paddingTop: 'max(0.5rem, env(safe-area-inset-top, 0px))',
           paddingBottom: '0.5rem',
@@ -290,6 +290,13 @@ export const Header = ({
           className="pointer-events-none absolute left-0 right-0 top-full h-4 bg-gradient-to-b from-page via-page/50 to-transparent"
         />
       </header>
+
+      <div
+        aria-hidden="true"
+        style={{
+          height: 'calc(env(safe-area-inset-top, 0px) + 60px)'
+        }}
+      />
 
       {/* Notifications sheet — rendered outside the sticky header to escape its stacking context */}
       {isNotificationsOpen && (
