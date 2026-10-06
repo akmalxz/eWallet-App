@@ -386,3 +386,12 @@ html, body { overscroll-behavior-y: none; }
     margin-bottom: 0 !important;
   }
 }
+
+.header-crisp {
+  /* Force a fresh rasterization of the header's composited layer.
+     iOS PWA sometimes downsamples sticky headers whose computed height
+     lands on a fractional value; contain:paint forces the browser to
+     composite the header independently, which recomputes at the
+     correct device pixel ratio. */
+  contain: paint;
+}
