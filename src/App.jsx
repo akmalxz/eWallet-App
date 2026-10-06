@@ -193,7 +193,7 @@ export default function App() {
     )
 
   return (
-    <div className="app-shell min-h-dvh bg-gradient-to-b from-page to-surface-2 font-sans text-fg">
+    <div className="app-shell min-h-dvh bg-page font-sans text-fg">
       <div
         className="fixed right-4 z-50 space-y-2 max-w-[calc(100vw-2rem)]"
         style={{
