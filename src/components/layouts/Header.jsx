@@ -287,7 +287,7 @@ export const Header = ({
 
         <div
           aria-hidden="true"
-          className="pointer-events-none absolute left-0 right-0 top-full h-4 bg-gradient-to-b from-page via-page/50 to-transparent backdrop-blur-md"
+          className="pointer-events-none absolute left-0 right-0 top-full h-4 bg-gradient-to-b from-page via-page/50 to-transparent"
         />
       </header>
 

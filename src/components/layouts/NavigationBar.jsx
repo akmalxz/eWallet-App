@@ -89,7 +89,7 @@ export const NavigationBar = ({ currentView, setCurrentView }) => {
         style={{
           left: 'max(1rem, env(safe-area-inset-left, 0px))',
           right: 'max(1rem, env(safe-area-inset-right, 0px))',
-          bottom: 'calc(1.5rem + env(safe-area-inset-bottom, 0px))'
+          bottom: 'calc(0.5rem + env(safe-area-inset-bottom, 0px))'
         }}
       >
         <div className="relative flex items-center h-16">
