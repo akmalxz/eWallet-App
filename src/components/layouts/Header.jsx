@@ -54,20 +54,6 @@ export const Header = ({
 
   const greetingLine = `${getGreeting()}, ${firstName}`
 
-  const viewTitles = {
-    dashboard: greetingLine,
-    log: 'Manual Entry',
-    transactions: 'Ledger & Verification',
-    commitments: 'Bills',
-    network: 'My Network',
-    split: 'Split Bill',
-    analytics: 'Analytics',
-    profile: 'Profile & Settings'
-  }
-
-  const mobileTitle = viewTitles[currentView] || 'FlowState'
-  const desktopTitle = greetingLine
-
   const totalBadge = requestCount + actionableCount
   const hasAnyBadge = totalBadge > 0
   const badgeText = totalBadge > 9 ? '9+' : totalBadge
@@ -132,8 +118,7 @@ export const Header = ({
                   className="w-6 h-6 md:w-7 md:h-7 shrink-0"
                 />
                 <h1 className="text-base md:text-xl font-bold tracking-tight truncate text-fg">
-                  <span className="md:hidden">{mobileTitle}</span>
-                  <span className="hidden md:inline">{desktopTitle}</span>
+                  {greetingLine}
                 </h1>
               </button>
 

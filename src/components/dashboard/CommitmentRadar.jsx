@@ -3,14 +3,16 @@ import { useState, useMemo, useRef, useEffect } from 'react'
 import {
   Target, ShieldCheck, AlertTriangle, Calendar, Plus, Check, CheckCircle,
   ChevronDown, ChevronUp, Power, Trash2, Building2, Undo2, Wallet,
-  SkipForward, CircleSlash, AlertOctagon, Pencil, MoreVertical, Loader2
+  SkipForward, CircleSlash, AlertOctagon, Pencil, MoreVertical, Loader2,
+  Layers
 } from 'lucide-react'
 import { formatMYR } from '../../utils/formatters'
-import { monthShortName, toMYDate } from '../../utils/dateHelpers'
+import { monthShortName, toMYDate, dayKey, dueDateForMonth } from '../../utils/dateHelpers'
 import { isPeriodPaid, isPeriodSkipped } from '../../utils/commitments/commitmentPayments'
 import { MarkPaidSheet } from './MarkPaidSheet'
 import { CommitmentFormSheet } from '../commitments/CommitmentFormSheet'
 import { ConfirmSheet } from '../shared/ConfirmSheet'
+import { BillsCalendar } from '../commitments/BillsCalendar'
 
 // ============================================================
 // Period pill
@@ -132,10 +134,15 @@ export const CommitmentRadar = ({
   const [showPaid, setShowPaid] = useState(false)
   const [showSkipped, setShowSkipped] = useState(false)
   const [showInactive, setShowInactive] = useState(false)
+  const [showUpcoming, setShowUpcoming] = useState(true)
   const [marking, setMarking] = useState(null)
   const [markPaidError, setMarkPaidError] = useState(null)
   const [formState, setFormState] = useState(null)
   const [confirm, setConfirm] = useState(null)
+
+  const [selectedDate, setSelectedDate] = useState(() => dayKey(new Date()))
+  const userPickedDateRef = useRef(false)
+  const autoAdvancedRef = useRef(false)
 
   const {
     currentBalance = 0,
@@ -157,6 +164,8 @@ export const CommitmentRadar = ({
   const nowMY = toMYDate(new Date())
   const currentYear = nowMY.getUTCFullYear()
   const currentMonth = nowMY.getUTCMonth() + 1
+
+  const todayKey = dayKey(new Date())
 
   const activeAll = commitments.filter((c) => c.is_active)
 
@@ -182,6 +191,116 @@ export const CommitmentRadar = ({
     return map
   }, [payments])
 
+  // ------------------------------------------------------------
+  // Auto-advance — runs once after loading finishes.
+  // ------------------------------------------------------------
+  useEffect(() => {
+    if (loading) return
+    if (autoAdvancedRef.current) return
+    if (userPickedDateRef.current) return
+
+    const hasToday = scheduleSafe.unpaidPeriods.some(
+      (p) => dayKey(p.dueDate) === todayKey
+    )
+    if (hasToday) {
+      autoAdvancedRef.current = true
+      return
+    }
+
+    const upcoming = [...scheduleSafe.unpaidPeriods]
+      .filter((p) => p.daysOverdue === 0)
+      .sort((a, b) => a.dueDate - b.dueDate)
+
+    if (upcoming.length > 0) {
+      setSelectedDate(dayKey(upcoming[0].dueDate))
+    }
+    autoAdvancedRef.current = true
+  }, [loading, scheduleSafe.unpaidPeriods, todayKey])
+
+  // ------------------------------------------------------------
+  // Filtering
+  // ------------------------------------------------------------
+  const selectedPeriods = useMemo(() => {
+    return scheduleSafe.unpaidPeriods.filter(
+      (p) => dayKey(p.dueDate) === selectedDate
+    )
+  }, [scheduleSafe.unpaidPeriods, selectedDate])
+
+  const otherPeriods = useMemo(() => {
+    return scheduleSafe.unpaidPeriods
+      .filter((p) => dayKey(p.dueDate) !== selectedDate)
+      .sort((a, b) => {
+        if (a.daysOverdue !== b.daysOverdue) return b.daysOverdue - a.daysOverdue
+        if (a.dueDate.getTime() !== b.dueDate.getTime()) {
+          return a.dueDate - b.dueDate
+        }
+        return b.amount - a.amount
+      })
+  }, [scheduleSafe.unpaidPeriods, selectedDate])
+
+  // ------------------------------------------------------------
+  // Paid bills split by selected date.
+  //
+  // A paid commitment has a payment record (period_year, period_month)
+  // and a due date derived from its due_day_of_month. If that due date
+  // matches the selected calendar day, we surface the bill in the
+  // selected-day section instead of leaving it buried in the "Paid"
+  // dropdown. The dropdown only keeps bills whose due date doesn't
+  // match the current selection.
+  // ------------------------------------------------------------
+  const paidByDueDate = useMemo(() => {
+    return paidCommitments.map((comm) => {
+      const pmt = payments.find(
+        (p) =>
+          p.commitment_id === comm.id &&
+          p.period_year === currentYear &&
+          p.period_month === currentMonth &&
+          p.status === 'paid'
+      )
+      if (!pmt) return { comm, dueKey: null }
+      const due = dueDateForMonth(
+        comm.due_day_of_month,
+        pmt.period_year,
+        pmt.period_month - 1
+      )
+      return { comm, dueKey: dayKey(due) }
+    })
+  }, [paidCommitments, payments, currentYear, currentMonth])
+
+  const paidPeriodsForSelectedDate = useMemo(
+    () => paidByDueDate.filter((x) => x.dueKey === selectedDate).map((x) => x.comm),
+    [paidByDueDate, selectedDate]
+  )
+
+  const otherPaidCommitments = useMemo(
+    () => paidByDueDate.filter((x) => x.dueKey !== selectedDate).map((x) => x.comm),
+    [paidByDueDate, selectedDate]
+  )
+
+  const selectedDayTotal = useMemo(
+    () => selectedPeriods.reduce((s, p) => s + p.amount, 0),
+    [selectedPeriods]
+  )
+
+  const selectedDayCount = selectedPeriods.length + paidPeriodsForSelectedDate.length
+  const hasAnythingOnDay = selectedDayCount > 0
+
+  const handleSelectDate = (key) => {
+    userPickedDateRef.current = true
+    setSelectedDate(key)
+  }
+
+  const selectedHeaderLabel = useMemo(() => {
+    if (selectedDate === todayKey) return 'Today'
+    const d = new Date(`${selectedDate}T12:00:00+08:00`)
+    return d.toLocaleDateString('en-MY', {
+      weekday: 'short', day: 'numeric', month: 'short'
+    })
+  }, [selectedDate, todayKey])
+
+  // ------------------------------------------------------------
+  // Handlers
+  // ------------------------------------------------------------
   const handleFormSubmit = async (payload, existing) => {
     if (existing) {
       const res = await onUpdateCommitment(existing.id, payload)
@@ -233,9 +352,188 @@ export const CommitmentRadar = ({
     }
   }
 
+  // ------------------------------------------------------------
+  // Row renderers
+  // ------------------------------------------------------------
+  const renderBillRow = (period) => {
+    const comm = period.commitment
+    const account = getAccount(period.accountId)
+    const accountBalance = account?.balance ?? 0
+    const pill = getPeriodPill(period, nowMY)
+    const isOverdue = period.daysOverdue > 0
+    const accountShort = period.accountShort
+
+    const rowClass = isOverdue
+      ? 'bg-danger-soft/50 border-danger-border'
+      : accountShort
+        ? 'bg-warning-soft/50 border-warning-border'
+        : 'bg-surface border-line hover:border-line-strong'
+
+    const rowActions = [
+      {
+        label: 'Edit',
+        icon: <Pencil className="w-3.5 h-3.5" />,
+        onClick: () => setFormState({ mode: 'edit', commitment: comm })
+      },
+      {
+        label: 'Pause',
+        icon: <Power className="w-3.5 h-3.5" />,
+        onClick: () => setConfirm({ kind: 'pause', commitment: comm })
+      },
+      {
+        label: 'Delete',
+        icon: <Trash2 className="w-3.5 h-3.5" />,
+        danger: true,
+        onClick: () => setConfirm({ kind: 'delete', commitment: comm })
+      }
+    ]
+
+    return (
+      <div
+        key={`${period.commitmentId}-${period.periodYear}-${period.periodMonth}`}
+        className={`rounded-xl transition-all border shadow-sm p-4 ${rowClass}`}
+      >
+        <div className="flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-4">
+          <div className="flex items-start gap-3 min-w-0 flex-1">
+            <div
+              className={`shrink-0 w-8 h-8 rounded-lg flex items-center justify-center ${
+                isOverdue
+                  ? 'bg-danger/15 text-danger'
+                  : 'bg-surface-2 text-fg-subtle'
+              }`}
+            >
+              {isOverdue
+                ? <AlertTriangle className="w-4 h-4" />
+                : <Calendar className="w-4 h-4" />}
+            </div>
+
+            <div className="min-w-0 flex-1 space-y-1.5">
+              <div className="flex items-center gap-2 flex-wrap">
+                <span className="text-sm font-bold text-fg truncate">{comm.name}</span>
+                <span
+                  className={`text-[10px] font-bold px-2 py-0.5 rounded-md whitespace-nowrap uppercase tracking-wider ${pill.color}`}
+                >
+                  {pill.label}
+                </span>
+              </div>
+
+              <div className="flex items-center gap-1.5 text-[11px] font-medium text-fg-muted flex-wrap">
+                <Building2 className="w-3 h-3 text-fg-subtle shrink-0" />
+                <span>
+                  From{' '}
+                  <strong className="text-fg">{account?.account_name || 'Unknown'}</strong>
+                </span>
+                <span className="text-line-strong">·</span>
+                <Wallet className="w-3 h-3 text-fg-subtle shrink-0" />
+                <span className={accountShort ? 'text-warning-text font-semibold' : ''}>
+                  {formatMYR(accountBalance)} available
+                </span>
+              </div>
+            </div>
+          </div>
+
+          <div className="flex items-center justify-between sm:justify-end gap-3 shrink-0 border-t sm:border-t-0 border-line pt-3 sm:pt-0">
+            <span className="text-base font-black text-fg whitespace-nowrap">
+              {formatMYR(period.amount)}
+            </span>
+
+            <div className="flex items-center gap-1.5">
+              <button
+                onClick={() =>
+                  setConfirm({ kind: 'skip', commitment: comm, period })
+                }
+                disabled={saving}
+                className="flex items-center gap-1 px-3 py-2 text-xs font-bold text-fg-muted bg-surface-2 hover:bg-surface-3 border border-line rounded-lg transition-all disabled:opacity-50"
+                style={{ minHeight: 44 }}
+                title="Skip this month"
+                aria-label={`Skip ${comm.name} for this period`}
+              >
+                <SkipForward className="w-3.5 h-3.5" />
+                <span className="hidden sm:inline">Skip</span>
+              </button>
+
+              <button
+                onClick={() => {
+                  setMarkPaidError(null)
+                  setMarking(period)
+                }}
+                disabled={saving}
+                className="flex items-center gap-1.5 px-3.5 py-2 text-xs font-bold text-success-text bg-success-soft hover:bg-success-soft/80 border border-success-border rounded-lg transition-all shadow-sm disabled:opacity-50"
+                style={{ minHeight: 44 }}
+              >
+                <Check className="w-3.5 h-3.5" /> Paid
+              </button>
+
+              <RowMenu actions={rowActions} ariaLabel={`${comm.name} actions`} />
+            </div>
+          </div>
+        </div>
+      </div>
+    )
+  }
+
+  const renderPaidBillRow = (comm) => {
+    const account = getAccount(comm.account_id)
+
+    return (
+      <div
+        key={`paid-${comm.id}`}
+        className="rounded-xl transition-all border shadow-sm p-4 bg-success-soft/30 border-success-border"
+      >
+        <div className="flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-4">
+          <div className="flex items-start gap-3 min-w-0 flex-1">
+            <div className="shrink-0 w-8 h-8 rounded-lg flex items-center justify-center bg-success-soft text-success">
+              <CheckCircle className="w-4 h-4" />
+            </div>
+
+            <div className="min-w-0 flex-1 space-y-1.5">
+              <div className="flex items-center gap-2 flex-wrap">
+                <span className="text-sm font-bold text-fg-muted line-through truncate">
+                  {comm.name}
+                </span>
+                <span
+                  className="text-[10px] font-bold px-2 py-0.5 rounded-md whitespace-nowrap uppercase tracking-wider bg-success-soft text-success-text border border-success-border"
+                >
+                  Paid
+                </span>
+              </div>
+
+              <div className="flex items-center gap-1.5 text-[11px] font-medium text-fg-muted flex-wrap">
+                <Building2 className="w-3 h-3 text-fg-subtle shrink-0" />
+                <span>
+                  From{' '}
+                  <strong className="text-fg-muted">{account?.account_name || 'Unknown'}</strong>
+                </span>
+              </div>
+            </div>
+          </div>
+
+          <div className="flex items-center justify-between sm:justify-end gap-3 shrink-0 border-t sm:border-t-0 border-line pt-3 sm:pt-0">
+            <span className="text-base font-black text-fg-subtle line-through whitespace-nowrap">
+              {formatMYR(comm.amount)}
+            </span>
+
+            <button
+              onClick={() => setConfirm({ kind: 'undo', commitment: comm })}
+              disabled={saving}
+              className="inline-flex items-center gap-1 text-[11px] font-bold text-fg-subtle hover:text-fg hover:bg-surface px-2.5 py-2 rounded-md transition-colors border border-transparent hover:border-line disabled:opacity-50"
+              style={{ minHeight: 44 }}
+              aria-label={`Undo payment for ${comm.name}`}
+            >
+              <Undo2 className="w-3.5 h-3.5" /> Undo
+            </button>
+          </div>
+        </div>
+      </div>
+    )
+  }
+
+  // ------------------------------------------------------------
+  // Early returns
+  // ------------------------------------------------------------
   if (loading) {
     return (
-      <div className="bg-surface rounded-2xl shadow-md border border-line p-6">
+      <div className="bg-surface/60 backdrop-blur-xl border border-line/50 rounded-3xl p-6 shadow-sm">
         <div className="flex items-center justify-center py-10 text-fg-subtle">
           <Loader2 className="w-6 h-6 animate-spin" />
           <span className="ml-2 text-sm font-medium">Loading bills…</span>
@@ -246,7 +544,7 @@ export const CommitmentRadar = ({
 
   if (error) {
     return (
-      <div className="bg-surface rounded-2xl shadow-md border border-danger-border p-6">
+      <div className="bg-surface/60 backdrop-blur-xl border border-danger-border rounded-3xl p-6 shadow-sm">
         <div className="flex items-start gap-3">
           <AlertTriangle className="w-5 h-5 text-danger shrink-0 mt-0.5" />
           <div>
@@ -261,8 +559,14 @@ export const CommitmentRadar = ({
   if (!hasAnyCommitments) {
     return (
       <>
-        <div className="bg-surface rounded-2xl shadow-md border border-line p-6 relative overflow-hidden">
-          <div className="absolute top-0 inset-x-0 h-1 bg-surface-3" />
+        <div className="bg-surface/60 backdrop-blur-xl border border-line/50 rounded-3xl p-5 shadow-sm overflow-hidden">
+          <div className="flex items-center gap-4 mb-5">
+            <div className="p-2.5 rounded-xl bg-surface-2 text-fg-muted">
+              <Layers className="w-5 h-5" />
+            </div>
+            <span className="font-bold text-base text-fg">Bills</span>
+          </div>
+
           <div className="text-center py-8">
             <div className="w-14 h-14 bg-surface-2 border border-line rounded-2xl flex items-center justify-center mx-auto mb-3 text-fg-subtle">
               <Target className="w-6 h-6" />
@@ -295,20 +599,23 @@ export const CommitmentRadar = ({
     )
   }
 
+  // ------------------------------------------------------------
+  // Main render
+  // ------------------------------------------------------------
   return (
     <>
       <div
-        className={`bg-surface rounded-2xl shadow-md border p-5 md:p-6 relative overflow-hidden transition-all duration-300 ${
-          isSafe ? 'border-line' : 'border-danger-border'
+        className={`bg-surface/60 backdrop-blur-xl border rounded-3xl p-5 md:p-6 shadow-sm overflow-hidden transition-all duration-300 ${
+          isSafe ? 'border-line/50' : 'border-danger-border'
         }`}
       >
-        <div className={`absolute top-0 inset-x-0 h-1 ${isSafe ? 'bg-success' : 'bg-danger'}`} />
-
-        {/* Header */}
-        <div className="flex justify-between items-center mb-5 mt-1 gap-3">
-          <div className="min-w-0">
-            <h2 className="text-base font-bold text-fg">Bills</h2>
-            <p className="text-xs text-fg-subtle mt-0.5">Subscriptions & recurring payments</p>
+        {/* Card header */}
+        <div className="flex items-center justify-between gap-3 mb-5">
+          <div className="flex items-center gap-4 min-w-0">
+            <div className="p-2.5 rounded-xl bg-surface-2 text-fg-muted shrink-0">
+              <Layers className="w-5 h-5" />
+            </div>
+            <span className="font-bold text-base text-fg truncate">Bills</span>
           </div>
 
           <div className="flex items-center gap-1.5 shrink-0">
@@ -420,136 +727,94 @@ export const CommitmentRadar = ({
           </div>
         )}
 
-        {/* Unpaid periods */}
+        {/* Calendar strip */}
         <div className="mb-4">
-          <p className="text-[10px] text-fg-subtle uppercase font-bold tracking-wider mb-2.5 flex items-center gap-1.5">
-            <Calendar className="w-3.5 h-3.5 text-brand" /> Coming up ({scheduleSafe.unpaidPeriods.length})
-          </p>
-
-          {scheduleSafe.unpaidPeriods.length === 0 ? (
-            <div className="text-xs font-medium text-success-text p-3.5 bg-success-soft border border-success-border rounded-xl flex items-center gap-2">
-              <CheckCircle className="w-4 h-4 text-success shrink-0" />
-              You've handled everything for this month.
-            </div>
-          ) : (
-            <div className="space-y-2">
-              {scheduleSafe.unpaidPeriods.map((period) => {
-                const comm = period.commitment
-                const account = getAccount(period.accountId)
-                const accountBalance = account?.balance ?? 0
-                const pill = getPeriodPill(period, nowMY)
-                const isOverdue = period.daysOverdue > 0
-                const accountShort = period.accountShort
-
-                const rowClass = isOverdue
-                  ? 'bg-danger-soft/50 border-danger-border'
-                  : accountShort
-                    ? 'bg-warning-soft/50 border-warning-border'
-                    : 'bg-surface border-line hover:border-line-strong'
-
-                const rowActions = [
-                  {
-                    label: 'Edit',
-                    icon: <Pencil className="w-3.5 h-3.5" />,
-                    onClick: () => setFormState({ mode: 'edit', commitment: comm })
-                  },
-                  {
-                    label: 'Pause',
-                    icon: <Power className="w-3.5 h-3.5" />,
-                    onClick: () => setConfirm({ kind: 'pause', commitment: comm })
-                  },
-                  {
-                    label: 'Delete',
-                    icon: <Trash2 className="w-3.5 h-3.5" />,
-                    danger: true,
-                    onClick: () => setConfirm({ kind: 'delete', commitment: comm })
-                  }
-                ]
-
-                return (
-                  <div
-                    key={`${period.commitmentId}-${period.periodYear}-${period.periodMonth}`}
-                    className={`flex flex-col sm:flex-row sm:items-center justify-between p-4 rounded-xl transition-all border shadow-sm gap-3 sm:gap-4 ${rowClass}`}
-                  >
-                    <div className="flex flex-col gap-2 min-w-0 flex-1">
-                      <div className="flex items-center gap-2.5 flex-wrap">
-                        {isOverdue ? (
-                          <div className="bg-danger/15 p-1.5 rounded-lg text-danger shrink-0">
-                            <AlertTriangle className="w-3.5 h-3.5" />
-                          </div>
-                        ) : (
-                          <span className="text-fg-subtle shrink-0">
-                            <Calendar className="w-3.5 h-3.5" />
-                          </span>
-                        )}
-                        <span
-                          className={`text-[10px] font-bold px-2 py-1 rounded-lg whitespace-nowrap uppercase tracking-wider ${pill.color}`}
-                        >
-                          {pill.label}
-                        </span>
-                        <span className="text-sm font-bold text-fg truncate">{comm.name}</span>
-                      </div>
-
-                      <div className="flex items-center gap-1.5 text-[11px] font-medium text-fg-muted pl-1 flex-wrap">
-                        <Building2 className="w-3 h-3 text-fg-subtle shrink-0" />
-                        <span>
-                          Deducts from:{' '}
-                          <strong className="text-fg">
-                            {account?.account_name || 'Unknown'}
-                          </strong>
-                        </span>
-                        <span className="text-line-strong">·</span>
-                        <Wallet className="w-3 h-3 text-fg-subtle shrink-0" />
-                        <span className={accountShort ? 'text-warning-text font-semibold' : ''}>
-                          {formatMYR(accountBalance)} available
-                        </span>
-                      </div>
-                    </div>
-
-                    <div className="flex items-center justify-between sm:justify-end gap-2 shrink-0 border-t sm:border-t-0 border-line pt-3 sm:pt-0">
-                      <span className="text-sm font-black whitespace-nowrap text-fg">
-                        {formatMYR(period.amount)}
-                      </span>
-
-                      <div className="flex items-center gap-1.5">
-                        <button
-                          onClick={() =>
-                            setConfirm({ kind: 'skip', commitment: comm, period })
-                          }
-                          disabled={saving}
-                          className="flex items-center gap-1 px-3 py-2 text-xs font-bold text-fg-muted bg-surface-2 hover:bg-surface-3 border border-line rounded-lg transition-all disabled:opacity-50"
-                          style={{ minHeight: 44 }}
-                          title="Skip this month"
-                          aria-label={`Skip ${comm.name} for this period`}
-                        >
-                          <SkipForward className="w-3.5 h-3.5" />
-                          <span className="hidden sm:inline">Skip</span>
-                        </button>
-
-                        <button
-                          onClick={() => {
-                            setMarkPaidError(null)
-                            setMarking(period)
-                          }}
-                          disabled={saving}
-                          className="flex items-center gap-1.5 px-3.5 py-2 text-xs font-bold text-success-text bg-success-soft hover:bg-success-soft/80 border border-success-border rounded-lg transition-all shadow-sm disabled:opacity-50"
-                          style={{ minHeight: 44 }}
-                        >
-                          <Check className="w-3.5 h-3.5" /> Paid
-                        </button>
-
-                        <RowMenu actions={rowActions} ariaLabel={`${comm.name} actions`} />
-                      </div>
-                    </div>
-                  </div>
-                )
-              })}
-            </div>
-          )}
+          <BillsCalendar
+            schedule={scheduleSafe}
+            payments={payments}
+            commitments={commitments}
+            selectedDate={selectedDate}
+            onSelectDate={handleSelectDate}
+            todayKey={todayKey}
+          />
         </div>
 
-        {/* Paid this month */}
-        {paidCommitments.length > 0 && (
+        {/* All done? */}
+        {scheduleSafe.unpaidPeriods.length === 0 ? (
+          <div className="text-xs font-medium text-success-text p-3.5 bg-success-soft border border-success-border rounded-xl flex items-center gap-2">
+            <CheckCircle className="w-4 h-4 text-success shrink-0" />
+            You've handled everything for this month.
+          </div>
+        ) : (
+          <>
+            {/* SECTION 1 — Bills on the selected day (unpaid + paid) */}
+            <div className="mb-4">
+              <div className="flex items-center justify-between gap-2 mb-2.5">
+                <p className="text-[10px] text-fg-subtle uppercase font-bold tracking-wider flex items-center gap-1.5">
+                  <Calendar className="w-3.5 h-3.5 text-brand" />
+                  {selectedHeaderLabel}
+                  {hasAnythingOnDay && (
+                    <span className="text-fg-muted">({selectedDayCount})</span>
+                  )}
+                </p>
+                {selectedDayTotal > 0 && (
+                  <span className="text-[10px] font-bold text-fg-muted tabular-nums">
+                    {formatMYR(selectedDayTotal)} due
+                  </span>
+                )}
+              </div>
+
+              {!hasAnythingOnDay ? (
+                <div className="text-center p-6 bg-surface-2/40 border border-dashed border-line-strong rounded-xl">
+                  <p className="text-xs font-bold text-fg-muted">
+                    Nothing due on this day.
+                  </p>
+                  {otherPeriods.length > 0 && (
+                    <p className="text-[11px] text-fg-subtle mt-1">
+                      {otherPeriods.length} bill{otherPeriods.length === 1 ? '' : 's'} coming up — expand below.
+                    </p>
+                  )}
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  {selectedPeriods.map(renderBillRow)}
+                  {paidPeriodsForSelectedDate.map(renderPaidBillRow)}
+                </div>
+              )}
+            </div>
+
+            {/* SECTION 2 — Upcoming (collapsible) */}
+            {otherPeriods.length > 0 && (
+              <div className="mb-2">
+                <button
+                  onClick={() => setShowUpcoming(!showUpcoming)}
+                  className="w-full flex items-center justify-between p-3 bg-surface hover:bg-surface-2 border border-line rounded-xl transition-colors shadow-sm"
+                  aria-expanded={showUpcoming}
+                  style={{ minHeight: 44 }}
+                >
+                  <span className="text-[10px] text-fg-muted uppercase font-bold tracking-wider flex items-center gap-1.5">
+                    <Calendar className="w-3.5 h-3.5 text-fg-subtle" /> Upcoming (
+                    {otherPeriods.length})
+                  </span>
+                  {showUpcoming ? (
+                    <ChevronUp className="w-4 h-4 text-fg-subtle" />
+                  ) : (
+                    <ChevronDown className="w-4 h-4 text-fg-subtle" />
+                  )}
+                </button>
+
+                {showUpcoming && (
+                  <div className="mt-2 space-y-2">
+                    {otherPeriods.map(renderBillRow)}
+                  </div>
+                )}
+              </div>
+            )}
+          </>
+        )}
+
+        {/* Paid this month — excludes bills already shown on the selected day */}
+        {otherPaidCommitments.length > 0 && (
           <div className="mb-2">
             <button
               onClick={() => setShowPaid(!showPaid)}
@@ -559,14 +824,14 @@ export const CommitmentRadar = ({
             >
               <span className="text-[10px] text-fg-muted uppercase font-bold tracking-wider flex items-center gap-1.5">
                 <CheckCircle className="w-3.5 h-3.5 text-success" /> Paid this month (
-                {paidCommitments.length})
+                {otherPaidCommitments.length})
               </span>
               {showPaid ? <ChevronUp className="w-4 h-4 text-fg-subtle" /> : <ChevronDown className="w-4 h-4 text-fg-subtle" />}
             </button>
 
             {showPaid && (
               <div className="mt-2 space-y-1.5">
-                {paidCommitments.map((comm) => (
+                {otherPaidCommitments.map((comm) => (
                   <div
                     key={comm.id}
                     className="flex items-center justify-between p-2.5 rounded-xl bg-success-soft/30 border border-success-border gap-2"

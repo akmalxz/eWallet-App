@@ -186,7 +186,7 @@ export function LogItemPage({
       <div className="bg-surface/60 backdrop-blur-xl border border-line/50 rounded-3xl overflow-hidden shadow-sm p-5">
 
         <div className="flex items-center gap-4 mb-5">
-          <div className="p-2.5 rounded-xl bg-brand-solid text-white shadow-md">
+          <div className="p-2.5 rounded-xl bg-surface-2 text-fg-muted">
             <PlusCircle className="w-5 h-5" />
           </div>
           <span className="font-bold text-base text-fg">Log New Expense</span>
