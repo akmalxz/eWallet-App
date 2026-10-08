@@ -91,11 +91,30 @@ export const useTransactions = (user, showToast) => {
       if (commResult.error) throw commResult.error
 
       // ------------------------------------------------------------
-      // ACCOUNTS — normalize the view's account_id → id
+      // ACCOUNTS — normalize the view's account_id → id, and fold the
+      // opening balance into the effective balance.
+      //
+      // The view returns two separate numbers:
+      //   balance          — sum(transactions in) − sum(transactions out)
+      //   starting_balance — the opening amount the user entered
+      //
+      // Every consumer (account cards, burn rate, commitment radar,
+      // cash flow heatmap) reads `account.balance`. Rather than push
+      // the addition into each of them, we compute the effective
+      // total once, here, and expose it as `balance`.
+      //
+      // The original transaction-derived amount is discarded — nothing
+      // downstream needs it as a distinct value. If that changes,
+      // expose it as a separate `transaction_balance` field.
       // ------------------------------------------------------------
       const normalizedAccounts = (accResult.data || []).map(acc => {
-        const { account_id, ...rest } = acc
-        return { id: account_id, ...rest }
+        const { account_id, starting_balance, ...rest } = acc
+        return {
+          id: account_id,
+          ...rest,
+          starting_balance: Number(starting_balance) || 0,
+          balance: (Number(rest.balance) || 0) + (Number(starting_balance) || 0)
+        }
       })
 
       setAccounts(normalizedAccounts)

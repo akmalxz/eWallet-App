@@ -17,7 +17,8 @@ const buildDefaults = (classifications) => ({
   classification: classifications[0]?.key_name || 'hub',
   color_theme: 'blue',
   pattern: 'none',
-  icon: 'bank'
+  icon: 'bank',
+  starting_balance: ''
 })
 
 const fromAccount = (acc) => ({
@@ -25,7 +26,13 @@ const fromAccount = (acc) => ({
   classification: acc?.classification || 'hub',
   color_theme: acc?.color_theme || 'slate',
   pattern: acc?.pattern || 'none',
-  icon: acc?.icon || 'bank'
+  icon: acc?.icon || 'bank',
+  // Show empty for 0 so new accounts and 0-balance accounts read the same.
+  // parseFloat('') || 0 on save produces the same 0.
+  starting_balance:
+    acc?.starting_balance != null && Number(acc.starting_balance) !== 0
+      ? String(acc.starting_balance)
+      : ''
 })
 
 export const AccountEditorModal = ({
@@ -80,6 +87,14 @@ export const AccountEditorModal = ({
       a => a.id !== account?.id && a.account_name.toLowerCase() === lower
     )
     if (dupe) return `You already have an account named "${dupe.account_name}"`
+
+    // starting_balance is optional. Empty means 0. Non-empty must parse
+    // to a finite number (negatives allowed — overdrawn accounts exist).
+    const raw = draft.starting_balance.trim()
+    if (raw !== '') {
+      const n = Number(raw)
+      if (!Number.isFinite(n)) return 'Balance must be a number'
+    }
     return ''
   }
 
@@ -91,12 +106,18 @@ export const AccountEditorModal = ({
     setError('')
 
     try {
+      const parsedStartingBalance = Number(draft.starting_balance)
+      const startingBalance = Number.isFinite(parsedStartingBalance)
+        ? parsedStartingBalance
+        : 0
+
       const payload = {
         account_name: draft.account_name.trim(),
         classification: draft.classification,
         color_theme: draft.color_theme,
         pattern: draft.pattern,
-        icon: draft.icon
+        icon: draft.icon,
+        starting_balance: startingBalance
       }
 
       if (isNew) {
@@ -152,6 +173,21 @@ export const AccountEditorModal = ({
     }))
   }
 
+  // Live preview: show what the balance WILL be with the current draft.
+  // - New account: the typed starting balance.
+  // - Existing account: current computed balance, with the delta between
+  //   the old starting_balance and the draft applied. (account.balance
+  //   already includes the OLD starting_balance, so subtracting it and
+  //   adding the draft gives the correct new total.)
+  const parsedDraft = Number(draft.starting_balance)
+  const draftStarting = Number.isFinite(parsedDraft) ? parsedDraft : 0
+
+  const previewBalance = isNew
+    ? draftStarting
+    : (Number(account?.balance) || 0)
+      - (Number(account?.starting_balance) || 0)
+      + draftStarting
+
   const previewAccount = {
     ...(account || {}),
     account_name: draft.account_name || 'Account name',
@@ -159,7 +195,7 @@ export const AccountEditorModal = ({
     color_theme: draft.color_theme,
     pattern: draft.pattern,
     icon: draft.icon,
-    balance: account?.balance || 0
+    balance: previewBalance
   }
 
   const previewClassLabel =
@@ -264,6 +300,31 @@ export const AccountEditorModal = ({
                 <option key={c.id} value={c.key_name}>{c.label}</option>
               ))}
             </select>
+          </section>
+
+          {/* Current balance */}
+          <section>
+            <label
+              htmlFor="editor-balance"
+              className="block text-[11px] font-bold text-fg-subtle uppercase tracking-wider mb-2"
+            >
+              {isNew ? 'Current balance (RM)' : 'Opening balance (RM)'}
+            </label>
+            <input
+              id="editor-balance"
+              type="number"
+              step="0.01"
+              inputMode="decimal"
+              value={draft.starting_balance}
+              onChange={e => update('starting_balance', e.target.value)}
+              placeholder="0.00"
+              className="w-full bg-surface border border-line rounded-xl py-3 px-3 text-sm text-fg placeholder:text-fg-subtle outline-none focus:border-brand transition-colors"
+            />
+            <p className="mt-1.5 text-[11px] text-fg-subtle leading-relaxed">
+              {isNew
+                ? "How much is in this account right now? Leave blank if it starts at zero."
+                : "The balance when you started tracking. Adjusting this shifts your current balance by the same amount."}
+            </p>
           </section>
 
           {/* Color */}
