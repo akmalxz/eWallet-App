@@ -8,6 +8,7 @@ import {
 import { supabase } from '../lib/supabaseClient'
 import { DebtHub } from '../components/split/DebtHub'
 import { ItemReviewStep } from '../components/split/ItemReviewStep'
+import { SlidingSegmentedControl } from '../components/shared/SlidingSegmentedControl'
 
 // ---------------------------------------------------------------------------
 // Image helpers
@@ -22,8 +23,6 @@ const guessMimeType = (file) => {
   return 'image/jpeg'
 }
 
-// Try canvas compression first. If the browser can't decode the format
-// (HEIC on desktop, for example), fall back to sending the raw file.
 const compressImageFile = (file, maxDim = 1400, quality = 0.8) => {
   return new Promise((resolve, reject) => {
     const reader = new FileReader()
@@ -60,7 +59,6 @@ const compressImageFile = (file, maxDim = 1400, quality = 0.8) => {
   })
 }
 
-// Raw base64 read — used when the browser can't decode the format.
 const readFileAsRawBase64 = (file) => {
   return new Promise((resolve, reject) => {
     const reader = new FileReader()
@@ -71,7 +69,7 @@ const readFileAsRawBase64 = (file) => {
         base64,
         mimeType: guessMimeType(file),
         previewUrl: dataUrl,
-        previewSupported: false, // browser may not render this
+        previewSupported: false,
         wasCompressed: false,
         originalSize: file.size,
       })
@@ -81,7 +79,6 @@ const readFileAsRawBase64 = (file) => {
   })
 }
 
-// One entry point: compress if possible, else raw.
 const processImageFile = async (file) => {
   try {
     return await compressImageFile(file)
@@ -96,9 +93,9 @@ export function SplitBillPage({ user, profile, showToast, onBack, initialTab = '
   const [pendingCount, setPendingCount] = useState(0)
 
   // 1. App & Matrix State
-  const [appState, setAppState] = useState('idle') // idle | capturing | processing | claiming
+  const [appState, setAppState] = useState('idle')
   const [rawText, setRawText] = useState('')
-  const [capturedImage, setCapturedImage] = useState(null) // { base64, mimeType, previewUrl }
+  const [capturedImage, setCapturedImage] = useState(null)
   const [receiptData, setReceiptData] = useState(null)
   const [claims, setClaims] = useState({})
   const fileInputRef = useRef(null)
@@ -153,6 +150,38 @@ export function SplitBillPage({ user, profile, showToast, onBack, initialTab = '
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user?.id])
 
+  // Tab items for the sliding pill control.
+  //
+  // Labels are React nodes so the icons stay inline with the text.
+  // The Debts badge uses `bg-current/20` — it inherits whichever text
+  // color the control's active/inactive states apply, so it never
+  // needs separate active/inactive styling.
+  const tabItems = useMemo(() => [
+    {
+      id: 'new',
+      label: (
+        <span className="inline-flex items-center gap-1.5">
+          <Receipt className="w-3.5 h-3.5" />
+          <span>New Split</span>
+        </span>
+      )
+    },
+    {
+      id: 'debts',
+      label: (
+        <span className="inline-flex items-center gap-1.5">
+          <HandCoins className="w-3.5 h-3.5" />
+          <span>Debts</span>
+          {pendingCount > 0 && (
+            <span className="inline-flex items-center justify-center min-w-[16px] h-4 px-1 rounded-full text-[9px] font-black bg-current/20 tabular-nums">
+              {pendingCount > 9 ? '9+' : pendingCount}
+            </span>
+          )}
+        </span>
+      )
+    }
+  ], [pendingCount])
+
   // Fetch Friends and Contacts (only when the modal is opened)
   useEffect(() => {
     async function fetchNetworkAndContacts() {
@@ -193,12 +222,10 @@ export function SplitBillPage({ user, profile, showToast, onBack, initialTab = '
     fetchNetworkAndContacts()
   }, [user?.id, isAddModalOpen])
 
-  // Collapse ghosts again when the modal closes
   useEffect(() => {
     if (!isAddModalOpen) setShowGhosts(false)
   }, [isAddModalOpen])
 
-  // Auto-expand the ghost section when the search matches a ghost
   useEffect(() => {
     if (
       searchQuery.trim().length > 0 &&
@@ -306,8 +333,6 @@ export function SplitBillPage({ user, profile, showToast, onBack, initialTab = '
     try {
       const processed = await processImageFile(file)
 
-      // Warn if the raw file is very large — Supabase has a body size limit
-      // (~6 MB on the free plan). Gemini itself is fine up to 20 MB.
       if (!processed.wasCompressed && processed.originalSize > 4_500_000) {
         showToast('Image is quite large — the upload may fail. Try a screenshot instead.', 'warning')
       }
@@ -360,7 +385,6 @@ export function SplitBillPage({ user, profile, showToast, onBack, initialTab = '
     })
   }
 
-  // Progress Bar Math
   const { totalClaimed, subtotal } = useMemo(() => {
     if (!receiptData) return { totalClaimed: 0, subtotal: 0 }
     let claimed = 0
@@ -414,8 +438,6 @@ export function SplitBillPage({ user, profile, showToast, onBack, initialTab = '
       })
     })
 
-    // Penny Sweeper — assign any rounding remainder to the host if they have
-    // a share, otherwise to the largest share so the receipt total is exact.
     const difference = Math.round((totalExtras - distributedExtras) * 100) / 100
     if (difference !== 0 && finalLedger.length > 0) {
       const hostIndex = finalLedger.findIndex(p => p.id === user.id)
@@ -506,7 +528,6 @@ export function SplitBillPage({ user, profile, showToast, onBack, initialTab = '
     }
   }
 
-  // Helpers
   const handleCreateGhost = async () => {
     if (!newGhostName.trim()) return
     setIsCreatingGhost(true)
@@ -556,16 +577,11 @@ export function SplitBillPage({ user, profile, showToast, onBack, initialTab = '
   const visibleSearchResults = profileSearchResults
     .filter(p => !networkFriends.find(f => f.id === p.id))
     .filter(p => !sessionParticipants.find(sp => sp.id === p.id))
-  
-    // ------------------------------------------------------------
-  // Review mode takes over the whole screen — no back button,
-  // no tab bar, just the editable receipt form.
-  // ------------------------------------------------------------
+
   const isReviewMode = activeTab === 'new' && appState === 'review'
 
   return (
     <div className="max-w-2xl mx-auto animate-in fade-in slide-in-from-bottom-4 duration-500 pb-24 space-y-4">
-      {/* Hidden camera input — always mounted so the ref is stable */}
       <input
         ref={fileInputRef}
         type="file"
@@ -597,41 +613,13 @@ export function SplitBillPage({ user, profile, showToast, onBack, initialTab = '
             <ChevronLeft className="w-4 h-4" /> Back to Dashboard
           </button>
 
-          {/* ===================== TAB BAR ===================== */}
-          <div className="grid grid-cols-2 gap-1 p-1 bg-surface-2 rounded-2xl mb-2">
-            <button
-              onClick={() => setActiveTab('new')}
-              className={`py-2.5 rounded-xl text-sm font-bold transition-all flex items-center justify-center gap-2 ${
-                activeTab === 'new'
-                  ? 'bg-surface text-fg shadow-sm'
-                  : 'text-fg-muted hover:text-fg'
-              }`}
-              style={{ minHeight: 44 }}
-            >
-              <Receipt className="w-4 h-4" />
-              New Split
-            </button>
-            <button
-              onClick={() => setActiveTab('debts')}
-              className={`py-2.5 rounded-xl text-sm font-bold transition-all flex items-center justify-center gap-2 ${
-                activeTab === 'debts'
-                  ? 'bg-surface text-fg shadow-sm'
-                  : 'text-fg-muted hover:text-fg'
-              }`}
-              style={{ minHeight: 44 }}
-            >
-              <HandCoins className="w-4 h-4" />
-              Debts
-              {pendingCount > 0 && (
-                <span className={`text-[10px] font-black px-1.5 py-0.5 rounded-full ${
-                  activeTab === 'debts'
-                    ? 'bg-brand-solid text-white'
-                    : 'bg-brand-soft text-brand'
-                }`}>
-                  {pendingCount}
-                </span>
-              )}
-            </button>
+          {/* ===================== TAB BAR — animated pill ===================== */}
+          <div className="mb-2">
+            <SlidingSegmentedControl
+              items={tabItems}
+              value={activeTab}
+              onChange={setActiveTab}
+            />
           </div>
 
           {/* ===================== NEW SPLIT TAB ===================== */}

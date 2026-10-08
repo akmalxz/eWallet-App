@@ -1,6 +1,7 @@
 // src/hooks/useAnalyticsData.js
 import { useState, useEffect, useCallback, useMemo } from 'react'
 import { supabase } from '../lib/supabaseClient'
+import { isCommitmentPayment } from '../utils/analytics/burnRateEngine'
 
 export const useAnalyticsData = (user, showToast) => {
   const [rawTransactions, setRawTransactions] = useState([])
@@ -25,7 +26,7 @@ export const useAnalyticsData = (user, showToast) => {
       const { data, error: fetchErr } = await supabase
         .from('transactions')
         .select(
-          'id, amount, source_account_id, destination_account_id, category, transaction_date, description, needs_review'
+          'id, amount, source_account_id, destination_account_id, category, transaction_date, description, needs_review, metadata'
         )
         .eq('user_id', user.id)
         .gte('transaction_date', start.toISOString())
@@ -46,25 +47,51 @@ export const useAnalyticsData = (user, showToast) => {
   }, [fetchData])
 
   // ----------------------------------------------------------
-  // Expenses: source set + destination null
-  // Income: destination set + source null, OR category starts with "Income"
-  // Transfers (both set): excluded from both
+  // Classify each transaction into one of three buckets.
+  //
+  //   expenses          — real spending (source set, dest null)
+  //   everydayExpenses  — expenses minus commitment payments
+  //   income            — destination set + source null,
+  //                       OR category starts with "Income"
+  //
+  // Transfers (both source and destination set) fall through and
+  // are excluded from all three.
+  //
+  // Commitment detection reuses `isCommitmentPayment` from the burn
+  // rate engine — same rule, applied consistently. This means a
+  // transaction is a commitment if EITHER its metadata has a
+  // commitment_id OR its category is "Commitments".
   // ----------------------------------------------------------
-  const { expenses, income } = useMemo(() => {
+  const { expenses, everydayExpenses, income } = useMemo(() => {
     const exp = []
+    const everydayExp = []
     const inc = []
+
     for (const tx of rawTransactions) {
       const hasSource = !!tx.source_account_id
       const hasDest = !!tx.destination_account_id
       const isIncomeCat =
         (tx.category || '').toLowerCase().startsWith('income')
 
-      if (hasSource && !hasDest) exp.push(tx)
-      else if ((!hasSource && hasDest) || isIncomeCat) inc.push(tx)
-      // transfers (both) fall through: excluded
+      if (hasSource && !hasDest) {
+        exp.push(tx)
+        if (!isCommitmentPayment(tx)) everydayExp.push(tx)
+      } else if ((!hasSource && hasDest) || isIncomeCat) {
+        inc.push(tx)
+      }
+      // transfers (both set) fall through: excluded
     }
-    return { expenses: exp, income: inc }
+
+    return { expenses: exp, everydayExpenses: everydayExp, income: inc }
   }, [rawTransactions])
 
-  return { rawTransactions, expenses, income, loading, error, refetch: fetchData }
+  return {
+    rawTransactions,
+    expenses,
+    everydayExpenses,
+    income,
+    loading,
+    error,
+    refetch: fetchData
+  }
 }

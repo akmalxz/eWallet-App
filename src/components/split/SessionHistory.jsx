@@ -58,7 +58,6 @@ export function SessionHistory({ user }) {
       })
       setDebtsBySession(grouped)
 
-      // Names — both debtors and hosts (hosts matter when the viewer is a participant)
       const userIds = new Set()
       const contactIds = new Set()
       ;(debtRows || []).forEach(d => {
@@ -114,8 +113,9 @@ export function SessionHistory({ user }) {
     })
   }
 
-  if (sessions.length === 0 && !loading) return null
-
+  // Always render the section — even with zero sessions. The header
+  // is the persistent affordance; the body handles the three states
+  // (loading, empty, populated).
   return (
     <div className="mt-6">
       <button
@@ -138,112 +138,127 @@ export function SessionHistory({ user }) {
 
       {expanded && (
         <div className="mt-2 space-y-2">
-          {sessions.map(session => {
-            const debts = debtsBySession[session.id] || []
-            const isHost = session.host_id === user.id
-            const hostName = isHost
-              ? 'you'
-              : (nameMap[session.host_id] || 'someone')
+          {loading && sessions.length === 0 ? (
+            <div className="bg-surface border border-line rounded-2xl p-8 flex items-center justify-center">
+              <Loader2 className="w-5 h-5 text-fg-subtle animate-spin" />
+            </div>
+          ) : sessions.length === 0 ? (
+            <div className="bg-surface border border-line rounded-2xl p-6 text-center">
+              <Receipt className="w-8 h-8 text-fg-subtle mx-auto mb-2" />
+              <p className="text-sm font-bold text-fg">No past sessions</p>
+              <p className="text-xs text-fg-subtle mt-1 leading-relaxed max-w-[260px] mx-auto">
+                Splits you complete will appear here once everyone has settled up.
+              </p>
+            </div>
+          ) : (
+            <>
+              {sessions.map(session => {
+                const debts = debtsBySession[session.id] || []
+                const isHost = session.host_id === user.id
+                const hostName = isHost
+                  ? 'you'
+                  : (nameMap[session.host_id] || 'someone')
 
-            // The viewer's own row on this session, if they were a participant
-            const ownDebt = !isHost
-              ? debts.find(d => d.debtor_user_id === user.id)
-              : null
+                const ownDebt = !isHost
+                  ? debts.find(d => d.debtor_user_id === user.id)
+                  : null
 
-            return (
-              <div
-                key={session.id}
-                className="bg-surface border border-line rounded-2xl overflow-hidden"
-              >
-                <div className="p-4 border-b border-line">
-                  <div className="flex items-start justify-between gap-3 mb-1">
-                    <p className="text-sm font-bold text-fg truncate">
-                      {session.merchant || 'Split bill'}
-                    </p>
-                    <p className="text-sm font-black text-fg shrink-0">
-                      {formatMYR(session.total || 0)}
-                    </p>
+                return (
+                  <div
+                    key={session.id}
+                    className="bg-surface border border-line rounded-2xl overflow-hidden"
+                  >
+                    <div className="p-4 border-b border-line">
+                      <div className="flex items-start justify-between gap-3 mb-1">
+                        <p className="text-sm font-bold text-fg truncate">
+                          {session.merchant || 'Split bill'}
+                        </p>
+                        <p className="text-sm font-black text-fg shrink-0">
+                          {formatMYR(session.total || 0)}
+                        </p>
+                      </div>
+                      <p className="text-[11px] text-fg-subtle">
+                        {formatDate(session.settled_at || session.created_at)}
+                        {' · '}
+                        {isHost
+                          ? 'You paid'
+                          : `Paid by ${hostName}`}
+                      </p>
+                      {!isHost && ownDebt && (
+                        <p className="text-[11px] text-brand font-bold mt-1">
+                          Your share: {formatMYR(ownDebt.amount)}
+                        </p>
+                      )}
+                    </div>
+
+                    {debts.length > 0 ? (
+                      <div className="divide-y divide-line">
+                        {debts.map(debt => {
+                          const name = debt.debtor_user_id
+                            ? nameMap[debt.debtor_user_id] || 'Unknown'
+                            : debt.debtor_contact_id
+                              ? nameMap[debt.debtor_contact_id] || 'Guest'
+                              : 'Unknown'
+                          const isGhost = !debt.debtor_user_id
+                          const isMe = debt.debtor_user_id === user.id
+                          const isSettled = debt.status === 'settled'
+                          return (
+                            <div
+                              key={debt.id}
+                              className={`flex items-center gap-3 px-4 py-2.5 ${
+                                isMe ? 'bg-brand-soft/40' : ''
+                              }`}
+                            >
+                              <div className={`w-7 h-7 rounded-lg flex items-center justify-center shrink-0 ${
+                                isGhost
+                                  ? 'bg-purple-soft text-purple'
+                                  : isMe
+                                    ? 'bg-brand text-white'
+                                    : 'bg-brand-soft text-brand'
+                              }`}>
+                                {isGhost
+                                  ? <Users className="w-3.5 h-3.5" />
+                                  : <User className="w-3.5 h-3.5" />}
+                              </div>
+                              <p className={`flex-1 text-xs truncate ${
+                                isMe ? 'font-bold text-fg' : 'font-medium text-fg'
+                              }`}>
+                                {isMe ? 'You' : name}
+                              </p>
+                              <p className="text-xs font-bold text-fg shrink-0">
+                                {formatMYR(debt.amount)}
+                              </p>
+                              <CheckCircle2
+                                className={`w-4 h-4 shrink-0 ${
+                                  isSettled ? 'text-success' : 'text-fg-subtle'
+                                }`}
+                              />
+                            </div>
+                          )
+                        })}
+                      </div>
+                    ) : (
+                      <div className="px-4 py-3 text-[11px] text-fg-subtle italic">
+                        No one else owed money on this session.
+                      </div>
+                    )}
                   </div>
-                  <p className="text-[11px] text-fg-subtle">
-                    {formatDate(session.settled_at || session.created_at)}
-                    {' · '}
-                    {isHost
-                      ? 'You paid'
-                      : `Paid by ${hostName}`}
-                  </p>
-                  {!isHost && ownDebt && (
-                    <p className="text-[11px] text-brand font-bold mt-1">
-                      Your share: {formatMYR(ownDebt.amount)}
-                    </p>
-                  )}
-                </div>
+                )
+              })}
 
-                {debts.length > 0 ? (
-                  <div className="divide-y divide-line">
-                    {debts.map(debt => {
-                      const name = debt.debtor_user_id
-                        ? nameMap[debt.debtor_user_id] || 'Unknown'
-                        : debt.debtor_contact_id
-                          ? nameMap[debt.debtor_contact_id] || 'Guest'
-                          : 'Unknown'
-                      const isGhost = !debt.debtor_user_id
-                      const isMe = debt.debtor_user_id === user.id
-                      const isSettled = debt.status === 'settled'
-                      return (
-                        <div
-                          key={debt.id}
-                          className={`flex items-center gap-3 px-4 py-2.5 ${
-                            isMe ? 'bg-brand-soft/40' : ''
-                          }`}
-                        >
-                          <div className={`w-7 h-7 rounded-lg flex items-center justify-center shrink-0 ${
-                            isGhost
-                              ? 'bg-purple-soft text-purple'
-                              : isMe
-                                ? 'bg-brand text-white'
-                                : 'bg-brand-soft text-brand'
-                          }`}>
-                            {isGhost
-                              ? <Users className="w-3.5 h-3.5" />
-                              : <User className="w-3.5 h-3.5" />}
-                          </div>
-                          <p className={`flex-1 text-xs truncate ${
-                            isMe ? 'font-bold text-fg' : 'font-medium text-fg'
-                          }`}>
-                            {isMe ? 'You' : name}
-                          </p>
-                          <p className="text-xs font-bold text-fg shrink-0">
-                            {formatMYR(debt.amount)}
-                          </p>
-                          <CheckCircle2
-                            className={`w-4 h-4 shrink-0 ${
-                              isSettled ? 'text-success' : 'text-fg-subtle'
-                            }`}
-                          />
-                        </div>
-                      )
-                    })}
-                  </div>
-                ) : (
-                  <div className="px-4 py-3 text-[11px] text-fg-subtle italic">
-                    No one else owed money on this session.
-                  </div>
-                )}
-              </div>
-            )
-          })}
-
-          {hasMore && (
-            <button
-              onClick={handleLoadMore}
-              disabled={loading}
-              className="w-full py-3 rounded-xl text-sm font-bold text-fg-muted bg-surface-2 border border-line hover:bg-surface-3 transition-colors disabled:opacity-50"
-              style={{ minHeight: 44 }}
-            >
-              {loading
-                ? <Loader2 className="w-4 h-4 animate-spin mx-auto" />
-                : 'Load more'}
-            </button>
+              {hasMore && (
+                <button
+                  onClick={handleLoadMore}
+                  disabled={loading}
+                  className="w-full py-3 rounded-xl text-sm font-bold text-fg-muted bg-surface-2 border border-line hover:bg-surface-3 transition-colors disabled:opacity-50"
+                  style={{ minHeight: 44 }}
+                >
+                  {loading
+                    ? <Loader2 className="w-4 h-4 animate-spin mx-auto" />
+                    : 'Load more'}
+                </button>
+              )}
+            </>
           )}
         </div>
       )}

@@ -28,6 +28,14 @@ const TAB_ITEMS = [
   { id: 'income', label: 'Income' }
 ]
 
+// Mode filter — controls whether commitment payments are included
+// in spending analytics. Not applied to the Income tab, which always
+// uses the full expense set so the savings rate stays honest.
+const MODE_ITEMS = [
+  { id: 'all',      label: 'All' },
+  { id: 'everyday', label: 'Excl. bills' }
+]
+
 // ============================================================
 // HELPERS
 // ============================================================
@@ -59,30 +67,66 @@ export function AnalyticsPage({
     getInitialParam('at', TAB_ITEMS.map(t => t.id), 'overview')
   )
   const [selectedAccount, setSelectedAccount] = useState('all')
+  const [mode, setMode] = useState(() =>
+    getInitialParam('am', MODE_ITEMS.map(m => m.id), 'all')
+  )
 
   useEffect(() => {
     const url = new URL(window.location.href)
     url.searchParams.set('ap', String(period))
     url.searchParams.set('at', tab)
+    url.searchParams.set('am', mode)
     window.history.replaceState({}, '', url.toString())
-  }, [period, tab])
+  }, [period, tab, mode])
 
   // ----------------------------------------------------------
   // Data
   // ----------------------------------------------------------
-  const { expenses, income, loading, error } = useAnalyticsData(user, showToast)
+  const {
+    expenses,
+    everydayExpenses,
+    income,
+    loading,
+    error
+  } = useAnalyticsData(user, showToast)
 
+  // ----------------------------------------------------------
+  // Filter by account first (mode-agnostic)
+  // ----------------------------------------------------------
   const filteredExpenses = useMemo(() => {
     if (selectedAccount === 'all') return expenses
     return expenses.filter(tx => tx.source_account_id === selectedAccount)
   }, [expenses, selectedAccount])
+
+  const filteredEverydayExpenses = useMemo(() => {
+    if (selectedAccount === 'all') return everydayExpenses
+    return everydayExpenses.filter(tx => tx.source_account_id === selectedAccount)
+  }, [everydayExpenses, selectedAccount])
 
   const filteredIncome = useMemo(() => {
     if (selectedAccount === 'all') return income
     return income.filter(tx => tx.destination_account_id === selectedAccount)
   }, [income, selectedAccount])
 
+  // ----------------------------------------------------------
+  // Pick which expense set the spending views should use.
+  // Mode is ignored on the Income tab — IncomeVsExpense always
+  // reads `periodScopedExpensesAll` so the savings rate stays true.
+  // ----------------------------------------------------------
+  const spendingSource =
+    mode === 'everyday' ? filteredEverydayExpenses : filteredExpenses
+
   const periodScopedExpenses = useMemo(() => {
+    const cutoff = new Date()
+    cutoff.setMonth(cutoff.getMonth() - period)
+    cutoff.setDate(1)
+    cutoff.setHours(0, 0, 0, 0)
+    return spendingSource.filter(tx => toMYDate(tx.transaction_date) >= cutoff)
+  }, [spendingSource, period])
+
+  // Full expense set — always includes commitments, regardless of mode.
+  // Only IncomeVsExpense reads this.
+  const periodScopedExpensesAll = useMemo(() => {
     const cutoff = new Date()
     cutoff.setMonth(cutoff.getMonth() - period)
     cutoff.setDate(1)
@@ -105,6 +149,10 @@ export function AnalyticsPage({
       ? 'All accounts'
       : accounts.find(a => a.id === selectedAccount)?.account_name || 'Account'
 
+  // Mode is meaningless on the Income tab — savings rate needs bills
+  // included or it lies. Hide the control there rather than disabling it.
+  const showModeControl = tab !== 'income'
+
   // ----------------------------------------------------------
   // Render
   // ----------------------------------------------------------
@@ -122,19 +170,30 @@ export function AnalyticsPage({
       </button>
 
       {/* ======================================================
-          Desktop title row
+          Desktop title row — title on left, period + mode on right
       ====================================================== */}
       <div className="hidden md:flex md:items-center md:justify-between md:gap-4 px-1">
-        <div>
+        <div className="min-w-0">
           <h1 className="text-2xl font-bold text-fg tracking-tight">Analytics</h1>
           <p className="text-sm text-fg-muted mt-1">Deep dive into your financial trends.</p>
         </div>
-        <div className="w-56 shrink-0">
-          <SlidingSegmentedControl
-            items={PERIOD_ITEMS}
-            value={period}
-            onChange={setPeriod}
-          />
+        <div className="flex items-center gap-3 shrink-0">
+          <div className="w-56">
+            <SlidingSegmentedControl
+              items={PERIOD_ITEMS}
+              value={period}
+              onChange={setPeriod}
+            />
+          </div>
+          {showModeControl && (
+            <div className="w-56">
+              <SlidingSegmentedControl
+                items={MODE_ITEMS}
+                value={mode}
+                onChange={setMode}
+              />
+            </div>
+          )}
         </div>
       </div>
 
@@ -161,14 +220,31 @@ export function AnalyticsPage({
       </div>
 
       {/* ======================================================
-          Mobile-only filters block
+          Mobile-only filters block.
+          Period + Mode share a row when Mode is visible; period
+          spans the full width on the Income tab.
       ====================================================== */}
       <div className="md:hidden space-y-3">
-        <SlidingSegmentedControl
-          items={PERIOD_ITEMS}
-          value={period}
-          onChange={setPeriod}
-        />
+        {showModeControl ? (
+          <div className="grid grid-cols-2 gap-2">
+            <SlidingSegmentedControl
+              items={PERIOD_ITEMS}
+              value={period}
+              onChange={setPeriod}
+            />
+            <SlidingSegmentedControl
+              items={MODE_ITEMS}
+              value={mode}
+              onChange={setMode}
+            />
+          </div>
+        ) : (
+          <SlidingSegmentedControl
+            items={PERIOD_ITEMS}
+            value={period}
+            onChange={setPeriod}
+          />
+        )}
 
         <AccountSelector
           accounts={accounts}
@@ -178,7 +254,9 @@ export function AnalyticsPage({
       </div>
 
       {/* ======================================================
-          Tab content
+          Tab content.
+          Spending tabs read `periodScopedExpenses` (mode-aware).
+          Income reads `periodScopedExpensesAll` (mode-ignored).
       ====================================================== */}
 
       {tab === 'overview' && (
@@ -207,7 +285,7 @@ export function AnalyticsPage({
       {tab === 'income' && (
         <IncomeVsExpense
           income={periodScopedIncome}
-          expenses={periodScopedExpenses}
+          expenses={periodScopedExpensesAll}
           periodMonths={period}
           accounts={accounts}
           selectedAccountId={selectedAccount}
