@@ -2,8 +2,6 @@
 
 // ============================================================
 // LEGACY EXPORTS — kept for backwards compatibility.
-// BurnRateWidget.jsx still imports COLORS. Any new code
-// should use useChartTheme() instead.
 // ============================================================
 export const COLORS = {
   up: '#ef4444',
@@ -31,9 +29,6 @@ export const CATEGORY_COLORS = [
 
 // ============================================================
 // THEME-AWARE CHART PALETTES
-// Consumed by useChartTheme(). Recharts resolves SVG attrs
-// at render time, so it needs concrete hex values — not CSS
-// vars — to react correctly to theme changes.
 // ============================================================
 export const CHART_THEMES = {
   light: {
@@ -68,9 +63,13 @@ export const CHART_THEMES = {
     axis: '#94a3b8',
     cursor: '#475569',
     dotStroke: '#0f172a',
-    heatmap: ['#1e293b', '#1e3a8a', '#1d4ed8', '#3b82f6', '#93c5fd'],
+    // Monotonic in blue depth: dark slate → dark navy → medium blue.
+    // Same direction as light mode (empty cells are the least saturated,
+    // peak cells are the most). Level 4 is a rich medium blue that stays
+    // readable under white text against the dark page background.
+    heatmap: ['#1e293b', '#1e3a8a', '#1e40af', '#1d4ed8', '#2563eb'],
     heatTextLight: '#cbd5e1',
-    heatTextStrong: '#0f172a',
+    heatTextStrong: '#ffffff',
     category: [
       '#60a5fa', '#34d399', '#fbbf24', '#f87171',
       '#a78bfa', '#22d3ee', '#f472b6', '#a3e635'
