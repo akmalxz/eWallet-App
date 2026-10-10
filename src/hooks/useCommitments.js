@@ -30,11 +30,17 @@ export const useCommitments = ({ user, commitments = [], fetchAllData, showToast
               amount: payload.amount,
               due_day_of_month: payload.due_day_of_month,
               account_id: payload.account_id,
-              is_active: true
+              is_active: true,
+              kind: payload.kind || 'recurring',
+              term_months: payload.term_months ?? null,
+              first_payment_date: payload.first_payment_date ?? null
             }
           ])
           if (error) throw error
-          showToast('Bill added', 'success')
+          showToast(
+            payload.kind === 'bnpl' ? 'BNPL plan added' : 'Bill added',
+            'success'
+          )
           await fetchAllData()
           return { success: true }
         } catch (err) {
@@ -55,7 +61,10 @@ export const useCommitments = ({ user, commitments = [], fetchAllData, showToast
               name: payload.name,
               amount: payload.amount,
               due_day_of_month: payload.due_day_of_month,
-              account_id: payload.account_id
+              account_id: payload.account_id,
+              kind: payload.kind || 'recurring',
+              term_months: payload.term_months ?? null,
+              first_payment_date: payload.first_payment_date ?? null
             })
             .eq('id', id)
             .select()

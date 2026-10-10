@@ -19,7 +19,7 @@ const keyFromMY = (d) =>
 const weekdayShort = (label) => label.slice(0, 1)
 
 // ============================================================
-// Strip — 7 days centered on today
+// Strip — 7 days centered on the SELECTED date
 // ============================================================
 function StripView({ days, selectedDate, onSelectDate }) {
   return (
@@ -76,7 +76,7 @@ function StripView({ days, selectedDate, onSelectDate }) {
 }
 
 // ============================================================
-// Month grid — full expanded view
+// Month grid
 // ============================================================
 function MonthView({
   cells, monthLabel,
@@ -85,7 +85,6 @@ function MonthView({
 }) {
   return (
     <div className="px-3 pb-3 space-y-4">
-      {/* Month navigation */}
       <div className="flex items-center justify-between">
         <button
           type="button"
@@ -107,7 +106,6 @@ function MonthView({
       </div>
 
       <div className="space-y-2">
-        {/* Weekday headers */}
         <div className="grid grid-cols-7 gap-1">
           {WEEKDAY_LABELS.map((label) => (
             <span
@@ -119,19 +117,6 @@ function MonthView({
           ))}
         </div>
 
-        {/*
-          Day cell layout:
-            - Wrapper provides 4px of padding so the button doesn't
-              fill the entire grid cell.
-            - Highlight uses `border-2` instead of `ring-2`. A border
-              is always drawn inside the element's border-box, so it
-              can never spill into neighboring cells — unlike ring
-              box-shadows, which extend outward and were overlapping
-              the adjacent day on narrow screens.
-            - Every cell uses border-2 for uniform geometry; only the
-              border color changes between states.
-            - Dot is absolute top-right.
-        */}
         <div className="grid grid-cols-7 gap-1">
           {cells.map((cell, i) => {
             if (!cell) return <div key={`blank-${i}`} className="aspect-square" />
@@ -229,15 +214,18 @@ export const BillsCalendar = ({
     return map
   }, [schedule, payments, commitments])
 
+  // Strip is anchored on the SELECTED date, not on today. On fresh load
+  // selectedDate === today, so this looks identical to the previous
+  // behaviour. After the user taps a different day, the strip follows,
+  // keeping the visible selection in sync with the section below.
   const stripDays = useMemo(() => {
-    const nowMY = toMYDate(new Date())
+    const parts = String(selectedDate || '').split('-').map(Number)
+    const [sy, sm, sd] = parts
+    if (!sy || !sm || !sd) return []
+
     const out = []
     for (let offset = -3; offset <= 3; offset++) {
-      const d = new Date(Date.UTC(
-        nowMY.getUTCFullYear(),
-        nowMY.getUTCMonth(),
-        nowMY.getUTCDate() + offset
-      ))
+      const d = new Date(Date.UTC(sy, sm - 1, sd + offset))
       const k = keyFromMY(d)
       const info = daysWithBills.get(k) || { unpaid: 0, paid: 0 }
       const jsDow = d.getUTCDay()
@@ -251,7 +239,7 @@ export const BillsCalendar = ({
       })
     }
     return out
-  }, [daysWithBills, today])
+  }, [daysWithBills, today, selectedDate])
 
   const monthGrid = useMemo(() => {
     const { year, monthIdx } = expandedMonth

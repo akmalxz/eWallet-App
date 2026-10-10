@@ -12,16 +12,34 @@ import { resolveAccountScope } from '../accounts/accountScope'
 const CARRY_OVER_MONTHS = 3
 
 /**
+ * Parse a "YYYY-MM-DD" date-only string into { year, monthIdx, day }
+ * without going through JS Date (which would apply the local timezone).
+ */
+const parseDateOnly = (dateStr) => {
+  if (!dateStr) return null
+  const [y, m, d] = String(dateStr).slice(0, 10).split('-').map(Number)
+  if (!y || !m || !d) return null
+  return { year: y, monthIdx: m - 1, day: d }
+}
+
+/**
  * computeCommitmentSchedule
  *
  * Returns every unpaid commitment period within a horizon, using the
  * payments table to skip paid/skipped periods.
  *
- * Carry-over rules (P2.6):
- *   - Start at the later of (commitment creation month, CARRY_OVER_MONTHS ago)
- *   - End at the horizon month
- *   - Skip periods whose due date is before the commitment was created.
- *     Compared against the actual creation DAY, not the start of its month.
+ * Recurring bills (kind = 'recurring' or unset):
+ *   - Start at the later of (creation month, CARRY_OVER_MONTHS ago)
+ *   - Skip periods whose due date is before the creation DAY.
+ *
+ * BNPL plans (kind = 'bnpl'):
+ *   - Start at first_payment_date's month (clamped to the carry-over
+ *     window, so a plan started > 3 months ago only shows the last
+ *     3 months of overdue periods).
+ *   - Due day is derived from first_payment_date, so the plan's day
+ *     never drifts even if due_day_of_month is edited independently.
+ *   - Complete once paidCount >= term_months; no periods generated.
+ *   - Skipped rows don't advance completion.
  *
  * Scope rules (P3.2): uses `resolveAccountScope`, so the caller controls
  * which accounts count.
@@ -38,7 +56,6 @@ export const computeCommitmentSchedule = ({
 
   const nowMY = toMYDate(now)
 
-  // Default horizon: last MY day of the current month
   const horizonFinal = horizon || new Date(
     Date.UTC(nowMY.getUTCFullYear(), nowMY.getUTCMonth() + 1, 0) - (8 * 60 * 60 * 1000)
   )
@@ -47,7 +64,6 @@ export const computeCommitmentSchedule = ({
   const horizonYear = horizonMY.getUTCFullYear()
   const horizonMonthIdx = horizonMY.getUTCMonth()
 
-  // Oldest allowed period
   const oldestMY = new Date(Date.UTC(
     nowMY.getUTCFullYear(),
     nowMY.getUTCMonth() - CARRY_OVER_MONTHS,
@@ -56,11 +72,29 @@ export const computeCommitmentSchedule = ({
   const oldestYear = oldestMY.getUTCFullYear()
   const oldestMonthIdx = oldestMY.getUTCMonth()
 
+  // Paid-only count, used by the BNPL completion check.
+  const paidCountByCommitment = new Map()
+  for (const p of payments) {
+    if (p.status !== 'paid') continue
+    paidCountByCommitment.set(
+      p.commitment_id,
+      (paidCountByCommitment.get(p.commitment_id) || 0) + 1
+    )
+  }
+
   const unpaidPeriods = []
   const needsAttention = []
 
   for (const comm of commitments) {
     if (!comm.is_active) continue
+
+    const isBnpl = comm.kind === 'bnpl'
+
+    // Completed BNPL plans are history — no periods, no attention flags.
+    if (isBnpl && comm.term_months != null) {
+      const paid = paidCountByCommitment.get(comm.id) || 0
+      if (paid >= comm.term_months) continue
+    }
 
     // Account checks
     if (!comm.account_id) {
@@ -76,47 +110,70 @@ export const computeCommitmentSchedule = ({
       continue
     }
 
-    // Creation month + day (Malaysia local)
-    const createdMY = comm.created_at ? toMYDate(new Date(comm.created_at)) : null
-    const createdYear = createdMY ? createdMY.getUTCFullYear() : null
-    const createdMonthIdx = createdMY ? createdMY.getUTCMonth() : null
-    // P2.6 — compare against the actual creation DAY. Let `dayKey` handle
-    // the +08:00 shift from the raw timestamp, so we never double-shift.
-    const creationKey = comm.created_at ? dayKey(new Date(comm.created_at)) : null
+    // --- Determine starting cursor + skip-floor key ---
+    let cy, cm, startKey, dayForMonth
 
-    // Cursor: later of creation month and oldest allowed month
-    let cy, cm
-    if (createdMY) {
-      const createdIsAfterOldest =
-        createdYear > oldestYear ||
-        (createdYear === oldestYear && createdMonthIdx >= oldestMonthIdx)
-      if (createdIsAfterOldest) {
-        cy = createdYear
-        cm = createdMonthIdx
+    if (isBnpl && comm.first_payment_date) {
+      const fp = parseDateOnly(comm.first_payment_date)
+      if (!fp) continue  // malformed date string, defensive
+
+      // Clamp to the 3-month carry-over window so an old plan doesn't
+      // suddenly produce a wall of overdue periods.
+      const fpIsAfterOldest =
+        fp.year > oldestYear ||
+        (fp.year === oldestYear && fp.monthIdx >= oldestMonthIdx)
+
+      if (fpIsAfterOldest) {
+        cy = fp.year
+        cm = fp.monthIdx
       } else {
         cy = oldestYear
         cm = oldestMonthIdx
       }
+
+      startKey = String(comm.first_payment_date).slice(0, 10)
+      dayForMonth = fp.day
     } else {
-      cy = oldestYear
-      cm = oldestMonthIdx
+      // Recurring path — preserve existing behaviour.
+      const createdMY = comm.created_at ? toMYDate(new Date(comm.created_at)) : null
+      const createdYear = createdMY ? createdMY.getUTCFullYear() : null
+      const createdMonthIdx = createdMY ? createdMY.getUTCMonth() : null
+      startKey = comm.created_at ? dayKey(new Date(comm.created_at)) : null
+      dayForMonth = comm.due_day_of_month
+
+      if (createdMY) {
+        const createdIsAfterOldest =
+          createdYear > oldestYear ||
+          (createdYear === oldestYear && createdMonthIdx >= oldestMonthIdx)
+        if (createdIsAfterOldest) {
+          cy = createdYear
+          cm = createdMonthIdx
+        } else {
+          cy = oldestYear
+          cm = oldestMonthIdx
+        }
+      } else {
+        cy = oldestYear
+        cm = oldestMonthIdx
+      }
     }
 
-    // Creation is past the horizon → skip
+    // Cursor is past the horizon → nothing to generate
     if (cy > horizonYear || (cy === horizonYear && cm > horizonMonthIdx)) {
       continue
     }
 
+    // --- Walk months ---
     while (cy < horizonYear || (cy === horizonYear && cm <= horizonMonthIdx)) {
-      const dueDate = dueDateForMonth(comm.due_day_of_month, cy, cm)
+      const dueDate = dueDateForMonth(dayForMonth, cy, cm)
       const dueKey = dayKey(dueDate)
 
-      const skipDueToBeforeCreation = creationKey && dueKey < creationKey
+      const skipDueToBeforeStart = startKey && dueKey < startKey
       const skipDueToAfterHorizon = dueKey > horizonKey
       const skipDueToHandled = isPeriodHandled(payments, comm.id, cy, cm + 1)
 
-      if (!skipDueToBeforeCreation && !skipDueToAfterHorizon && !skipDueToHandled) {
-        const diffDays = daysBetweenMY(now, dueDate)   // positive → future
+      if (!skipDueToBeforeStart && !skipDueToAfterHorizon && !skipDueToHandled) {
+        const diffDays = daysBetweenMY(now, dueDate)
         const daysOverdue = diffDays < 0 ? -diffDays : 0
         const daysUntil = diffDays > 0 ? diffDays : 0
 
@@ -139,7 +196,6 @@ export const computeCommitmentSchedule = ({
     }
   }
 
-  // Sort: most overdue first, then soonest, then largest
   unpaidPeriods.sort((a, b) => {
     if (a.daysOverdue !== b.daysOverdue) return b.daysOverdue - a.daysOverdue
     if (a.daysUntil !== b.daysUntil) return a.daysUntil - b.daysUntil
@@ -161,7 +217,6 @@ export const computeCommitmentSchedule = ({
     const account = accounts.find(a => a.id === accountId)
     if (!account) continue
 
-    // Sort ascending by due date
     const ordered = [...periods].sort((a, b) => a.dueDate - b.dueDate)
 
     let running = 0

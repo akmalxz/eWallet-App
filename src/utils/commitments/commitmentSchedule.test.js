@@ -397,4 +397,283 @@ describe('computeCommitmentSchedule', () => {
     expect(second.accountShort).toBe(true)
     expect(result.accountShortfalls).toHaveLength(1)
   })
+
+    // ---------------------------------------------------------------------
+  // BNPL completion
+  // ---------------------------------------------------------------------
+
+  it('generates periods for an incomplete BNPL plan', () => {
+    const result = computeCommitmentSchedule({
+      commitments: [
+        commitment('c1', 250, 15, 'acc-a', {
+          kind: 'bnpl',
+          term_months: 12
+        })
+      ],
+      // 3 of 12 paid → 9 more to generate
+      payments: [
+        paid('c1', 2026, 7),
+        paid('c1', 2026, 8),
+        paid('c1', 2026, 9)
+      ],
+      accounts: [ACC_A],
+      scopeAccountId: 'all',
+      now: d(2026, 9, 15),
+      horizon: d(2026, 9, 31)
+    })
+    // Only Oct is unpaid within the carry-over window
+    expect(result.unpaidPeriods.length).toBeGreaterThan(0)
+    expect(result.unpaidPeriods.every(p => p.commitmentId === 'c1')).toBe(true)
+  })
+
+  it('generates no periods for a completed BNPL plan', () => {
+    const result = computeCommitmentSchedule({
+      commitments: [
+        commitment('c1', 250, 15, 'acc-a', {
+          kind: 'bnpl',
+          term_months: 3
+        })
+      ],
+      payments: [
+        paid('c1', 2026, 8),
+        paid('c1', 2026, 9),
+        paid('c1', 2026, 10)
+      ],
+      accounts: [ACC_A],
+      scopeAccountId: 'all',
+      now: d(2026, 9, 15),
+      horizon: d(2026, 9, 31)
+    })
+    expect(result.unpaidPeriods).toHaveLength(0)
+    expect(result.total).toBe(0)
+    expect(result.needsAttention).toHaveLength(0)
+    expect(result.accountShortfalls).toHaveLength(0)
+  })
+
+  it('treats an overpaid BNPL plan as complete', () => {
+    const result = computeCommitmentSchedule({
+      commitments: [
+        commitment('c1', 250, 15, 'acc-a', {
+          kind: 'bnpl',
+          term_months: 3
+        })
+      ],
+      // 4 paid of 3 → defensive: still complete, no phantom periods
+      payments: [
+        paid('c1', 2026, 7),
+        paid('c1', 2026, 8),
+        paid('c1', 2026, 9),
+        paid('c1', 2026, 10)
+      ],
+      accounts: [ACC_A],
+      scopeAccountId: 'all',
+      now: d(2026, 9, 15),
+      horizon: d(2026, 9, 31)
+    })
+    expect(result.unpaidPeriods).toHaveLength(0)
+  })
+
+  it('does not count skipped rows toward BNPL completion', () => {
+    const result = computeCommitmentSchedule({
+      commitments: [
+        commitment('c1', 250, 15, 'acc-a', {
+          kind: 'bnpl',
+          term_months: 3
+        })
+      ],
+      // 2 paid + 1 skipped = 2 completed, not 3
+      payments: [
+        paid('c1', 2026, 7),
+        paid('c1', 2026, 8),
+        skipped('c1', 2026, 9)
+      ],
+      accounts: [ACC_A],
+      scopeAccountId: 'all',
+      now: d(2026, 9, 15),
+      horizon: d(2026, 9, 31)
+    })
+    // Still has unpaid periods (Oct)
+    expect(result.unpaidPeriods.length).toBeGreaterThan(0)
+  })
+
+  it('a completed BNPL plan with an archived account is not flagged', () => {
+    const result = computeCommitmentSchedule({
+      commitments: [
+        commitment('c1', 250, 15, 'acc-x', {   // archived account
+          kind: 'bnpl',
+          term_months: 2
+        })
+      ],
+      payments: [
+        paid('c1', 2026, 9),
+        paid('c1', 2026, 10)
+      ],
+      accounts: [ACC_A, ACC_ARCHIVED],
+      scopeAccountId: 'all',
+      now: d(2026, 9, 15),
+      horizon: d(2026, 9, 31)
+    })
+    expect(result.needsAttention).toHaveLength(0)
+    expect(result.unpaidPeriods).toHaveLength(0)
+  })
+
+  it('treats commitments without a kind as recurring (backward compat)', () => {
+    // No kind column on the object — engine should behave as before.
+    const result = computeCommitmentSchedule({
+      commitments: [commitment('c1', 100, 15)],   // no kind field
+      payments: [],
+      accounts: [ACC_A],
+      scopeAccountId: 'all',
+      now: d(2026, 9, 5),
+      horizon: d(2026, 9, 31)
+    })
+    // Carries over Jul/Aug/Sep + Oct, same as the earlier recurring tests
+    expect(result.unpaidPeriods).toHaveLength(4)
+    expect(result.total).toBe(400)
+  })
+
+    // ---------------------------------------------------------------------
+  // BNPL with first_payment_date
+  // ---------------------------------------------------------------------
+
+  it('BNPL: first_payment_date in the past generates its period (overdue)', () => {
+    const result = computeCommitmentSchedule({
+      commitments: [
+        commitment('c1', 100, 9, 'acc-a', {
+          kind: 'bnpl',
+          term_months: 12,
+          first_payment_date: '2026-10-09'  // Oct 9, "today" is Oct 15
+        })
+      ],
+      payments: [],
+      accounts: [ACC_A],
+      scopeAccountId: 'all',
+      now: d(2026, 9, 15),
+      horizon: d(2026, 9, 31)
+    })
+
+    // Oct 9 is 6 days overdue; Nov 9 is past the horizon.
+    expect(result.unpaidPeriods).toHaveLength(1)
+    const oct = result.unpaidPeriods[0]
+    expect(oct.periodMonth).toBe(10)
+    expect(oct.periodYear).toBe(2026)
+    expect(oct.daysOverdue).toBe(6)
+    expect(oct.daysUntil).toBe(0)
+  })
+
+  it('BNPL: first_payment_date in the future skips the current month', () => {
+    const result = computeCommitmentSchedule({
+      commitments: [
+        commitment('c1', 100, 9, 'acc-a', {
+          kind: 'bnpl',
+          term_months: 12,
+          first_payment_date: '2026-11-09'  // Nov 9, after Oct 31 horizon
+        })
+      ],
+      payments: [],
+      accounts: [ACC_A],
+      scopeAccountId: 'all',
+      now: d(2026, 9, 15),
+      horizon: d(2026, 9, 31)
+    })
+
+    expect(result.unpaidPeriods).toHaveLength(0)
+    expect(result.total).toBe(0)
+  })
+
+  it('BNPL: multiple past periods generate with correct overdue days', () => {
+    const result = computeCommitmentSchedule({
+      commitments: [
+        commitment('c1', 100, 9, 'acc-a', {
+          kind: 'bnpl',
+          term_months: 12,
+          first_payment_date: '2026-08-09'  // Aug 9 → 3 unpaid by Oct 15
+        })
+      ],
+      payments: [],
+      accounts: [ACC_A],
+      scopeAccountId: 'all',
+      now: d(2026, 9, 15),
+      horizon: d(2026, 9, 31)
+    })
+
+    // Aug 9 (67d overdue), Sep 9 (36d), Oct 9 (6d)
+    expect(result.unpaidPeriods).toHaveLength(3)
+    const months = result.unpaidPeriods
+      .map(p => p.periodMonth)
+      .sort((a, b) => a - b)
+    expect(months).toEqual([8, 9, 10])
+  })
+
+  it('BNPL: first_payment_date older than the carry-over window is clamped', () => {
+    const result = computeCommitmentSchedule({
+      commitments: [
+        commitment('c1', 100, 9, 'acc-a', {
+          kind: 'bnpl',
+          term_months: 24,
+          first_payment_date: '2026-01-09'  // 9 months before Oct — clamped to Jul
+        })
+      ],
+      payments: [],
+      accounts: [ACC_A],
+      scopeAccountId: 'all',
+      now: d(2026, 9, 15),
+      horizon: d(2026, 9, 31)
+    })
+
+    // Window is Jul–Oct. Even though first_payment_date is Jan,
+    // only Jul, Aug, Sep, Oct are generated.
+    expect(result.unpaidPeriods).toHaveLength(4)
+    const months = result.unpaidPeriods
+      .map(p => p.periodMonth)
+      .sort((a, b) => a - b)
+    expect(months).toEqual([7, 8, 9, 10])
+  })
+
+  it('BNPL: completed plan ignores first_payment_date entirely', () => {
+    const result = computeCommitmentSchedule({
+      commitments: [
+        commitment('c1', 100, 9, 'acc-a', {
+          kind: 'bnpl',
+          term_months: 3,
+          first_payment_date: '2026-08-09'
+        })
+      ],
+      payments: [
+        paid('c1', 2026, 8),
+        paid('c1', 2026, 9),
+        paid('c1', 2026, 10)
+      ],
+      accounts: [ACC_A],
+      scopeAccountId: 'all',
+      now: d(2026, 9, 15),
+      horizon: d(2026, 9, 31)
+    })
+
+    expect(result.unpaidPeriods).toHaveLength(0)
+    expect(result.needsAttention).toHaveLength(0)
+  })
+
+  it('BNPL: due day is derived from first_payment_date, not due_day_of_month', () => {
+    // Deliberately mismatched: due_day_of_month says 1, first_payment_date says 15.
+    // The engine should honour first_payment_date.
+    const result = computeCommitmentSchedule({
+      commitments: [
+        commitment('c1', 100, 1, 'acc-a', {   // due_day_of_month = 1
+          kind: 'bnpl',
+          term_months: 12,
+          first_payment_date: '2026-10-15'    // day 15
+        })
+      ],
+      payments: [],
+      accounts: [ACC_A],
+      scopeAccountId: 'all',
+      now: d(2026, 9, 15),
+      horizon: d(2026, 9, 31)
+    })
+
+    expect(result.unpaidPeriods).toHaveLength(1)
+    // The period should be due Oct 15, not Oct 1.
+    expect(toMYDate(result.unpaidPeriods[0].dueDate).getUTCDate()).toBe(15)
+  })
 })

@@ -2,9 +2,33 @@
 import { useState, useEffect, useRef } from 'react'
 import { Save, AlertCircle, Wallet } from 'lucide-react'
 import { Sheet } from '../shared/Sheet'
+import { SlidingSegmentedControl } from '../shared/SlidingSegmentedControl'
 import { formatMYR } from '../../utils/formatters'
 
 const NAME_MAX = 40
+const TERM_MAX = 360
+
+const TYPE_ITEMS = [
+  { id: 'recurring', label: 'Recurring' },
+  { id: 'bnpl',      label: 'BNPL' }
+]
+
+// Turn a YYYY-MM-DD date string into just the day number (safe under
+// any local timezone — we parse the string directly, never through Date).
+const dayFromDateString = (dateStr) => {
+  if (!dateStr) return null
+  const parts = String(dateStr).slice(0, 10).split('-')
+  const d = parseInt(parts[2], 10)
+  return Number.isFinite(d) ? d : null
+}
+
+const todayDateString = () => {
+  const n = new Date()
+  const y = n.getFullYear()
+  const m = String(n.getMonth() + 1).padStart(2, '0')
+  const d = String(n.getDate()).padStart(2, '0')
+  return `${y}-${m}-${d}`
+}
 
 export const CommitmentFormSheet = ({
   commitment = null,
@@ -22,7 +46,13 @@ export const CommitmentFormSheet = ({
     amount: commitment?.amount != null ? String(commitment.amount) : '',
     dueDay:
       commitment?.due_day_of_month != null ? String(commitment.due_day_of_month) : '',
-    accountId: commitment?.account_id || accounts[0]?.id || ''
+    accountId: commitment?.account_id || accounts[0]?.id || '',
+    kind: commitment?.kind || 'recurring',
+    termMonths:
+      commitment?.term_months != null ? String(commitment.term_months) : '',
+    firstPaymentDate: commitment?.first_payment_date
+      ? String(commitment.first_payment_date).slice(0, 10)
+      : todayDateString()
   }
 
   const [draft, setDraft] = useState(initial)
@@ -38,6 +68,7 @@ export const CommitmentFormSheet = ({
 
   const account = accounts.find((a) => a.id === draft.accountId)
   const accountIsArchived = account?.is_archived === true
+  const isBnpl = draft.kind === 'bnpl'
 
   const validate = () => {
     const next = {}
@@ -57,9 +88,26 @@ export const CommitmentFormSheet = ({
       next.amount = 'Enter an amount greater than 0'
     }
 
-    const day = parseInt(draft.dueDay, 10)
-    if (!draft.dueDay || isNaN(day) || day < 1 || day > 31) {
-      next.dueDay = 'Due day must be between 1 and 31'
+    if (isBnpl) {
+      // First payment date is required for BNPL.
+      if (!draft.firstPaymentDate) {
+        next.firstPaymentDate = 'Choose the first payment date'
+      } else if (!/^\d{4}-\d{2}-\d{2}$/.test(draft.firstPaymentDate)) {
+        next.firstPaymentDate = 'Enter a valid date'
+      }
+
+      const term = parseInt(draft.termMonths, 10)
+      if (!draft.termMonths || isNaN(term) || term < 1) {
+        next.termMonths = 'Enter the number of instalments remaining'
+      } else if (term > TERM_MAX) {
+        next.termMonths = `Term must be ${TERM_MAX} instalments or less`
+      }
+    } else {
+      // Recurring: due day is a plain 1–31 number.
+      const day = parseInt(draft.dueDay, 10)
+      if (!draft.dueDay || isNaN(day) || day < 1 || day > 31) {
+        next.dueDay = 'Due day must be between 1 and 31'
+      }
     }
 
     if (!draft.accountId) next.accountId = 'Choose an account'
@@ -74,11 +122,29 @@ export const CommitmentFormSheet = ({
     setServerError(null)
     if (!validate()) return
 
+    // For BNPL, derive due_day_of_month from first_payment_date so the
+    // two columns stay consistent. The engine uses first_payment_date
+    // for scheduling, but keeping due_day in sync avoids confusion if
+    // the row is ever viewed raw.
+    let resolvedDueDay
+    let resolvedFirstPaymentDate = null
+
+    if (isBnpl) {
+      const dayFromDate = dayFromDateString(draft.firstPaymentDate)
+      resolvedDueDay = dayFromDate
+      resolvedFirstPaymentDate = draft.firstPaymentDate
+    } else {
+      resolvedDueDay = parseInt(draft.dueDay, 10)
+    }
+
     const payload = {
       name: draft.name.trim(),
       amount: parseFloat(draft.amount),
-      due_day_of_month: parseInt(draft.dueDay, 10),
-      account_id: draft.accountId
+      due_day_of_month: resolvedDueDay,
+      account_id: draft.accountId,
+      kind: draft.kind,
+      term_months: isBnpl ? parseInt(draft.termMonths, 10) : null,
+      first_payment_date: resolvedFirstPaymentDate
     }
 
     const result = await onSubmit(payload, commitment)
@@ -92,10 +158,24 @@ export const CommitmentFormSheet = ({
     if (errors[field]) setErrors((p) => ({ ...p, [field]: undefined }))
   }
 
+  const setKind = (next) => {
+    setDraft((d) => {
+      if (next === 'recurring') {
+        // Clear BNPL-only fields when switching back.
+        return { ...d, kind: next, termMonths: '' }
+      }
+      // Seed the date input with today so the user has a starting point.
+      return {
+        ...d,
+        kind: next,
+        firstPaymentDate: d.firstPaymentDate || todayDateString()
+      }
+    })
+    setErrors({})
+  }
+
   // ------------------------------------------------------------
   // Empty state — can't add a bill without an active account.
-  // Editing an existing bill assumes the account already exists,
-  // so this only fires for new bills.
   // ------------------------------------------------------------
   const activeAccounts = accounts.filter(a => !a.is_archived)
   if (!isEdit && activeAccounts.length === 0) {
@@ -158,7 +238,7 @@ export const CommitmentFormSheet = ({
           value={draft.name}
           onChange={setField('name')}
           maxLength={NAME_MAX + 5}
-          placeholder="e.g. Netflix, Rent"
+          placeholder={isBnpl ? 'e.g. iPhone 15' : 'e.g. Netflix, Rent'}
           disabled={saving}
           className={`w-full bg-surface border rounded-xl py-3 px-3 text-sm text-fg placeholder:text-fg-subtle outline-none transition-colors disabled:bg-surface-2 disabled:opacity-70 ${
             errors.name
@@ -173,13 +253,25 @@ export const CommitmentFormSheet = ({
         )}
       </div>
 
+      {/* Type — Recurring vs BNPL */}
+      <div>
+        <label className="block text-[11px] font-bold text-fg-subtle uppercase tracking-wider mb-2">
+          Type
+        </label>
+        <SlidingSegmentedControl
+          items={TYPE_ITEMS}
+          value={draft.kind}
+          onChange={setKind}
+        />
+      </div>
+
       <div className="grid grid-cols-2 gap-3">
         <div>
           <label
             htmlFor="bill-amount"
             className="block text-[11px] font-bold text-fg-subtle uppercase tracking-wider mb-1.5"
           >
-            Amount (RM)
+            {isBnpl ? 'Instalment (RM)' : 'Amount (RM)'}
           </label>
           <input
             id="bill-amount"
@@ -204,38 +296,106 @@ export const CommitmentFormSheet = ({
           )}
         </div>
 
-        <div>
+        {/* Right column: due day for recurring, term for BNPL */}
+        {isBnpl ? (
+          <div>
+            <label
+              htmlFor="bill-term"
+              className="block text-[11px] font-bold text-fg-subtle uppercase tracking-wider mb-1.5"
+            >
+              Instalments left
+            </label>
+            <input
+              id="bill-term"
+              type="number"
+              min="1"
+              max={TERM_MAX}
+              inputMode="numeric"
+              value={draft.termMonths}
+              onChange={setField('termMonths')}
+              disabled={saving}
+              className={`w-full bg-surface border rounded-xl py-3 px-3 text-sm text-fg placeholder:text-fg-subtle outline-none transition-colors disabled:bg-surface-2 disabled:opacity-70 ${
+                errors.termMonths
+                  ? 'border-danger-border focus:border-danger'
+                  : 'border-line focus:border-brand'
+              }`}
+              placeholder="e.g. 12"
+            />
+            {errors.termMonths && (
+              <p className="mt-1 text-[11px] text-danger font-medium flex items-center gap-1">
+                <AlertCircle className="w-3 h-3" /> {errors.termMonths}
+              </p>
+            )}
+          </div>
+        ) : (
+          <div>
+            <label
+              htmlFor="bill-due-day"
+              className="block text-[11px] font-bold text-fg-subtle uppercase tracking-wider mb-1.5"
+            >
+              Due day
+            </label>
+            <input
+              id="bill-due-day"
+              type="number"
+              min="1"
+              max="31"
+              inputMode="numeric"
+              value={draft.dueDay}
+              onChange={setField('dueDay')}
+              disabled={saving}
+              className={`w-full bg-surface border rounded-xl py-3 px-3 text-sm text-fg placeholder:text-fg-subtle outline-none transition-colors disabled:bg-surface-2 disabled:opacity-70 ${
+                errors.dueDay
+                  ? 'border-danger-border focus:border-danger'
+                  : 'border-line focus:border-brand'
+              }`}
+              placeholder="1–31"
+            />
+            {errors.dueDay && (
+              <p className="mt-1 text-[11px] text-danger font-medium flex items-center gap-1">
+                <AlertCircle className="w-3 h-3" /> {errors.dueDay}
+              </p>
+            )}
+          </div>
+        )}
+      </div>
+
+      {/* BNPL: first payment date */}
+      {isBnpl && (
+        <div className="animate-fadeIn">
           <label
-            htmlFor="bill-due-day"
+            htmlFor="bill-first-payment"
             className="block text-[11px] font-bold text-fg-subtle uppercase tracking-wider mb-1.5"
           >
-            Due day
+            First payment date
           </label>
           <input
-            id="bill-due-day"
-            type="number"
-            min="1"
-            max="31"
-            inputMode="numeric"
-            value={draft.dueDay}
-            onChange={setField('dueDay')}
+            id="bill-first-payment"
+            type="date"
+            value={draft.firstPaymentDate}
+            onChange={setField('firstPaymentDate')}
             disabled={saving}
-            className={`w-full bg-surface border rounded-xl py-3 px-3 text-sm text-fg placeholder:text-fg-subtle outline-none transition-colors disabled:bg-surface-2 disabled:opacity-70 ${
-              errors.dueDay
+            className={`w-full bg-surface border rounded-xl py-3 px-3 text-sm text-fg outline-none transition-colors disabled:bg-surface-2 disabled:opacity-70 ${
+              errors.firstPaymentDate
                 ? 'border-danger-border focus:border-danger'
                 : 'border-line focus:border-brand'
             }`}
-            placeholder="1–31"
           />
+          <p className="mt-1.5 text-[11px] text-fg-muted leading-relaxed">
+            When the first instalment was (or will be) paid. Set a past date
+            to track an ongoing plan; a future date for one starting later.
+          </p>
+          {errors.firstPaymentDate && (
+            <p className="mt-1 text-[11px] text-danger font-medium flex items-center gap-1">
+              <AlertCircle className="w-3 h-3" /> {errors.firstPaymentDate}
+            </p>
+          )}
         </div>
-      </div>
+      )}
 
-      <p className="text-[11px] text-fg-muted leading-relaxed">
-        Bills due on 29–31 fall on the last day in shorter months.
-      </p>
-      {errors.dueDay && (
-        <p className="text-[11px] text-danger font-medium flex items-center gap-1">
-          <AlertCircle className="w-3 h-3" /> {errors.dueDay}
+      {!isBnpl && (
+        <p className="text-[11px] text-fg-muted leading-relaxed">
+          Bills due on 29–31 fall on the last day in shorter months.
         </p>
       )}
 
@@ -308,7 +468,7 @@ export const CommitmentFormSheet = ({
           style={{ minHeight: 44 }}
         >
           <Save className="w-4 h-4" />
-          {saving ? 'Saving…' : isEdit ? 'Save changes' : 'Add bill'}
+          {saving ? 'Saving…' : isEdit ? 'Save changes' : isBnpl ? 'Add BNPL plan' : 'Add bill'}
         </button>
       </div>
     </Sheet>
