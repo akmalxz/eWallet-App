@@ -478,27 +478,39 @@ export function DebtHub({ user, showToast, onDebtsChanged }) {
                             </button>
 
                             <div className="flex items-center gap-2">
-                            {isAwaiting ? (
-                              <div className="flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg text-xs font-bold text-fg-subtle bg-surface-2 border border-line">
-                                <Clock className="w-3.5 h-3.5" />
-                                Awaiting their confirmation
-                              </div>
-                            ) : debt.dispute_status === 'open' ? (
-                              <div className="flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg text-xs font-bold text-warning-text bg-warning-soft border border-warning-border">
-                                <AlertTriangle className="w-3.5 h-3.5" />
-                                Resolve dispute first
-                              </div>
-                            ) : (
-                              <button
-                                onClick={() => handleMarkPaid(debt)}
-                                disabled={isMarking}
-                                className="w-full flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg text-xs font-bold text-success bg-success-soft hover:bg-success hover:text-white border border-success-border transition-colors disabled:opacity-50"
-                                style={{ minHeight: 44 }}
-                              >
-                                {isMarking ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <CheckCircle2 className="w-3.5 h-3.5" />}
-                                I've paid
-                              </button>
-                            )}
+                              {isAwaiting ? (
+                                <>
+                                  <button
+                                    onClick={() => setConfirmDebt(debt)}
+                                    className="flex-1 flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg text-xs font-bold text-success bg-success-soft hover:bg-success hover:text-white border border-success-border transition-colors"
+                                    style={{ minHeight: 44 }}
+                                    aria-label={`Confirm ${formatMYR(debt.amount)} from ${merchant}`}
+                                  >
+                                    <Check className="w-3.5 h-3.5" />
+                                    Confirm received
+                                  </button>
+                                  <button
+                                    onClick={() => handleReject(debt)}
+                                    disabled={isRejecting}
+                                    className="flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg text-xs font-bold text-fg-muted bg-surface border border-line hover:bg-surface-2 transition-colors disabled:opacity-50"
+                                    style={{ minHeight: 44 }}
+                                    aria-label={`Reject confirmation for ${merchant}`}
+                                  >
+                                    {isRejecting ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <X className="w-3.5 h-3.5" />}
+                                    Not received
+                                  </button>
+                                </>
+                              ) : (
+                                <button
+                                  onClick={() => setConfirmDebt(debt)}
+                                  className="flex-1 flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg text-xs font-bold text-success bg-success-soft hover:bg-success hover:text-white border border-success-border transition-colors"
+                                  style={{ minHeight: 44 }}
+                                  aria-label={`Settle ${formatMYR(debt.amount)} from ${merchant}`}
+                                >
+                                  <HandCoins className="w-3.5 h-3.5" />
+                                  Settle
+                                </button>
+                              )}
                               <button
                                 onClick={() => setConfirmDelete({ sessionId: debt.session_id, merchant })}
                                 className="shrink-0 flex items-center justify-center w-11 h-11 rounded-lg text-red-500 bg-red-50 hover:bg-red-100 border border-red-200 transition-colors"

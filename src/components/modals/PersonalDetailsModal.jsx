@@ -93,7 +93,7 @@ export const PersonalDetailsModal = ({
             value={firstName}
             onChange={(e) => setFirstName(e.target.value)}
             className="w-full bg-surface-2 border border-line rounded-xl py-2 px-3 text-sm text-fg placeholder:text-fg-subtle outline-none focus:border-brand focus:ring-2 focus:ring-brand/30 transition-all"
-            placeholder="e.g. Muhammad Akmal Hakim"
+            placeholder="e.g. Ali bin Abu"
           />
         </div>
 
@@ -130,7 +130,7 @@ export const PersonalDetailsModal = ({
             value={username}
             onChange={(e) => setUsername(e.target.value)}
             className="w-full bg-surface-2 border border-line rounded-xl py-2 px-3 text-sm text-fg placeholder:text-fg-subtle outline-none focus:border-brand focus:ring-2 focus:ring-brand/30 transition-all"
-            placeholder="e.g. akmalhakim"
+            placeholder="e.g. ali_xx"
           />
           <p className="text-[10px] text-fg-subtle mt-1.5">
             This is how others will find you in the network.

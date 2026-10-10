@@ -3,7 +3,7 @@ import { useState, useEffect, useMemo, useRef } from 'react'
 import {
   Receipt, ChevronLeft, ChevronDown, ChevronUp, Loader2, FileText,
   User, CheckCircle2, Circle, Users, Plus, X, Search, Check,
-  HandCoins, Camera, Image as ImageIcon, RotateCcw
+  HandCoins, Camera, Image as ImageIcon, RotateCcw, Wallet
 } from 'lucide-react'
 import { supabase } from '../lib/supabaseClient'
 import { DebtHub } from '../components/split/DebtHub'
@@ -87,7 +87,14 @@ const processImageFile = async (file) => {
   }
 }
 
-export function SplitBillPage({ user, profile, showToast, onBack, initialTab = 'new' }) {
+export function SplitBillPage({
+  user,
+  profile,
+  accounts = [],
+  showToast,
+  onBack,
+  initialTab = 'new'
+}) {
   // Tab
   const [activeTab, setActiveTab] = useState(initialTab)
   const [pendingCount, setPendingCount] = useState(0)
@@ -117,6 +124,24 @@ export function SplitBillPage({ user, profile, showToast, onBack, initialTab = '
   const [showReviewModal, setShowReviewModal] = useState(false)
   const [ledgerPreview, setLedgerPreview] = useState(null)
   const [isLocking, setIsLocking] = useState(false)
+
+  // 4. Ledger-logging State (Issue 2)
+  //    Controls whether locking the session also writes the full bill to
+  //    the host's ledger. On by default; the ledger stays in sync with the
+  //    dashboard out of the box. Users who already logged the payment
+  //    manually can uncheck the box.
+  const [logToLedger, setLogToLedger] = useState(true)
+  const [logAccountId, setLogAccountId] = useState('')
+
+  // Default logAccountId whenever accounts load or change
+  useEffect(() => {
+    if (accounts.length > 0 && !logAccountId) {
+      // Prefer hub, fall back to first active
+      const hub = accounts.find(a => a.classification === 'hub' && !a.is_archived)
+      const first = accounts.find(a => !a.is_archived)
+      setLogAccountId(hub?.id || first?.id || '')
+    }
+  }, [accounts, logAccountId])
 
   // Sync when App changes the requested initial tab
   useEffect(() => {
@@ -151,11 +176,6 @@ export function SplitBillPage({ user, profile, showToast, onBack, initialTab = '
   }, [user?.id])
 
   // Tab items for the sliding pill control.
-  //
-  // Labels are React nodes so the icons stay inline with the text.
-  // The Debts badge uses `bg-current/20` — it inherits whichever text
-  // color the control's active/inactive states apply, so it never
-  // needs separate active/inactive styling.
   const tabItems = useMemo(() => [
     {
       id: 'new',
@@ -458,9 +478,19 @@ export function SplitBillPage({ user, profile, showToast, onBack, initialTab = '
 
   const handleLockSession = async () => {
     if (!ledgerPreview) return
+
+    // Guard the ledger-log choice before we start any writes
+    if (logToLedger && !logAccountId) {
+      showToast('Choose an account to log the payment from.', 'warning')
+      return
+    }
+
     setIsLocking(true)
 
     try {
+      // ----------------------------------------------------------
+      // 1. Create the session
+      // ----------------------------------------------------------
       const { data: session, error: sessionErr } = await supabase
         .from('split_sessions')
         .insert({
@@ -477,6 +507,9 @@ export function SplitBillPage({ user, profile, showToast, onBack, initialTab = '
 
       if (sessionErr) throw sessionErr
 
+      // ----------------------------------------------------------
+      // 2. Insert claims
+      // ----------------------------------------------------------
       const claimsPayload = []
       receiptData.items.forEach((item, index) => {
         const claimants = claims[index] || []
@@ -495,6 +528,9 @@ export function SplitBillPage({ user, profile, showToast, onBack, initialTab = '
         })
       })
 
+      // ----------------------------------------------------------
+      // 3. Insert debts
+      // ----------------------------------------------------------
       const debtsPayload = ledgerPreview
         .filter(person => person.id !== user.id && person.final_owed > 0)
         .map(person => ({
@@ -506,10 +542,64 @@ export function SplitBillPage({ user, profile, showToast, onBack, initialTab = '
           status: 'pending'
         }))
 
-      if (claimsPayload.length > 0) await supabase.from('split_claims').insert(claimsPayload)
-      if (debtsPayload.length > 0) await supabase.from('split_debts').insert(debtsPayload)
+      // ----------------------------------------------------------
+      // 4. Optional: log the host's own share as an expense
+      // ----------------------------------------------------------
+      // Only the host's share is logged. Money friends owe is tracked
+      // separately in split_debts and doesn't belong in the ledger.
+      const hostShare = ledgerPreview.find(p => p.id === user.id)?.final_owed || 0
 
-      showToast('Session locked and debts recorded!', 'success')
+      let loggedTransaction = null
+      if (logToLedger && logAccountId && hostShare > 0) {
+        const { data: tx, error: txErr } = await supabase
+          .from('transactions')
+          .insert([{
+            user_id: user.id,
+            description: `[Split] ${receiptData.merchant}`,
+            amount: Number(hostShare.toFixed(2)),
+            source_account_id: logAccountId,
+            destination_account_id: null,
+            category: 'Food & Beverage',
+            needs_review: false,
+            metadata: {
+              split_session_id: session.id,
+              split_role: 'host',
+              auto_logged: true,
+              full_bill: Number(receiptData.total) || 0,
+              receivables: Number((receiptData.total - hostShare).toFixed(2))
+            }
+          }])
+          .select()
+          .single()
+
+        if (txErr) throw txErr
+        loggedTransaction = tx
+      }
+
+      // ----------------------------------------------------------
+      // 5. Persist children
+      // ----------------------------------------------------------
+      if (claimsPayload.length > 0) {
+        const { error: claimsErr } = await supabase
+          .from('split_claims').insert(claimsPayload)
+        if (claimsErr) throw claimsErr
+      }
+
+      if (debtsPayload.length > 0) {
+        const { error: debtsErr } = await supabase
+          .from('split_debts').insert(debtsPayload)
+        if (debtsErr) throw debtsErr
+      }
+
+      // ----------------------------------------------------------
+      // 6. Success
+      // ----------------------------------------------------------
+      showToast(
+        loggedTransaction
+          ? 'Session locked and logged to your ledger!'
+          : 'Session locked and debts recorded!',
+        'success'
+      )
       setShowReviewModal(false)
       setLedgerPreview(null)
       setActiveTab('debts')
@@ -520,9 +610,13 @@ export function SplitBillPage({ user, profile, showToast, onBack, initialTab = '
       setCapturedImage(null)
       await refreshPendingCount()
 
+      // Trigger a global refresh so the ledger, burn rate, and receivables
+      // all pick up the new transaction + new debts.
+      window.dispatchEvent(new CustomEvent('debts-changed'))
+
     } catch (err) {
       console.error('Lock Error:', err)
-      showToast('Failed to lock session.', 'error')
+      showToast('Failed to lock session: ' + err.message, 'error')
     } finally {
       setIsLocking(false)
     }
@@ -613,7 +707,7 @@ export function SplitBillPage({ user, profile, showToast, onBack, initialTab = '
             <ChevronLeft className="w-4 h-4" /> Back to Dashboard
           </button>
 
-          {/* ===================== TAB BAR — animated pill ===================== */}
+          {/* ===================== TAB BAR ===================== */}
           <div className="mb-2">
             <SlidingSegmentedControl
               items={tabItems}
@@ -901,15 +995,16 @@ export function SplitBillPage({ user, profile, showToast, onBack, initialTab = '
             className="absolute inset-0 bg-black/60 backdrop-blur-sm"
             onClick={() => !isLocking && setShowReviewModal(false)}
           />
-          <div className="relative bg-surface border border-line rounded-3xl shadow-2xl w-full max-w-sm overflow-hidden animate-in zoom-in-95 duration-200">
-            <div className="p-5 border-b border-line">
+          <div className="relative bg-surface border border-line rounded-3xl shadow-2xl w-full max-w-sm overflow-hidden animate-in zoom-in-95 duration-200 max-h-[92vh] flex flex-col">
+            <div className="p-5 border-b border-line shrink-0">
               <h3 className="font-bold text-lg text-fg mb-1">Confirm Final Split</h3>
               <p className="text-xs text-fg-muted">
                 Taxes and service charges have been distributed proportionally.
               </p>
             </div>
 
-            <div className="max-h-[60vh] overflow-y-auto p-5 space-y-4">
+            <div className="flex-1 overflow-y-auto p-5 space-y-4">
+              {/* Per-person shares */}
               {ledgerPreview.map(person => (
                 <div
                   key={person.id}
@@ -939,9 +1034,62 @@ export function SplitBillPage({ user, profile, showToast, onBack, initialTab = '
                   </div>
                 </div>
               ))}
+
+              {/* Ledger logging (Issue 2, Option A) */}
+              <div className="bg-surface-2/50 border border-line rounded-xl p-4 space-y-3">
+                <label className="flex items-start gap-3 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={logToLedger}
+                    onChange={(e) => setLogToLedger(e.target.checked)}
+                    disabled={isLocking}
+                    className="mt-0.5 w-4 h-4 rounded border-line-strong text-brand focus:ring-brand"
+                  />
+                  <div className="min-w-0 flex-1">
+                    <p className="text-sm font-bold text-fg">
+                      Log RM {(
+                        ledgerPreview.find(p => p.id === user.id)?.final_owed || 0
+                      ).toFixed(2)} to my ledger
+                    </p>
+                    <p className="text-[11px] text-fg-muted mt-0.5 leading-relaxed">
+                      Records only your share. What friends owe you stays in your Debts tab.
+                    </p>
+                  </div>
+                </label>
+
+                {logToLedger && (
+                  <div className="pl-7">
+                    <label
+                      htmlFor="log-account"
+                      className="block text-[10px] font-bold text-fg-subtle uppercase tracking-wider mb-1.5"
+                    >
+                      Paid from
+                    </label>
+                    <div className="relative">
+                      <Wallet className="w-4 h-4 text-fg-subtle absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+                      <select
+                        id="log-account"
+                        value={logAccountId}
+                        onChange={(e) => setLogAccountId(e.target.value)}
+                        disabled={isLocking}
+                        className="w-full bg-surface border border-line rounded-lg py-2.5 pl-9 pr-3 text-sm text-fg outline-none focus:border-brand transition-colors appearance-none disabled:opacity-50"
+                      >
+                        {accounts.length === 0 && (
+                          <option value="">No accounts available</option>
+                        )}
+                        {accounts.map(a => (
+                          <option key={a.id} value={a.id}>
+                            {a.account_name}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                  </div>
+                )}
+              </div>
             </div>
 
-            <div className="p-5 border-t border-line bg-surface-2/50 flex gap-3">
+            <div className="p-5 border-t border-line bg-surface-2/50 flex gap-3 shrink-0">
               <button
                 onClick={() => setShowReviewModal(false)}
                 disabled={isLocking}
@@ -998,7 +1146,7 @@ export function SplitBillPage({ user, profile, showToast, onBack, initialTab = '
                   type="text"
                   value={newGhostName}
                   onChange={(e) => setNewGhostName(e.target.value)}
-                  placeholder="e.g. Encik Wan"
+                  placeholder="e.g. Ali"
                   className="flex-1 bg-surface border border-line rounded-lg px-3 py-2 text-sm text-fg outline-none focus:border-brand"
                 />
                 <button

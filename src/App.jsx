@@ -128,7 +128,7 @@ export default function App() {
     commitmentPayments,
     monthlyExpenses,
     scopeAccountId: homeAccountId,
-    receivablesThisMonth: pendingReceivablesThisMonth
+    receivablesThisMonth: 0
   })
 
   const accountApi = useAccountActions({
@@ -336,6 +336,7 @@ export default function App() {
           <SplitBillPage
             user={user}
             profile={profile}
+            accounts={accountApi.activeAccounts}
             showToast={showToast}
             onBack={() => setCurrentView('dashboard')}
             initialTab={splitInitialTab}
