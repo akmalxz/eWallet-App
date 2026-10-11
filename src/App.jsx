@@ -1,7 +1,9 @@
 // src/App.jsx
 import { useState, useCallback, useEffect, useRef, lazy, Suspense } from 'react'
-import { supabase } from './lib/supabaseClient'
 import { AlertTriangle } from 'lucide-react'
+
+import { supabase, sessionExpired } from './lib/supabaseClient'
+import { trackEvent } from './lib/analytics'
 
 // Components
 import Auth from './components/Auth'
@@ -31,6 +33,7 @@ import { useDashboardMetrics } from './hooks/useDashboardMetrics'
 import { useTransactionParser } from './hooks/useTransactionParser'
 import { useAccountActions } from './hooks/useAccountActions'
 import { useNotifications } from './hooks/useNotifications'
+import { useErrorMonitor } from './hooks/useErrorMonitor'
 
 // Utils
 import { CLASSIFICATIONS } from './utils/accounts/accountClassifications'
@@ -40,26 +43,44 @@ const AnalyticsPage = lazy(() =>
 )
 
 export default function App() {
+  // ══════════════════════════════════════════════════════════
+  // AUTH
+  // ══════════════════════════════════════════════════════════
   const { user, profile, refreshProfile, isAuthenticated, isAuthLoading } = useAuth()
 
+  // ══════════════════════════════════════════════════════════
+  // STATE — declare ALL state before any effect that reads it
+  // ══════════════════════════════════════════════════════════
   const [isRecovery, setIsRecovery] = useState(false)
-
-  useEffect(() => {
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((event) => {
-      if (event === 'PASSWORD_RECOVERY') setIsRecovery(true)
-    })
-    return () => subscription.unsubscribe()
-  }, [])
-
-  // Toasts
   const [toasts, setToasts] = useState([])
+  const [currentView, setCurrentView] = useState('dashboard')
+  const [homeAccountId, setHomeAccountId] = useState('all')
+  const [showBurnRateHelp, setShowBurnRateHelp] = useState(false)
+  const [splitInitialTab, setSplitInitialTab] = useState('new')
+
+  // ══════════════════════════════════════════════════════════
+  // TOASTS
+  // ══════════════════════════════════════════════════════════
   const showToast = useCallback((message, type = 'info') => {
     const id = Date.now()
     setToasts((prev) => [...prev, { id, message, type }])
     setTimeout(() => setToasts((prev) => prev.filter((t) => t.id !== id)), 5000)
   }, [])
 
-  // Data
+  // ══════════════════════════════════════════════════════════
+  // AUTH STATE LISTENER (recovery + signin tracking)
+  // ══════════════════════════════════════════════════════════
+  useEffect(() => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event) => {
+      if (event === 'PASSWORD_RECOVERY') setIsRecovery(true)
+      if (event === 'SIGNED_IN') trackEvent('signin_completed')
+    })
+    return () => subscription.unsubscribe()
+  }, [])
+
+  // ══════════════════════════════════════════════════════════
+  // DATA
+  // ══════════════════════════════════════════════════════════
   const {
     accounts, recentTransactions, setRecentTransactions,
     commitments, setCommitments,
@@ -76,20 +97,42 @@ export default function App() {
     showToast
   })
 
-  // Notifications
   const notifications = useNotifications(user)
 
-  // View state
-  const [currentView, setCurrentView] = useState('dashboard')
-  const [homeAccountId, setHomeAccountId] = useState('all')
-  const [showBurnRateHelp, setShowBurnRateHelp] = useState(false)
-  const [splitInitialTab, setSplitInitialTab] = useState('new')
+  // ══════════════════════════════════════════════════════════
+  // ERROR MONITOR (admin only)
+  // ══════════════════════════════════════════════════════════
+  useErrorMonitor(user, useCallback((err) => {
+    showToast(
+      `Error: ${(err.message || 'Unknown').slice(0, 80)}`,
+      'error'
+    )
+  }, [showToast]))
 
+  // ══════════════════════════════════════════════════════════
+  // EFFECTS that read already-declared state
+  // ══════════════════════════════════════════════════════════
+
+  // Session expiry notification
+  useEffect(() => {
+    if (!isAuthenticated) return
+    if (sessionExpired.consume()) {
+      showToast('Your session expired. Please sign in again.', 'warning')
+    }
+  }, [isAuthenticated, showToast])
+
+  // Track view changes
+  useEffect(() => {
+    if (!isAuthenticated) return
+    trackEvent('view_opened', { view: currentView })
+  }, [currentView, isAuthenticated])
+
+  // Reset split tab when leaving split view
   useEffect(() => {
     if (currentView !== 'split') setSplitInitialTab('new')
   }, [currentView])
 
-  // Initial load
+  // Initial data load (once per session)
   const hasFetchedRef = useRef(false)
   useEffect(() => {
     if (isAuthenticated && user && !hasFetchedRef.current) {
@@ -98,7 +141,9 @@ export default function App() {
     }
   }, [isAuthenticated, user, fetchAllData])
 
-  // Receivables
+  // ══════════════════════════════════════════════════════════
+  // COMPUTED
+  // ══════════════════════════════════════════════════════════
   const pendingReceivablesThisMonth = (pendingReceivables || [])
     .filter(r => r.isThisMonth)
     .reduce((s, r) => s + r.amount, 0)
@@ -107,7 +152,9 @@ export default function App() {
     .filter(r => r.isThisMonth)
     .length
 
-  // Feature hooks
+  // ══════════════════════════════════════════════════════════
+  // FEATURE HOOKS
+  // ══════════════════════════════════════════════════════════
   const ledgerApi = useLedgerMutations({
     user,
     showToast,
@@ -140,7 +187,9 @@ export default function App() {
     showToast
   })
 
-  // See trends
+  // ══════════════════════════════════════════════════════════
+  // NAVIGATION HANDLERS
+  // ══════════════════════════════════════════════════════════
   const handleSeeTrends = useCallback((tab) => {
     const url = new URL(window.location.href)
     url.searchParams.set('at', tab || 'overview')
@@ -149,7 +198,6 @@ export default function App() {
     setCurrentView('analytics')
   }, [])
 
-  // Notification navigation — bell sheet routes here
   const handleNavigateFromNotifications = useCallback((target) => {
     if (target === 'network') {
       setCurrentView('network')
@@ -159,7 +207,9 @@ export default function App() {
     }
   }, [])
 
-  // Render
+  // ══════════════════════════════════════════════════════════
+  // RENDER — guard clauses
+  // ══════════════════════════════════════════════════════════
   if (isAuthLoading) return <LoadingSpinner message="Loading secure vault..." />
 
   if (isRecovery) {
@@ -194,13 +244,7 @@ export default function App() {
 
   return (
     <div className="app-shell min-h-dvh bg-page font-sans text-fg">
-      {/*
-        Toast container. Fixed to the viewport, aligned right, offset from
-        the top by `1rem + safe-area-inset-top` so it clears the Dynamic
-        Island / status bar. Toasts inside are unpositioned and stack via
-        the container's `space-y-2`. The inline `right` uses `max()` so
-        the container slides inward when the notch intrudes in landscape.
-      */}
+      {/* Toast container */}
       <div
         className="fixed pt-5 z-[200] space-y-2 max-w-[calc(100vw-2rem)]"
         style={{
@@ -250,6 +294,12 @@ export default function App() {
 
         {currentView === 'dashboard' && (
           <DashboardPage
+            user={user}
+            profile={profile}
+            refreshProfile={refreshProfile}
+            recentTransactions={recentTransactions}
+            commitments={commitments}
+
             isLoading={isLoading}
             accounts={accountApi.sortedAccounts}
             activeAccounts={accountApi.activeAccounts}
@@ -289,6 +339,7 @@ export default function App() {
             getSubCategories={getSubCategories}
             fetchAllData={fetchAllData}
             showToast={showToast}
+            isLoading={isLoading}
             recentTransactions={recentTransactions}
             handleApproveTransaction={ledgerApi.approveTransaction}
             handleDeleteTransaction={ledgerApi.deleteTransaction}
@@ -370,6 +421,7 @@ export default function App() {
               accounts={accountApi.activeAccounts}
               categories={categories}
               onBack={() => setCurrentView('dashboard')}
+              onLogTransaction={() => setCurrentView('log')}
               showToast={showToast}
             />
           </Suspense>

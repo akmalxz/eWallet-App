@@ -7,6 +7,7 @@ import {
 import { formatMYR } from '../../utils/formatters'
 import { COLORS } from '../../utils/analytics/chartColors'
 import { CRITICAL_RUNWAY_DAYS, NEAR_PAYDAY_DAYS } from '../../utils/analytics/burnRateEngine'
+import { EmptyState } from '../analytics/AnalyticsShared'
 
 const compactMYR = (n) => {
   const abs = Math.abs(n || 0)
@@ -18,7 +19,36 @@ const compactMYR = (n) => {
 const formatDate = (d) =>
   d?.toLocaleDateString('en-MY', { day: 'numeric', month: 'short' })
 
-export const BurnRateWidget = ({ velocityStats, onSeeTrends, onOpenHelp }) => {
+// ============================================================
+// LOADING SKELETON — mimics the widget's real layout
+// ============================================================
+const BurnRateWidgetSkeleton = () => (
+  <div className="relative flex flex-col h-full">
+    <div className="absolute top-0 left-0 right-0 h-1 rounded-full bg-line-strong" />
+
+    <div className="flex justify-between items-start mb-4 gap-3 pt-4">
+      <div className="min-w-0 space-y-1.5">
+        <div className="h-4 w-24 bg-surface-3 rounded-full animate-pulse" />
+        <div className="h-3 w-32 bg-surface-2 rounded-full animate-pulse" />
+      </div>
+      <div className="h-8 w-20 bg-surface-2 rounded-lg animate-pulse" />
+    </div>
+
+    <div className="grid grid-cols-3 gap-2.5 mb-4">
+      {[1, 2, 3].map(i => (
+        <div key={i} className="bg-surface p-3 rounded-xl border border-line shadow-sm">
+          <div className="h-2.5 w-14 bg-surface-2 rounded-full animate-pulse mx-auto mb-2" />
+          <div className="h-4 w-16 bg-surface-3 rounded-full animate-pulse mx-auto" />
+        </div>
+      ))}
+    </div>
+
+    <div className="h-3 bg-surface-2 rounded-full animate-pulse mb-3" />
+    <div className="h-3 w-2/3 bg-surface-2 rounded-full animate-pulse" />
+  </div>
+)
+
+export const BurnRateWidget = ({ velocityStats, isLoading = false, onSeeTrends, onOpenHelp }) => {
   const [showDetails, setShowDetails] = useState(() => {
     try { return localStorage.getItem('burnRateExpanded') === 'true' } catch { return false }
   })
@@ -65,6 +95,13 @@ export const BurnRateWidget = ({ velocityStats, onSeeTrends, onOpenHelp }) => {
     status = 'no_data',
     shortfall = 0
   } = velocityStats || {}
+
+  // ────────────────────────────────────────────────────────────
+  // Loading guard — all hooks have run at this point.
+  // ────────────────────────────────────────────────────────────
+  if (isLoading) {
+    return <BurnRateWidgetSkeleton />
+  }
 
   const hasEverydayData = everydaySpentThisMonth > 0 && dailyAverage > 0
   const isInfiniteRunway = runwayDays === 9999 || runwayDays > 365
@@ -287,14 +324,13 @@ export const BurnRateWidget = ({ velocityStats, onSeeTrends, onOpenHelp }) => {
               )}
             </div>
           ) : (
-            <div className="flex flex-col items-center justify-center p-6 bg-surface-2/50 border-2 border-line-strong border-dashed rounded-2xl mt-2">
-              <div className="w-12 h-12 bg-surface-2 rounded-full flex items-center justify-center text-fg-subtle mb-3">
-                <Coffee className="w-6 h-6" />
-              </div>
-              <p className="text-sm font-bold text-fg">No everyday spending yet</p>
-              <p className="text-xs text-fg-subtle mt-1 text-center max-w-[240px] leading-relaxed">
-                Log an expense this month to see your runway.
-              </p>
+            <div className="bg-surface-2/50 border-2 border-line-strong border-dashed rounded-2xl mt-2">
+              <EmptyState
+                icon={Coffee}
+                title="No everyday spending yet"
+                message="Log an expense this month to see your runway."
+                compact
+              />
             </div>
           )}
         </>
@@ -365,7 +401,6 @@ export const BurnRateWidget = ({ velocityStats, onSeeTrends, onOpenHelp }) => {
               </p>
             </div>
 
-            {/* Accounts Receivable — only when there's an adjustment */}
             {receivablesOffset > 0 && (
               <>
                 <div className="bg-surface-2/60 p-3.5 rounded-xl border border-line">

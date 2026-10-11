@@ -2,6 +2,7 @@
 import { useState } from 'react'
 import { Wallet, Plus, Eye, EyeOff } from 'lucide-react'
 import { AccountCard } from '../shared/AccountCard'
+import { EmptyState } from '../analytics/AnalyticsShared'
 
 export const AccountCards = ({
   accounts,
@@ -21,21 +22,23 @@ export const AccountCards = ({
 
   const toggleBalances = () => setShowBalances(!showBalances)
 
+  // ────────────────────────────────────────────────────────────
+  // Empty state — dashed card that visually invites adding
+  // ────────────────────────────────────────────────────────────
   if (!accounts || accounts.length === 0) {
     return (
-      <div className="bg-surface rounded-2xl p-8 text-center border border-dashed border-line-strong">
-        <div className="w-16 h-16 bg-surface-2 rounded-full flex items-center justify-center mx-auto mb-4">
-          <Wallet className="w-8 h-8 text-fg-subtle" />
-        </div>
-        <h3 className="text-sm font-medium text-fg-muted mb-1">No Accounts Yet</h3>
-        <p className="text-xs text-fg-subtle mb-4">Add your first bank account to start tracking</p>
-        <button
-          onClick={onAddAccount}
-          className="inline-flex items-center justify-center gap-2 px-4 py-2 bg-brand-solid hover:bg-brand-solid-hover text-white text-sm font-medium rounded-xl transition-colors"
-          style={{ minHeight: 44 }}
-        >
-          <Plus className="w-4 h-4" /> Add Account
-        </button>
+      <div className="bg-surface/60 backdrop-blur-xl border border-dashed border-line-strong rounded-2xl">
+        <EmptyState
+          icon={Wallet}
+          title="No accounts yet"
+          message="Add your first bank account to start tracking your money."
+          hint="You can add more accounts anytime from Profile → Bank Accounts."
+          action={{
+            label: 'Add Account',
+            icon: Plus,
+            onClick: onAddAccount,
+          }}
+        />
       </div>
     )
   }

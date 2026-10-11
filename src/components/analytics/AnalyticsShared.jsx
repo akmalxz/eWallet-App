@@ -4,10 +4,7 @@ import { formatMYR } from '../../utils/formatters'
 import { AccountCard } from '../shared/AccountCard'
 
 // ============================================================
-// ONE SHARED TOOLTIP — used by all charts
-// Rendered as HTML by Recharts, so Tailwind + semantic tokens
-// work here. Series colors (r.color) are supplied by callers
-// via the useChartTheme() palette.
+// TOOLTIP
 // ============================================================
 export const ChartTooltip = ({ active, payload, title, rows, footer }) => {
   if (!active || !payload || !payload.length) return null
@@ -44,12 +41,7 @@ export const ChartTooltip = ({ active, payload, title, rows, footer }) => {
 }
 
 // ============================================================
-// ONE SHARED TRANSACTION DRILL-DOWN
-// Default behavior (unchanged): top 5 by amount, "+N more" line.
-// Opt-in (scrollable + sortBy="date"): all rows in a fixed-height
-// scroll region, chronological. Used by CalendarHeatmap and
-// DayOfWeekBars; MainTrendChart keeps the defaults because
-// weekly/monthly buckets are for outlier-spotting, not reading.
+// TRANSACTION DRILL-DOWN
 // ============================================================
 export const TransactionDrilldown = ({
   title,
@@ -105,7 +97,6 @@ export const TransactionDrilldown = ({
 
   return (
     <div className="mt-4 bg-surface-2/70 border border-line rounded-2xl animate-fadeIn">
-      {/* Header stays fixed while the list scrolls */}
       <div className="flex items-start justify-between px-4 pt-4 pb-3">
         <div>
           <p className="text-[10px] font-bold text-fg-subtle uppercase tracking-wider">
@@ -146,23 +137,52 @@ export const TransactionDrilldown = ({
 export { AccountDropdown as AccountSelect } from '../shared/AccountDropdown'
 
 // ============================================================
-// ONE SHARED EMPTY STATE
+// EMPTY STATE
+//
+// Shared across pages and dashboard widgets. Use `compact` for
+// tight spaces (widgets), default for full sections (pages).
+// `hint` renders a smaller muted line under the message.
 // ============================================================
-export const EmptyState = ({ icon: Icon = Inbox, title, message, action }) => (
-  <div className="flex flex-col items-center justify-center py-10 text-center">
-    <div className="w-14 h-14 bg-surface-2 rounded-2xl flex items-center justify-center mb-3 text-fg-subtle">
-      <Icon className="w-6 h-6" />
+export const EmptyState = ({
+  icon: Icon = Inbox,
+  title,
+  message,
+  hint,
+  action,
+  compact = false
+}) => (
+  <div
+    className={`flex flex-col items-center justify-center text-center ${
+      compact ? 'py-6' : 'py-10'
+    }`}
+  >
+    <div
+      className={`bg-surface-2 rounded-2xl flex items-center justify-center mb-3 text-fg-subtle ${
+        compact ? 'w-12 h-12' : 'w-14 h-14'
+      }`}
+    >
+      <Icon className={compact ? 'w-5 h-5' : 'w-6 h-6'} />
     </div>
+
     <p className="text-sm font-bold text-fg-muted">{title}</p>
+
     {message && (
       <p className="text-xs text-fg-subtle mt-1 max-w-xs leading-relaxed">
         {message}
       </p>
     )}
+
+    {hint && (
+      <p className="text-[11px] text-fg-subtle/70 mt-2 max-w-xs leading-relaxed">
+        {hint}
+      </p>
+    )}
+
     {action && (
       <button
         onClick={action.onClick}
-        className="mt-4 inline-flex items-center gap-1.5 px-4 py-2 bg-brand-solid hover:bg-brand-solid-hover text-white text-xs font-bold rounded-xl transition-colors"
+        className="mt-4 inline-flex items-center gap-1.5 px-4 py-2.5 bg-brand-solid hover:bg-brand-solid-hover text-white text-xs font-bold rounded-xl transition-colors"
+        style={{ minHeight: 40 }}
       >
         {action.icon && <action.icon className="w-3.5 h-3.5" />}
         {action.label}
@@ -174,6 +194,9 @@ export const EmptyState = ({ icon: Icon = Inbox, title, message, action }) => (
 // ============================================================
 // SKELETONS
 // ============================================================
+
+// Card-shaped pulse block — used as a loading placeholder for
+// small metric cards.
 export const CardSkeleton = ({ lines = 2 }) => (
   <div className="bg-surface/60 border border-line/50 rounded-2xl p-4 animate-pulse">
     <div className="h-2.5 w-20 bg-surface-3 rounded-full" />
@@ -186,11 +209,25 @@ export const CardSkeleton = ({ lines = 2 }) => (
   </div>
 )
 
+// Chart-shaped pulse block — no inner spinner, the pulse alone
+// communicates loading.
 export const ChartSkeleton = ({ height = 280 }) => (
   <div
-    className="bg-surface-2 rounded-2xl animate-pulse flex items-center justify-center"
+    className="bg-surface-2 rounded-2xl animate-pulse"
     style={{ height }}
-  >
-    <div className="w-10 h-10 border-2 border-line-strong border-t-brand rounded-full animate-spin" />
+    aria-hidden="true"
+  />
+)
+
+// Row list skeleton — for friend lists, transaction lists, etc.
+export const ListSkeleton = ({ rows = 3, height = 56 }) => (
+  <div className="space-y-2" aria-hidden="true">
+    {Array.from({ length: rows }).map((_, i) => (
+      <div
+        key={i}
+        className="bg-surface-2 rounded-xl animate-pulse"
+        style={{ height }}
+      />
+    ))}
   </div>
 )

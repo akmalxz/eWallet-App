@@ -174,6 +174,11 @@ export function LogItemPage({
     )
   }
 
+  const headerLabel =
+    txType === 'income'   ? 'Log New Income'   :
+    txType === 'transfer' ? 'Log New Transfer' :
+                            'Log New Expense'
+
   return (
     <div className="max-w-2xl mx-auto animate-in fade-in slide-in-from-bottom-4 duration-500 pb-12">
 
@@ -189,7 +194,7 @@ export function LogItemPage({
           <div className="p-2.5 rounded-xl bg-surface-2 text-fg-muted">
             <PlusCircle className="w-5 h-5" />
           </div>
-          <span className="font-bold text-base text-fg">Log New Expense</span>
+          <span className="font-bold text-base text-fg">{headerLabel}</span>
         </div>
 
         {/* Segmented type controller — shared sliding pill */}

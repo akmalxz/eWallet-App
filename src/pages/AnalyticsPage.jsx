@@ -1,8 +1,8 @@
 // src/pages/AnalyticsPage.jsx
 import { useState, useEffect, useMemo, useCallback } from 'react'
-import { ChevronLeft } from 'lucide-react'
+import { ChevronLeft, BarChart3, PlusCircle, AlertCircle } from 'lucide-react'
 import { useAnalyticsData } from '../hooks/useAnalyticsData'
-import { AccountSelect } from '../components/analytics/AnalyticsShared'
+import { AccountSelect, EmptyState } from '../components/analytics/AnalyticsShared'
 import { HeadlineInsights } from '../components/analytics/HeadlineInsights'
 import { MainTrendChart } from '../components/analytics/MainTrendChart'
 import { PatternViews } from '../components/analytics/PatternViews'
@@ -28,9 +28,6 @@ const TAB_ITEMS = [
   { id: 'income', label: 'Income' }
 ]
 
-// Mode filter — controls whether commitment payments are included
-// in spending analytics. Not applied to the Income tab, which always
-// uses the full expense set so the savings rate stays honest.
 const MODE_ITEMS = [
   { id: 'all',      label: 'All' },
   { id: 'everyday', label: 'Excl. bills' }
@@ -46,6 +43,43 @@ const getInitialParam = (key, validValues, fallback) => {
 }
 
 // ============================================================
+// LOADING SKELETON — mimics the Overview tab layout
+// ============================================================
+const AnalyticsSkeleton = () => (
+  <div className="space-y-4">
+
+    {/* Two insight rows */}
+    <div className="grid grid-cols-1 md:grid-cols-2 gap-3 md:gap-4">
+      {[1, 2].map((i) => (
+        <div
+          key={i}
+          className="bg-surface/60 border border-line/50 rounded-2xl p-4 flex items-start gap-3 animate-pulse"
+        >
+          <div className="w-9 h-9 rounded-xl bg-surface-3 shrink-0" />
+          <div className="flex-1 space-y-2">
+            <div className="h-3 w-full bg-surface-2 rounded-full" />
+            <div className="h-3 w-3/4 bg-surface-2 rounded-full" />
+          </div>
+        </div>
+      ))}
+    </div>
+
+    {/* Trend chart block */}
+    <div className="bg-surface/60 border border-line/50 rounded-3xl p-5 md:p-6 shadow-sm">
+      <div className="flex items-start justify-between mb-4">
+        <div className="space-y-2">
+          <div className="h-3 w-32 bg-surface-3 rounded-full animate-pulse" />
+          <div className="h-2.5 w-48 bg-surface-2 rounded-full animate-pulse" />
+        </div>
+        <div className="h-11 w-52 bg-surface-2 rounded-2xl animate-pulse" />
+      </div>
+      <div className="h-[280px] bg-surface-2 rounded-2xl animate-pulse" />
+    </div>
+
+  </div>
+)
+
+// ============================================================
 // PAGE
 // ============================================================
 export function AnalyticsPage({
@@ -54,11 +88,9 @@ export function AnalyticsPage({
   accounts = [],
   categories = [],
   onBack,
+  onLogTransaction,
   showToast
 }) {
-  // ----------------------------------------------------------
-  // URL-synced page state
-  // ----------------------------------------------------------
   const [period, setPeriod] = useState(() => {
     const p = getInitialParam('ap', ['3', '6', '12'], '6')
     return parseInt(p)
@@ -79,9 +111,6 @@ export function AnalyticsPage({
     window.history.replaceState({}, '', url.toString())
   }, [period, tab, mode])
 
-  // ----------------------------------------------------------
-  // Data
-  // ----------------------------------------------------------
   const {
     expenses,
     everydayExpenses,
@@ -90,9 +119,7 @@ export function AnalyticsPage({
     error
   } = useAnalyticsData(user, showToast)
 
-  // ----------------------------------------------------------
-  // Filter by account first (mode-agnostic)
-  // ----------------------------------------------------------
+  // Account filter
   const filteredExpenses = useMemo(() => {
     if (selectedAccount === 'all') return expenses
     return expenses.filter(tx => tx.source_account_id === selectedAccount)
@@ -108,11 +135,7 @@ export function AnalyticsPage({
     return income.filter(tx => tx.destination_account_id === selectedAccount)
   }, [income, selectedAccount])
 
-  // ----------------------------------------------------------
-  // Pick which expense set the spending views should use.
-  // Mode is ignored on the Income tab — IncomeVsExpense always
-  // reads `periodScopedExpensesAll` so the savings rate stays true.
-  // ----------------------------------------------------------
+  // Spending source — mode-aware
   const spendingSource =
     mode === 'everyday' ? filteredEverydayExpenses : filteredExpenses
 
@@ -124,8 +147,7 @@ export function AnalyticsPage({
     return spendingSource.filter(tx => toMYDate(tx.transaction_date) >= cutoff)
   }, [spendingSource, period])
 
-  // Full expense set — always includes commitments, regardless of mode.
-  // Only IncomeVsExpense reads this.
+  // Full set — always includes bills (used by Income tab only)
   const periodScopedExpensesAll = useMemo(() => {
     const cutoff = new Date()
     cutoff.setMonth(cutoff.getMonth() - period)
@@ -149,19 +171,33 @@ export function AnalyticsPage({
       ? 'All accounts'
       : accounts.find(a => a.id === selectedAccount)?.account_name || 'Account'
 
-  // Mode is meaningless on the Income tab — savings rate needs bills
-  // included or it lies. Hide the control there rather than disabling it.
   const showModeControl = tab !== 'income'
 
-  // ----------------------------------------------------------
+  // ────────────────────────────────────────────────────────────
+  // State classification
+  // ────────────────────────────────────────────────────────────
+  // Truly empty: not loading, no error, no data anywhere. Renders
+  // a full-page empty state instead of the filters + tabs.
+  const isTrulyEmpty =
+    !loading &&
+    !error &&
+    (expenses?.length || 0) === 0 &&
+    (income?.length || 0) === 0
+
+  const showFilters = !isTrulyEmpty && !error
+
+  const handleLogTransaction = useCallback(() => {
+    if (onLogTransaction) onLogTransaction()
+    else if (onBack) onBack()
+  }, [onLogTransaction, onBack])
+
+  // ────────────────────────────────────────────────────────────
   // Render
-  // ----------------------------------------------------------
+  // ────────────────────────────────────────────────────────────
   return (
     <div className="max-w-4xl mx-auto animate-in fade-in slide-in-from-bottom-4 duration-500 pb-12 space-y-4">
 
-      {/* ======================================================
-          Back button
-      ====================================================== */}
+      {/* Back button */}
       <button
         onClick={onBack}
         className="flex items-center gap-1.5 text-sm font-bold text-fg-muted hover:text-fg transition-colors px-1"
@@ -169,137 +205,161 @@ export function AnalyticsPage({
         <ChevronLeft className="w-4 h-4" /> Back to Dashboard
       </button>
 
-      {/* ======================================================
-          Desktop title row — title on left, period + mode on right
-      ====================================================== */}
+      {/* Desktop title row — filters hidden during error / empty */}
       <div className="hidden md:flex md:items-center md:justify-between md:gap-4 px-1">
         <div className="min-w-0">
           <h1 className="text-2xl font-bold text-fg tracking-tight">Analytics</h1>
           <p className="text-sm text-fg-muted mt-1">Deep dive into your financial trends.</p>
         </div>
-        <div className="flex items-center gap-3 shrink-0">
-          <div className="w-56">
-            <SlidingSegmentedControl
-              items={PERIOD_ITEMS}
-              value={period}
-              onChange={setPeriod}
-            />
-          </div>
-          {showModeControl && (
+        {showFilters && (
+          <div className="flex items-center gap-3 shrink-0">
             <div className="w-56">
               <SlidingSegmentedControl
-                items={MODE_ITEMS}
-                value={mode}
-                onChange={setMode}
+                items={PERIOD_ITEMS}
+                value={period}
+                onChange={setPeriod}
               />
             </div>
-          )}
-        </div>
+            {showModeControl && (
+              <div className="w-56">
+                <SlidingSegmentedControl
+                  items={MODE_ITEMS}
+                  value={mode}
+                  onChange={setMode}
+                />
+              </div>
+            )}
+          </div>
+        )}
       </div>
 
-      {/* ======================================================
-          Tabs row
-      ====================================================== */}
-      <div className="flex items-center gap-3">
-        <div className="flex-1 min-w-0">
-          <SlidingSegmentedControl
-            items={TAB_ITEMS}
-            value={tab}
-            onChange={setTab}
+      {/* ─────────── ERROR STATE ─────────── */}
+      {error && (
+        <div className="bg-danger-soft border border-danger-border rounded-3xl p-8 text-center">
+          <AlertCircle className="w-10 h-10 text-danger mx-auto mb-4" />
+          <p className="text-sm font-bold text-danger-text">Couldn't load analytics</p>
+          <p className="text-xs text-danger-text/80 mt-1 max-w-sm mx-auto leading-relaxed">
+            {error}
+          </p>
+          <button
+            onClick={onBack}
+            className="mt-5 inline-flex items-center gap-2 px-4 py-2.5 bg-danger-solid hover:bg-danger-solid-hover text-white text-xs font-bold rounded-xl transition-colors"
+            style={{ minHeight: 40 }}
+          >
+            Go back
+          </button>
+        </div>
+      )}
+
+      {/* ─────────── PAGE-LEVEL EMPTY STATE ─────────── */}
+      {!error && isTrulyEmpty && (
+        <div className="bg-surface/60 backdrop-blur-xl border border-line/50 rounded-3xl shadow-sm">
+          <EmptyState
+            icon={BarChart3}
+            title="No data to analyze yet"
+            message="Log a few transactions and come back — trends, categories, and income insights will appear here."
+            action={{
+              label: 'Log a transaction',
+              icon: PlusCircle,
+              onClick: handleLogTransaction,
+            }}
           />
         </div>
+      )}
 
-        {/* Account filter — desktop only */}
-        <div className="hidden md:block w-56 shrink-0">
-          <AccountSelect
-            accounts={accounts}
-            value={selectedAccount}
-            onChange={setSelectedAccount}
-          />
-        </div>
-      </div>
+      {/* ─────────── NORMAL PAGE ─────────── */}
+      {!error && !isTrulyEmpty && (
+        <>
+          {/* Tabs row */}
+          <div className="flex items-center gap-3">
+            <div className="flex-1 min-w-0">
+              <SlidingSegmentedControl
+                items={TAB_ITEMS}
+                value={tab}
+                onChange={setTab}
+              />
+            </div>
+            <div className="hidden md:block w-56 shrink-0">
+              <AccountSelect
+                accounts={accounts}
+                value={selectedAccount}
+                onChange={setSelectedAccount}
+              />
+            </div>
+          </div>
 
-      {/* ======================================================
-          Mobile-only filters block.
-          Period + Mode share a row when Mode is visible; period
-          spans the full width on the Income tab.
-      ====================================================== */}
-      <div className="md:hidden space-y-3">
-        {showModeControl ? (
-          <div className="grid grid-cols-2 gap-2">
-            <SlidingSegmentedControl
-              items={PERIOD_ITEMS}
-              value={period}
-              onChange={setPeriod}
-            />
-            <SlidingSegmentedControl
-              items={MODE_ITEMS}
-              value={mode}
-              onChange={setMode}
+          {/* Mobile filters */}
+          <div className="md:hidden space-y-3">
+            {showModeControl ? (
+              <div className="grid grid-cols-2 gap-2">
+                <SlidingSegmentedControl
+                  items={PERIOD_ITEMS}
+                  value={period}
+                  onChange={setPeriod}
+                />
+                <SlidingSegmentedControl
+                  items={MODE_ITEMS}
+                  value={mode}
+                  onChange={setMode}
+                />
+              </div>
+            ) : (
+              <SlidingSegmentedControl
+                items={PERIOD_ITEMS}
+                value={period}
+                onChange={setPeriod}
+              />
+            )}
+
+            <AccountSelector
+              accounts={accounts}
+              value={selectedAccount}
+              onChange={setSelectedAccount}
             />
           </div>
-        ) : (
-          <SlidingSegmentedControl
-            items={PERIOD_ITEMS}
-            value={period}
-            onChange={setPeriod}
-          />
-        )}
 
-        <AccountSelector
-          accounts={accounts}
-          value={selectedAccount}
-          onChange={setSelectedAccount}
-        />
-      </div>
+          {/* Tab content or loading skeleton */}
+          {loading ? (
+            <AnalyticsSkeleton />
+          ) : (
+            <>
+              {tab === 'overview' && (
+                <>
+                  <HeadlineInsights
+                    expenses={periodScopedExpenses}
+                    periodMonths={period}
+                    onNavigate={handleTabNavigate}
+                  />
+                  <MainTrendChart
+                    expenses={periodScopedExpenses}
+                    periodMonths={period}
+                    accounts={accounts}
+                  />
+                </>
+              )}
 
-      {/* ======================================================
-          Tab content.
-          Spending tabs read `periodScopedExpenses` (mode-aware).
-          Income reads `periodScopedExpensesAll` (mode-ignored).
-      ====================================================== */}
+              {tab === 'trends' && (
+                <PatternViews expenses={periodScopedExpenses} accounts={accounts} />
+              )}
 
-      {tab === 'overview' && (
-        <>
-          <HeadlineInsights
-            expenses={periodScopedExpenses}
-            periodMonths={period}
-            onNavigate={handleTabNavigate}
-          />
-          <MainTrendChart
-            expenses={periodScopedExpenses}
-            periodMonths={period}
-            accounts={accounts}
-          />
+              {tab === 'categories' && (
+                <CategoryMovement expenses={periodScopedExpenses} periodMonths={period} />
+              )}
+
+              {tab === 'income' && (
+                <IncomeVsExpense
+                  income={periodScopedIncome}
+                  expenses={periodScopedExpensesAll}
+                  periodMonths={period}
+                  accounts={accounts}
+                  selectedAccountId={selectedAccount}
+                  accountLabel={activeAccountName}
+                  onAddIncome={onBack}
+                />
+              )}
+            </>
+          )}
         </>
-      )}
-
-      {tab === 'trends' && (
-        <PatternViews expenses={periodScopedExpenses} accounts={accounts} />
-      )}
-
-      {tab === 'categories' && (
-        <CategoryMovement expenses={periodScopedExpenses} periodMonths={period} />
-      )}
-
-      {tab === 'income' && (
-        <IncomeVsExpense
-          income={periodScopedIncome}
-          expenses={periodScopedExpensesAll}
-          periodMonths={period}
-          accounts={accounts}
-          selectedAccountId={selectedAccount}
-          accountLabel={activeAccountName}
-          onAddIncome={onBack}
-        />
-      )}
-
-      {/* Loading / error */}
-      {loading && periodScopedExpenses.length === 0 && (
-        <p className="text-center text-xs text-fg-subtle py-6">Loading analytics…</p>
-      )}
-      {error && (
-        <p className="text-center text-xs text-danger py-6">Failed to load: {error}</p>
       )}
 
     </div>

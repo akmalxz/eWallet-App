@@ -5,8 +5,20 @@ import { BurnRateWidget } from '../components/dashboard/BurnRateWidget'
 import { CashFlowHeatmap } from '../components/dashboard/CashFlowHeatmap'
 import { AccountChipRow } from '../components/shared/AccountChipRow'
 import { AccountSelector } from '../components/shared/AccountSelector'
+import { OnboardingChecklist } from '../components/dashboard/OnboardingChecklist'
+import { useFriendRequests } from '../hooks/useFriendRequests'
+import { useOnboardingProgress } from '../hooks/useOnboardingProgress'
+import { trackEvent } from '../lib/analytics'
 
 export function DashboardPage({
+  // Onboarding
+  user,
+  profile,
+  refreshProfile,
+  recentTransactions,
+  commitments,
+
+  // Existing
   isLoading,
   accounts,
   activeAccounts,
@@ -25,8 +37,43 @@ export function DashboardPage({
   onOpenBurnRateHelp,
   onNavigate
 }) {
+  // Friend count for the onboarding checklist
+  const { friends } = useFriendRequests(user)
+
+  const onboarding = useOnboardingProgress({
+    user,
+    profile,
+    recentTransactions,
+    commitments,
+    friends,
+    refreshProfile,
+  })
+
+  const handleStepClick = (stepId) => {
+    trackEvent('onboarding_step_clicked', { step: stepId })
+    switch (stepId) {
+      case 'transaction': onNavigate('log');         break
+      case 'bill':        onNavigate('commitments'); break
+      case 'username':    onNavigate('profile');     break
+      case 'friend':      onNavigate('network');     break
+    }
+  }
+
   return (
     <div className="space-y-4 md:space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
+
+      {/* ONBOARDING CHECKLIST — above everything until dismissed or complete */}
+      {onboarding.shouldShow && !isLoading && (
+        <OnboardingChecklist
+          steps={onboarding.steps}
+          completedCount={onboarding.completedCount}
+          totalCount={onboarding.totalCount}
+          onStepClick={handleStepClick}
+          onDismiss={onboarding.dismiss}
+        />
+      )}
+
+      {/* WALLET CARDS */}
       <section>
         {isLoading ? (
           <div>
@@ -56,6 +103,7 @@ export function DashboardPage({
         )}
       </section>
 
+      {/* QUICK ACTIONS */}
       <section className="grid grid-cols-3 gap-3 md:gap-4">
         <button
           onClick={() => onNavigate('network')}
@@ -88,6 +136,7 @@ export function DashboardPage({
         </button>
       </section>
 
+      {/* THIS MONTH — Burn Rate + Cash Flow */}
       <section className="bg-surface/70 backdrop-blur-xl border border-line/60 rounded-3xl shadow-sm overflow-hidden">
         <div className="px-4 pt-4 pb-3 md:px-5 md:pt-5 md:pb-4 border-b border-line">
           <div className="flex items-center justify-between gap-3 mb-3">
@@ -117,6 +166,7 @@ export function DashboardPage({
           <div className="p-4 md:p-5">
             <BurnRateWidget
               velocityStats={velocityStats}
+              isLoading={isLoading}
               onSeeTrends={() => onSeeTrends('overview')}
               onOpenHelp={onOpenBurnRateHelp}
             />
@@ -125,12 +175,14 @@ export function DashboardPage({
             <CashFlowHeatmap
               cashFlowData={cashFlowData}
               accounts={allAccounts}
+              isLoading={isLoading}
               onAddTransaction={() => onNavigate('log')}
               onSeeTrends={() => onSeeTrends('categories')}
             />
           </div>
         </div>
       </section>
+
     </div>
   )
 }

@@ -4,7 +4,7 @@ import { TrendingUp, TrendingDown, Plus, ArrowRight, PieChart } from 'lucide-rea
 import { PieChart as RechartsPie, Pie, Cell, ResponsiveContainer } from 'recharts'
 import { formatMYR } from '../../utils/formatters'
 import { useChartTheme } from '../../hooks/useChartTheme'
-import { TransactionDrilldown } from '../analytics/AnalyticsShared'
+import { TransactionDrilldown, EmptyState } from '../analytics/AnalyticsShared'
 
 const compactMYR = (n) => {
   const abs = Math.abs(n)
@@ -27,9 +27,39 @@ const hashCategory = (name) => {
   return Math.abs(h)
 }
 
+// ============================================================
+// LOADING SKELETON — donut + ledger rows
+// ============================================================
+const CashFlowHeatmapSkeleton = () => (
+  <div className="relative flex flex-col h-full pt-3">
+    <div className="absolute top-0 left-0 right-0 h-1 bg-line-strong rounded-full" />
+
+    <div className="flex justify-between items-start mb-4 border-b border-line pb-3 pt-1 gap-3">
+      <div className="space-y-1.5">
+        <div className="h-4 w-32 bg-surface-3 rounded-full animate-pulse" />
+        <div className="h-3 w-16 bg-surface-2 rounded-full animate-pulse" />
+      </div>
+      <div className="space-y-1.5">
+        <div className="h-3 w-20 bg-surface-2 rounded-full animate-pulse ml-auto" />
+        <div className="h-4 w-16 bg-surface-3 rounded-full animate-pulse ml-auto" />
+      </div>
+    </div>
+
+    <div className="flex flex-col md:flex-row items-center gap-5 md:gap-6">
+      <div className="w-44 h-44 md:w-48 md:h-48 rounded-full bg-surface-2 animate-pulse shrink-0" />
+      <div className="flex-1 w-full space-y-1.5">
+        {[1, 2, 3, 4, 5].map(i => (
+          <div key={i} className="h-11 bg-surface-2 rounded-xl animate-pulse" />
+        ))}
+      </div>
+    </div>
+  </div>
+)
+
 export const CashFlowHeatmap = ({
   cashFlowData = [],
   accounts = [],
+  isLoading = false,
   onAddTransaction,
   onSeeTrends
 }) => {
@@ -54,6 +84,13 @@ export const CashFlowHeatmap = ({
     [cashFlowData, theme]
   )
 
+  // ────────────────────────────────────────────────────────────
+  // Loading guard — placed after all hooks so hook order is stable.
+  // ────────────────────────────────────────────────────────────
+  if (isLoading) {
+    return <CashFlowHeatmapSkeleton />
+  }
+
   const activeItem = activeName
     ? coloredData.find(i => i.name === activeName)
     : null
@@ -74,21 +111,17 @@ export const CashFlowHeatmap = ({
             <h2 className="text-sm font-bold text-fg">Where your money went</h2>
             <p className="text-xs text-fg-subtle mt-0.5">This month</p>
           </div>
-          <div className="h-56 flex flex-col items-center justify-center text-fg-subtle">
-            <div className="w-14 h-14 bg-surface-2 border border-line rounded-2xl flex items-center justify-center mb-4 text-fg-subtle">
-              <PieChart className="w-6 h-6" />
-            </div>
-            <p className="text-sm font-bold text-fg">No spending yet this month</p>
-            <p className="text-xs text-fg-subtle mt-1 text-center max-w-xs leading-relaxed">
-              Log your first expense to see the breakdown.
-            </p>
-            <button
-              onClick={onAddTransaction}
-              className="mt-4 inline-flex items-center gap-2 px-4 py-2.5 bg-brand-solid hover:bg-brand-solid-hover text-white text-xs font-bold rounded-xl shadow-sm transition-all"
-            >
-              <Plus className="w-4 h-4" /> Log expense
-            </button>
-          </div>
+          <EmptyState
+            icon={PieChart}
+            title="No spending yet this month"
+            message="Log your first expense to see the breakdown."
+            action={{
+              label: 'Log expense',
+              icon: Plus,
+              onClick: onAddTransaction,
+            }}
+            compact
+          />
         </div>
       ) : (
         <>

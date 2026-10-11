@@ -9,6 +9,48 @@ import { ConfirmSheet } from '../components/shared/ConfirmSheet'
 import { useFriendRequests } from '../hooks/useFriendRequests'
 import { Avatar } from '../components/shared/Avatar'
 
+// ============================================================
+// SKELETON — mimics the shape of friend rows during load
+// ============================================================
+const NetworkSkeleton = ({ rows = 3 }) => (
+  <div className="space-y-2">
+    {Array.from({ length: rows }).map((_, i) => (
+      <div
+        key={i}
+        className="flex items-center gap-3 p-3 bg-surface-2/50 border border-line rounded-xl animate-pulse"
+      >
+        <div className="w-8 h-8 rounded-full bg-surface-3 shrink-0" />
+        <div className="min-w-0 flex-1 space-y-1.5">
+          <div className="h-3 bg-surface-3 rounded-full w-2/3" />
+          <div className="h-2.5 bg-surface-2 rounded-full w-1/3" />
+        </div>
+      </div>
+    ))}
+  </div>
+)
+
+// ============================================================
+// EMPTY STATE — shared shape for zero-content sections
+// ============================================================
+const NetworkEmptyState = ({ icon: Icon = Users, title, message, hint }) => (
+  <div className="text-center py-8">
+    <div className="w-12 h-12 bg-surface-2 border border-line rounded-2xl flex items-center justify-center mx-auto mb-3 text-fg-subtle">
+      <Icon className="w-5 h-5" />
+    </div>
+    <p className="text-sm font-bold text-fg">{title}</p>
+    {message && (
+      <p className="text-xs text-fg-muted mt-1 max-w-[280px] mx-auto leading-relaxed">
+        {message}
+      </p>
+    )}
+    {hint && (
+      <p className="text-[11px] text-fg-subtle mt-2 max-w-[280px] mx-auto leading-relaxed">
+        {hint}
+      </p>
+    )}
+  </div>
+)
+
 export function NetworkPage({
   user,
   profile,
@@ -32,9 +74,9 @@ export function NetworkPage({
   const [searchTerm, setSearchTerm] = useState('')
   const [searchResults, setSearchResults] = useState([])
   const [searching, setSearching] = useState(false)
+  const [hasSearched, setHasSearched] = useState(false)
   const [actionInFlight, setActionInFlight] = useState(null)
   const [pendingRemove, setPendingRemove] = useState(null)
-  // Shape: { friendshipId, name }
 
   const hasUsername = !!profile?.username?.trim()
 
@@ -52,6 +94,7 @@ export function NetworkPage({
     if (!searchTerm.trim()) return
 
     setSearching(true)
+    setHasSearched(true)
 
     try {
       const { data, error } = await supabase.rpc('search_users', {
@@ -64,9 +107,16 @@ export function NetworkPage({
       setSearchResults(filtered)
     } catch (err) {
       showToast('Search failed: ' + err.message, 'error')
+      setSearchResults([])
     } finally {
       setSearching(false)
     }
+  }
+
+  const handleClearSearch = () => {
+    setSearchTerm('')
+    setSearchResults([])
+    setHasSearched(false)
   }
 
   // ----------------------------------------------------------
@@ -92,7 +142,6 @@ export function NetworkPage({
       )
 
       setSearchResults(prev => prev.filter(u => u.id !== targetUser.id))
-      // Immediate local update — realtime will also fire (idempotent)
       await refresh()
     } catch (err) {
       showToast('Failed to send request: ' + err.message, 'error')
@@ -229,7 +278,10 @@ export function NetworkPage({
                   name="network-search"
                   type="text"
                   value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
+                  onChange={(e) => {
+                    setSearchTerm(e.target.value)
+                    if (!e.target.value) handleClearSearch()
+                  }}
                   placeholder="Search by name or username..."
                   className="flex-1 bg-surface-2 border border-line rounded-xl py-2.5 px-3 text-sm text-fg placeholder:text-fg-subtle outline-none focus:border-brand focus:ring-2 focus:ring-brand/30 transition-all"
                 />
@@ -237,6 +289,7 @@ export function NetworkPage({
                   type="submit"
                   disabled={searching || !searchTerm.trim()}
                   className="bg-brand-solid hover:bg-brand-solid-hover text-white px-4 py-2.5 rounded-xl text-sm font-bold transition-colors disabled:opacity-50 flex items-center justify-center"
+                  aria-label="Search"
                 >
                   {searching ? (
                     <Loader2 className="w-4 h-4 animate-spin" />
@@ -246,7 +299,15 @@ export function NetworkPage({
                 </button>
               </form>
 
-              {searchResults.length > 0 && (
+              {/* Loading state — skeleton rows */}
+              {searching && (
+                <div className="mt-4">
+                  <NetworkSkeleton rows={2} />
+                </div>
+              )}
+
+              {/* Results */}
+              {!searching && searchResults.length > 0 && (
                 <div className="mt-4 space-y-2">
                   {searchResults.map(result => {
                     const rel = getRelationshipLabel(result.id)
@@ -311,10 +372,27 @@ export function NetworkPage({
                 </div>
               )}
 
-              {searchResults.length === 0 && searchTerm && !searching && (
-                <p className="text-xs text-fg-subtle text-center mt-4">
-                  No users found. Try a different search.
-                </p>
+              {/* No results */}
+              {!searching && hasSearched && searchResults.length === 0 && (
+                <div className="mt-4">
+                  <NetworkEmptyState
+                    icon={Search}
+                    title="No users found"
+                    message={`Nothing matched "${searchTerm}".`}
+                    hint="Try a shorter search, or check the spelling."
+                  />
+                </div>
+              )}
+
+              {/* Idle hint — before any search */}
+              {!searching && !hasSearched && (
+                <div className="mt-4">
+                  <NetworkEmptyState
+                    icon={Users}
+                    title="Find friends by name or @username"
+                    message="Search above to see people you can connect with."
+                  />
+                </div>
               )}
             </>
           )}
@@ -449,7 +527,7 @@ export function NetworkPage({
         <section className="bg-surface/60 backdrop-blur-xl border border-line/50 rounded-3xl p-5 shadow-sm">
           <div className="flex items-center gap-3 mb-4">
             <span className="font-bold text-base text-fg">My Network</span>
-            {friends.length > 0 && (
+            {!loading && friends.length > 0 && (
               <span className="text-[10px] font-black px-2 py-0.5 rounded-full bg-success-soft text-success-text">
                 {friends.length}
               </span>
@@ -457,17 +535,14 @@ export function NetworkPage({
           </div>
 
           {loading ? (
-            <div className="flex items-center justify-center py-8 text-fg-subtle">
-              <Loader2 className="w-5 h-5 animate-spin" />
-            </div>
+            <NetworkSkeleton rows={3} />
           ) : friends.length === 0 ? (
-            <div className="text-center py-6 text-fg-subtle">
-              <Users className="w-8 h-8 text-fg-subtle mx-auto mb-2" />
-              <p className="text-sm font-bold text-fg-muted">No friends yet</p>
-              <p className="text-xs text-fg-subtle mt-1">
-                Search for people above to get started.
-              </p>
-            </div>
+            <NetworkEmptyState
+              icon={Users}
+              title="No friends yet"
+              message="Search for someone above to get started."
+              hint="You can send a request by name or @username."
+            />
           ) : (
             <div className="space-y-2">
               {friends.map(f => {
