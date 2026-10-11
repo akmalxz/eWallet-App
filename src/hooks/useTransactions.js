@@ -129,7 +129,7 @@ export const useTransactions = (user, showToast) => {
 
         supabase
           .from('transactions')
-          .select('id, amount, source_account_id, destination_account_id, category, transaction_date, needs_review, metadata')
+          .select('id, amount, source_account_id, destination_account_id, category, transaction_date, description, needs_review, metadata')
           .eq('user_id', user.id)
           .is('destination_account_id', null)
           .gte('transaction_date', startOfLastMonth),
