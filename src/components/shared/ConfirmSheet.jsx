@@ -21,7 +21,12 @@ export const ConfirmSheet = ({
   }, [])
 
   return (
-    <Sheet onClose={onCancel} saving={saving} maxWidth="md:max-w-sm">
+    <Sheet
+      onClose={onCancel}
+      saving={saving}
+      maxWidth="md:max-w-sm"
+      dismissible={false}
+    >
       <div className="flex items-start gap-3">
         {destructive && (
           <div className="w-10 h-10 rounded-full bg-danger-soft flex items-center justify-center shrink-0">

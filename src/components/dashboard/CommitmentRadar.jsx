@@ -442,16 +442,6 @@ export const CommitmentRadar = ({
             >
               <Plus className="w-5 h-5" />
             </button>
-            <div
-              className={`px-2.5 py-1.5 rounded-lg text-[10px] font-bold tracking-wider flex items-center gap-1.5 border shadow-sm ${
-                isSafe
-                  ? 'bg-success-soft text-success-text border-success-border'
-                  : 'bg-danger-soft text-danger-text border-danger-border'
-              }`}
-            >
-              {isSafe ? <ShieldCheck className="w-3.5 h-3.5" /> : <AlertTriangle className="w-3.5 h-3.5" />}
-              {isSafe ? 'SAFE' : 'SHORT'}
-            </div>
           </div>
         </div>
 

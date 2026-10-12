@@ -184,6 +184,7 @@ export const CommitmentFormSheet = ({
         title="New bill"
         onClose={onCancel}
         saving={saving}
+        bodyClassName="scrollbar-hide"
       >
         <div className="text-center py-4">
           <div className="w-14 h-14 bg-surface-2 border border-line rounded-2xl flex items-center justify-center mx-auto mb-4 text-fg-subtle">
@@ -214,6 +215,7 @@ export const CommitmentFormSheet = ({
       onClose={onCancel}
       saving={saving}
       hasUnsavedChanges={hasChanges}
+      bodyClassName="scrollbar-hide"
     >
       <div>
         <div className="flex items-center justify-between mb-1.5">

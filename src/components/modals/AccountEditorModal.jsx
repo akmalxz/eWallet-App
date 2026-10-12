@@ -9,6 +9,7 @@ import { ColorPicker } from '../shared/ColorPicker'
 import { PatternPicker } from '../shared/PatternPicker'
 import { IconPicker } from '../shared/IconPicker'
 import { COLOR_THEMES, PATTERNS, ICONS } from '../../utils/theme/themeRegistry'
+import { useBodyScrollLock } from '../../hooks/useBodyScrollLock'
 
 const NAME_MAX = 30
 
@@ -27,8 +28,6 @@ const fromAccount = (acc) => ({
   color_theme: acc?.color_theme || 'slate',
   pattern: acc?.pattern || 'none',
   icon: acc?.icon || 'bank',
-  // Show empty for 0 so new accounts and 0-balance accounts read the same.
-  // parseFloat('') || 0 on save produces the same 0.
   starting_balance:
     acc?.starting_balance != null && Number(acc.starting_balance) !== 0
       ? String(acc.starting_balance)
@@ -46,6 +45,11 @@ export const AccountEditorModal = ({
 }) => {
   const isNew = !account
   const nameInputRef = useRef(null)
+
+  // Freeze the page behind the modal. Nested locks (this modal opened
+  // from BankAccountsModal, which is itself inside a Sheet) are handled
+  // by the counter in the hook.
+  useBodyScrollLock(true)
 
   const initial = isNew ? buildDefaults(classifications) : fromAccount(account)
 
@@ -88,8 +92,6 @@ export const AccountEditorModal = ({
     )
     if (dupe) return `You already have an account named "${dupe.account_name}"`
 
-    // starting_balance is optional. Empty means 0. Non-empty must parse
-    // to a finite number (negatives allowed — overdrawn accounts exist).
     const raw = draft.starting_balance.trim()
     if (raw !== '') {
       const n = Number(raw)
@@ -173,12 +175,6 @@ export const AccountEditorModal = ({
     }))
   }
 
-  // Live preview: show what the balance WILL be with the current draft.
-  // - New account: the typed starting balance.
-  // - Existing account: current computed balance, with the delta between
-  //   the old starting_balance and the draft applied. (account.balance
-  //   already includes the OLD starting_balance, so subtracting it and
-  //   adding the draft gives the correct new total.)
   const parsedDraft = Number(draft.starting_balance)
   const draftStarting = Number.isFinite(parsedDraft) ? parsedDraft : 0
 
@@ -209,13 +205,12 @@ export const AccountEditorModal = ({
     <div
       className="fixed inset-0 z-[120] flex items-end md:items-center justify-center bg-black/60 backdrop-blur-md animate-in fade-in duration-200"
       onClick={() => !saving && onClose()}
+      style={{ touchAction: 'none' }}
     >
       <div
         className="w-full md:max-w-lg bg-surface rounded-t-3xl md:rounded-3xl shadow-2xl overflow-hidden flex flex-col max-h-[92vh] md:max-h-[85vh] animate-in slide-in-from-bottom-4 md:zoom-in-95 duration-300"
         onClick={e => e.stopPropagation()}
       >
-
-        {/* HEADER */}
         <div className="flex items-center justify-between px-5 py-4 border-b border-line shrink-0">
           <h2 className="text-base font-bold text-fg">
             {isNew ? 'New account' : 'Edit account'}
@@ -230,7 +225,6 @@ export const AccountEditorModal = ({
           </button>
         </div>
 
-        {/* PINNED PREVIEW */}
         <div className="px-5 py-4 bg-surface-2/70 border-b border-line shrink-0">
           <div className="max-w-[240px] mx-auto">
             <AccountCard
@@ -242,10 +236,8 @@ export const AccountEditorModal = ({
           </div>
         </div>
 
-        {/* SCROLLABLE BODY */}
-        <div className="flex-1 overflow-y-auto px-5 py-5 space-y-6">
+        <div className="flex-1 overflow-y-auto overscroll-contain px-5 py-5 space-y-6">
 
-          {/* Name */}
           <section>
             <div className="flex items-center justify-between mb-2">
               <label
@@ -282,7 +274,6 @@ export const AccountEditorModal = ({
             )}
           </section>
 
-          {/* Type */}
           <section>
             <label
               htmlFor="editor-class"
@@ -302,7 +293,6 @@ export const AccountEditorModal = ({
             </select>
           </section>
 
-          {/* Current balance */}
           <section>
             <label
               htmlFor="editor-balance"
@@ -327,7 +317,6 @@ export const AccountEditorModal = ({
             </p>
           </section>
 
-          {/* Color */}
           <section>
             <div className="flex items-center justify-between mb-2">
               <label className="block text-[11px] font-bold text-fg-subtle uppercase tracking-wider">
@@ -348,7 +337,6 @@ export const AccountEditorModal = ({
             />
           </section>
 
-          {/* Pattern */}
           <section>
             <label className="block text-[11px] font-bold text-fg-subtle uppercase tracking-wider mb-2">
               Pattern
@@ -360,7 +348,6 @@ export const AccountEditorModal = ({
             />
           </section>
 
-          {/* Icon */}
           <section>
             <label className="block text-[11px] font-bold text-fg-subtle uppercase tracking-wider mb-2">
               Icon
@@ -375,7 +362,6 @@ export const AccountEditorModal = ({
 
         </div>
 
-        {/* FOOTER */}
         <div
           className="px-5 pt-4 border-t border-line bg-surface shrink-0 space-y-2"
           style={{ paddingBottom: 'max(1rem, env(safe-area-inset-bottom, 0px))' }}

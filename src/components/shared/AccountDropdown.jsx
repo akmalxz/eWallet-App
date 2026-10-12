@@ -2,6 +2,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { Check, ChevronDown } from 'lucide-react'
 import { AccountCard } from './AccountCard'
+import { useBodyScrollLock } from '../../hooks/useBodyScrollLock'
 
 const ALL_ACCOUNTS = {
   id: 'all',
@@ -24,6 +25,9 @@ export const AccountDropdown = ({
   const triggerRef = useRef(null)
   const listRef = useRef(null)
   const [focusedIndex, setFocusedIndex] = useState(0)
+
+  // Lock the page behind the picker only while its panel is open.
+  useBodyScrollLock(open)
 
   const options = includeAll ? [ALL_ACCOUNTS, ...accounts] : accounts
   const selected = options.find(o => o.id === value) || options[0]
@@ -118,6 +122,7 @@ export const AccountDropdown = ({
         <div
           className="fixed inset-0 z-[130] flex items-end md:items-center justify-center bg-black/50 backdrop-blur-sm p-0 md:p-4 animate-in fade-in duration-200"
           onClick={() => setOpen(false)}
+          style={{ touchAction: 'none' }}
         >
           <div
             className="w-full md:max-w-sm bg-surface rounded-t-3xl md:rounded-3xl shadow-2xl overflow-hidden animate-in slide-in-from-bottom-4 md:zoom-in-95 duration-300 max-h-[80vh] flex flex-col"

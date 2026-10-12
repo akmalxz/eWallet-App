@@ -5,8 +5,8 @@ import {
   SiInstagram,
   SiThreads
 } from "react-icons/si";
+import { useBodyScrollLock } from '../../hooks/useBodyScrollLock'
 
-// EDIT THESE — replace with your real handles.
 const CHANNELS = [
   {
     id: 'email',
@@ -39,10 +39,14 @@ const CHANNELS = [
 ]
 
 export function ContactDeveloperModal({ onClose }) {
+  // Freeze the page behind the modal.
+  useBodyScrollLock(true)
+
   return (
     <div
       className="fixed inset-0 z-50 flex items-end md:items-center justify-center bg-black/50 backdrop-blur-sm"
       onClick={onClose}
+      style={{ touchAction: 'none' }}
     >
       <div
         className="bg-surface border border-line rounded-t-3xl md:rounded-3xl w-full md:max-w-md p-5 pb-safe-4 md:pb-5 shadow-xl animate-in slide-in-from-bottom-4 md:zoom-in-95 duration-200"
