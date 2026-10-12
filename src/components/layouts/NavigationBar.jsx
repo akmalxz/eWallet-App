@@ -4,7 +4,7 @@ import {
   List,
   Plus,
   Layers,
-  User
+  Activity
 } from 'lucide-react'
 
 const NAV_ITEMS = [
@@ -12,10 +12,12 @@ const NAV_ITEMS = [
   { id: 'transactions', icon: List,            label: 'Ledger' },
   { id: 'log',          icon: Plus,            label: 'Log' },
   { id: 'commitments',  icon: Layers,          label: 'Bills' },
-  { id: 'profile',      icon: User,            label: 'Profile' }
+  { id: 'analytics',    icon: Activity,        label: 'Analytics' }
 ]
 
-const DASHBOARD_SUBVIEWS = ['network', 'split', 'analytics']
+// Views that conceptually live inside the "Home" tab.
+// Analytics is a top-level nav item now — no longer listed here.
+const DASHBOARD_SUBVIEWS = ['network', 'split']
 
 export const NavigationBar = ({ currentView, setCurrentView }) => {
   const navKey = DASHBOARD_SUBVIEWS.includes(currentView)
@@ -76,14 +78,7 @@ export const NavigationBar = ({ currentView, setCurrentView }) => {
         </nav>
       </div>
 
-      {/*
-        MOBILE — Fixed liquid glass pill.
-        - `left` and `right` use max() so the nav clears the notch in
-          landscape while keeping a 1rem minimum in portrait.
-        - `bottom` is additive (1.5rem + safe inset) so the nav floats
-          *above* the home indicator, not into it. Different intent
-          from the sides — do not convert to max().
-      */}
+      {/* MOBILE — Fixed liquid glass pill */}
       <nav
         className="md:hidden fixed z-50 rounded-3xl bg-glass-bg backdrop-blur-2xl border border-glass-border shadow-[0_8px_30px_rgba(0,0,0,0.08)] dark:shadow-[0_8px_30px_rgba(0,0,0,0.5)]"
         style={{

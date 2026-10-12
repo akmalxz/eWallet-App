@@ -1,6 +1,6 @@
 // src/pages/AnalyticsPage.jsx
 import { useState, useEffect, useMemo, useCallback } from 'react'
-import { ChevronLeft, BarChart3, PlusCircle, AlertCircle } from 'lucide-react'
+import { BarChart3, PlusCircle, AlertCircle } from 'lucide-react'
 import { useAnalyticsData } from '../hooks/useAnalyticsData'
 import { AccountSelect, EmptyState } from '../components/analytics/AnalyticsShared'
 import { HeadlineInsights } from '../components/analytics/HeadlineInsights'
@@ -197,14 +197,6 @@ export function AnalyticsPage({
   return (
     <div className="max-w-4xl mx-auto animate-in fade-in slide-in-from-bottom-4 duration-500 pb-12 space-y-4">
 
-      {/* Back button */}
-      <button
-        onClick={onBack}
-        className="flex items-center gap-1.5 text-sm font-bold text-fg-muted hover:text-fg transition-colors px-1"
-      >
-        <ChevronLeft className="w-4 h-4" /> Back to Dashboard
-      </button>
-
       {/* Desktop title row — filters hidden during error / empty */}
       <div className="hidden md:flex md:items-center md:justify-between md:gap-4 px-1">
         <div className="min-w-0">
@@ -246,7 +238,7 @@ export function AnalyticsPage({
             className="mt-5 inline-flex items-center gap-2 px-4 py-2.5 bg-danger-solid hover:bg-danger-solid-hover text-white text-xs font-bold rounded-xl transition-colors"
             style={{ minHeight: 40 }}
           >
-            Go back
+            Go to Dashboard
           </button>
         </div>
       )}
