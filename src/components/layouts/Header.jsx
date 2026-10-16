@@ -110,13 +110,29 @@ export const Header = ({
                 className="flex items-center gap-2 hover:opacity-80 transition-opacity min-w-0"
                 aria-label="Go to dashboard"
               >
-                <img
-                  src="/favicon.svg"
-                  alt=""
-                  width="28"
-                  height="28"
-                  className="w-6 h-6 md:w-7 md:h-7 shrink-0"
-                />
+                {/*
+                  Light/dark-aware logo. <picture> supports `media` on
+                  <source>, which <img> does not — so the browser picks
+                  the right variant based on prefers-color-scheme and
+                  falls back to the dark master if neither matches.
+                */}
+                <picture className="shrink-0">
+                  <source
+                    srcSet="/favicon-96x96-light.png"
+                    media="(prefers-color-scheme: light)"
+                  />
+                  <source
+                    srcSet="/favicon-96x96-dark.png"
+                    media="(prefers-color-scheme: dark)"
+                  />
+                  <img
+                    src="/favicon-96x96-dark.png"
+                    alt=""
+                    width="28"
+                    height="28"
+                    className="w-6 h-6 md:w-7 md:h-7 rounded-md"
+                  />
+                </picture>
                 <h1 className="text-base md:text-xl font-bold tracking-tight truncate text-fg">
                   {greetingLine}
                 </h1>
