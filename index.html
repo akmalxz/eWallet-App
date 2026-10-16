@@ -4,10 +4,17 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
 
-    <!-- Favicons — light/dark aware -->
+    <!-- Favicons -->
+    <!--
+      Safari on macOS ignores the `media` attribute on <link rel="icon">
+      and uses favicon.ico unconditionally. Chrome and Firefox respect
+      the media split and swap between light/dark PNGs to match the OS
+      theme. The order below gives Safari the .ico it wants and lets
+      modern browsers pick the theme-appropriate PNG.
+    -->
+    <link rel="icon" type="image/x-icon" href="/favicon.ico" sizes="any" />
     <link rel="icon" type="image/png" sizes="96x96" href="/favicon-96x96-light.png" media="(prefers-color-scheme: light)" />
     <link rel="icon" type="image/png" sizes="96x96" href="/favicon-96x96-dark.png"  media="(prefers-color-scheme: dark)" />
-    <link rel="shortcut icon" href="/favicon.ico" />
 
     <!-- Apple -->
     <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png" />
@@ -19,9 +26,9 @@
     <!-- PWA Manifest -->
     <link rel="manifest" href="/site.webmanifest" />
 
-    <!-- Theming — matches the icon background so the browser chrome blends with the logo -->
-    <meta name="theme-color" media="(prefers-color-scheme: light)" content="#fafaf7">
-    <meta name="theme-color" media="(prefers-color-scheme: dark)"  content="#0a0f1c">
+    <!-- Theming — matches the icon background so browser chrome blends with the logo -->
+    <meta name="theme-color" media="(prefers-color-scheme: light)" content="#fafaf7" />
+    <meta name="theme-color" media="(prefers-color-scheme: dark)"  content="#0a0f1c" />
 
     <!-- Prevent phone-number auto-detection messing with numbers -->
     <meta name="format-detection" content="telephone=no" />
