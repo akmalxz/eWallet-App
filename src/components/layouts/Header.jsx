@@ -111,28 +111,30 @@ export const Header = ({
                 aria-label="Go to dashboard"
               >
                 {/*
-                  Light/dark-aware logo. <picture> supports `media` on
-                  <source>, which <img> does not — so the browser picks
-                  the right variant based on prefers-color-scheme and
-                  falls back to the dark master if neither matches.
+                  Wrapper clips the image's outer glow so the F can be scaled up
+                  without growing the visible footprint. Tune the zoom by changing
+                  the scale() value — 1.15 is subtle, 1.35 is aggressive.
                 */}
-                <picture className="shrink-0">
-                  <source
-                    srcSet="/favicon-96x96-light.png"
-                    media="(prefers-color-scheme: light)"
-                  />
-                  <source
-                    srcSet="/favicon-96x96-dark.png"
-                    media="(prefers-color-scheme: dark)"
-                  />
-                  <img
-                    src="/favicon-96x96-dark.png"
-                    alt=""
-                    width="28"
-                    height="28"
-                    className="w-6 h-6 md:w-7 md:h-7 rounded-md"
-                  />
-                </picture>
+                <div className="shrink-0 w-8 h-8 md:w-7 md:h-7 rounded-md overflow-hidden">
+                  <picture>
+                    <source
+                      srcSet="/favicon-96x96-light.png"
+                      media="(prefers-color-scheme: light)"
+                    />
+                    <source
+                      srcSet="/favicon-96x96-dark.png"
+                      media="(prefers-color-scheme: dark)"
+                    />
+                    <img
+                      src="/favicon-96x96-dark.png"
+                      alt=""
+                      width="32"
+                      height="32"
+                      className="w-full h-full object-cover rounded-md"
+                      style={{ transform: 'scale(1.5)' }}
+                    />
+                  </picture>
+                </div>
                 <h1 className="text-base md:text-xl font-bold tracking-tight truncate text-fg">
                   {greetingLine}
                 </h1>
