@@ -5,6 +5,7 @@ import { PieChart as RechartsPie, Pie, Cell, ResponsiveContainer } from 'rechart
 import { formatMYR } from '../../utils/formatters'
 import { useChartTheme } from '../../hooks/useChartTheme'
 import { TransactionDrilldown, EmptyState } from '../analytics/AnalyticsShared'
+import { AnimatedNumber } from '../shared/AnimatedNumber'
 
 const compactMYR = (n) => {
   const abs = Math.abs(n)
@@ -84,9 +85,6 @@ export const CashFlowHeatmap = ({
     [cashFlowData, theme]
   )
 
-  // ────────────────────────────────────────────────────────────
-  // Loading guard — placed after all hooks so hook order is stable.
-  // ────────────────────────────────────────────────────────────
   if (isLoading) {
     return <CashFlowHeatmapSkeleton />
   }
@@ -133,8 +131,8 @@ export const CashFlowHeatmap = ({
             </div>
             <div className="text-right shrink-0">
               <p className="text-[11px] text-fg-subtle uppercase font-bold tracking-wider mb-0.5">Total spent</p>
-              <p className="text-base font-black text-fg" title={formatMYR(totalExpenses)}>
-                {compactMYR(totalExpenses)}
+              <p className="text-base font-black text-fg tabular-figures" title={formatMYR(totalExpenses)}>
+                <AnimatedNumber value={totalExpenses} format={compactMYR} />
               </p>
             </div>
           </div>
@@ -181,11 +179,14 @@ export const CashFlowHeatmap = ({
                 <p className="text-[10px] font-bold text-fg-subtle uppercase tracking-wider truncate w-24">
                   {activeItem ? activeItem.name : 'Outflow'}
                 </p>
-                <p className="text-sm font-black text-fg tracking-tight truncate w-28 mt-0.5"
+                <p className="text-sm font-black text-fg tracking-tight truncate w-28 mt-0.5 tabular-figures"
                    title={activeItem ? formatMYR(activeItem.value) : formatMYR(totalExpenses)}>
-                  {activeItem ? compactMYR(activeItem.value) : compactMYR(totalExpenses)}
+                  <AnimatedNumber 
+                    value={activeItem ? activeItem.value : totalExpenses} 
+                    format={compactMYR} 
+                  />
                 </p>
-                <p className="text-[10px] font-bold text-brand mt-0.5">
+                <p className="text-[10px] font-bold text-brand mt-0.5 tabular-figures">
                   {activeItem
                     ? `${((activeItem.value / totalExpenses) * 100).toFixed(1)}%`
                     : `${coloredData.length} categories`
@@ -242,8 +243,10 @@ export const CashFlowHeatmap = ({
                         </div>
                       </div>
                       <div className="flex items-center gap-3 shrink-0 ml-2 text-right">
-                        <span className="text-xs font-black text-fg">{formatMYR(item.value)}</span>
-                        <span className="text-[10px] font-bold text-fg-subtle bg-surface-2 border border-line px-1.5 py-0.5 rounded-md min-w-[42px] text-center">
+                        <span className="text-xs font-black text-fg tabular-figures">
+                          {formatMYR(item.value)}
+                        </span>
+                        <span className="text-[10px] font-bold text-fg-subtle bg-surface-2 border border-line px-1.5 py-0.5 rounded-md min-w-[42px] text-center tabular-figures">
                           {pct}%
                         </span>
                       </div>

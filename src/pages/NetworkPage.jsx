@@ -231,7 +231,7 @@ export function NetworkPage({
   // ----------------------------------------------------------
   return (
     <>
-      <div className="max-w-2xl mx-auto animate-in fade-in slide-in-from-bottom-4 duration-500 pb-12 space-y-4">
+      <div className="max-w-2xl mx-auto animate-enter pb-12 space-y-4">
 
         {/* Back Button */}
         <button

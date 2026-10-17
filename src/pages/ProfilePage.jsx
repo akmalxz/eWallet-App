@@ -98,7 +98,7 @@ export function ProfilePage({
     'Your Vault'
 
   return (
-    <div className="max-w-xl mx-auto animate-in fade-in slide-in-from-bottom-4 duration-500 pb-12">
+    <div className="max-w-xl mx-auto animate-enter pb-12">
 
       {/* PROFILE HEADER */}
       <div className="bg-surface/60 backdrop-blur-xl border border-line/50 p-6 rounded-3xl shadow-sm flex items-center gap-4 mb-8">

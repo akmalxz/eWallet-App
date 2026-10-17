@@ -80,7 +80,7 @@ export function TransactionsPage({
     (recentTransactions?.length || 0) === 0
 
   return (
-    <div className="max-w-2xl mx-auto animate-in fade-in slide-in-from-bottom-4 duration-500 pb-12 space-y-4">
+    <div className="max-w-2xl mx-auto animate-enter pb-12 space-y-4">
 
       <div className="hidden md:block mb-5 px-1">
         <h1 className="text-xl font-bold text-fg tracking-tight">
@@ -112,7 +112,10 @@ export function TransactionsPage({
               <div className="flex items-center gap-2">
                 <span className="font-bold text-base text-fg">OCR Verification</span>
                 {pendingTransactions.length > 0 && (
-                  <span className="text-[10px] font-black px-2 py-0.5 rounded-full bg-warning-soft text-warning-text">
+                  <span 
+                    key={pendingTransactions.length}
+                    className="text-[10px] font-black px-2 py-0.5 rounded-full bg-warning-soft text-warning-text animate-attention"
+                  >
                     {pendingTransactions.length}
                   </span>
                 )}

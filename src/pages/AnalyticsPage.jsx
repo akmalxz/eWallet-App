@@ -195,7 +195,7 @@ export function AnalyticsPage({
   // Render
   // ────────────────────────────────────────────────────────────
   return (
-    <div className="max-w-4xl mx-auto animate-in fade-in slide-in-from-bottom-4 duration-500 pb-12 space-y-4">
+    <div className="max-w-4xl mx-auto animate-enter pb-12 space-y-4">
 
       {/* Desktop title row — filters hidden during error / empty */}
       <div className="hidden md:flex md:items-center md:justify-between md:gap-4 px-1">

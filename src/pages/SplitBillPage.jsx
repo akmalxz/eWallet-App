@@ -675,7 +675,7 @@ export function SplitBillPage({
   const isReviewMode = activeTab === 'new' && appState === 'review'
 
   return (
-    <div className="max-w-2xl mx-auto animate-in fade-in slide-in-from-bottom-4 duration-500 pb-24 space-y-4">
+    <div className="max-w-2xl mx-auto animate-enter pb-24 space-y-4">
       <input
         ref={fileInputRef}
         type="file"

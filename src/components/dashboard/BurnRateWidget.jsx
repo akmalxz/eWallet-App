@@ -8,6 +8,7 @@ import { formatMYR } from '../../utils/formatters'
 import { COLORS } from '../../utils/analytics/chartColors'
 import { CRITICAL_RUNWAY_DAYS, NEAR_PAYDAY_DAYS } from '../../utils/analytics/burnRateEngine'
 import { EmptyState } from '../analytics/AnalyticsShared'
+import { AnimatedNumber } from '../shared/AnimatedNumber'
 
 const compactMYR = (n) => {
   const abs = Math.abs(n || 0)
@@ -20,7 +21,7 @@ const formatDate = (d) =>
   d?.toLocaleDateString('en-MY', { day: 'numeric', month: 'short' })
 
 // ============================================================
-// LOADING SKELETON — mimics the widget's real layout
+// LOADING SKELETON — matches the new visual hierarchy
 // ============================================================
 const BurnRateWidgetSkeleton = () => (
   <div className="relative flex flex-col h-full">
@@ -34,13 +35,22 @@ const BurnRateWidgetSkeleton = () => (
       <div className="h-8 w-20 bg-surface-2 rounded-lg animate-pulse" />
     </div>
 
-    <div className="grid grid-cols-3 gap-2.5 mb-4">
-      {[1, 2, 3].map(i => (
-        <div key={i} className="bg-surface p-3 rounded-xl border border-line shadow-sm">
-          <div className="h-2.5 w-14 bg-surface-2 rounded-full animate-pulse mx-auto mb-2" />
-          <div className="h-4 w-16 bg-surface-3 rounded-full animate-pulse mx-auto" />
-        </div>
-      ))}
+    {/* Hero skeleton */}
+    <div className="mb-5 space-y-2">
+      <div className="h-3 w-16 bg-surface-2 rounded-full animate-pulse" />
+      <div className="h-10 w-48 bg-surface-3 rounded-xl animate-pulse" />
+    </div>
+
+    {/* Secondary skeleton */}
+    <div className="grid grid-cols-2 gap-4 mb-5 border-y border-line py-3">
+      <div className="space-y-2">
+        <div className="h-2.5 w-14 bg-surface-2 rounded-full animate-pulse" />
+        <div className="h-5 w-20 bg-surface-3 rounded-full animate-pulse" />
+      </div>
+      <div className="space-y-2">
+        <div className="h-2.5 w-14 bg-surface-2 rounded-full animate-pulse" />
+        <div className="h-5 w-20 bg-surface-3 rounded-full animate-pulse" />
+      </div>
     </div>
 
     <div className="h-3 bg-surface-2 rounded-full animate-pulse mb-3" />
@@ -96,9 +106,6 @@ export const BurnRateWidget = ({ velocityStats, isLoading = false, onSeeTrends, 
     shortfall = 0
   } = velocityStats || {}
 
-  // ────────────────────────────────────────────────────────────
-  // Loading guard — all hooks have run at this point.
-  // ────────────────────────────────────────────────────────────
   if (isLoading) {
     return <BurnRateWidgetSkeleton />
   }
@@ -203,7 +210,7 @@ export const BurnRateWidget = ({ velocityStats, isLoading = false, onSeeTrends, 
       {/* Header */}
       <div className="flex justify-between items-start mb-4 gap-3 pt-4">
         <div className="min-w-0">
-          <h2 className="text-sm font-bold text-fg">Burn Rate</h2>
+          <h2 className="text-sm font-bold text-fg tracking-tight">Burn Rate</h2>
           <p className="text-xs text-fg-subtle mt-0.5 truncate">{scopeLabel}</p>
         </div>
         <div className="flex items-center gap-1.5 shrink-0">
@@ -217,7 +224,10 @@ export const BurnRateWidget = ({ velocityStats, isLoading = false, onSeeTrends, 
             <HelpCircle className="w-4 h-4" />
           </button>
           {statusBadge.label && (
-            <div className={`px-2.5 py-1.5 rounded-lg text-[10px] font-bold tracking-wider flex items-center gap-1.5 border shadow-sm ${statusBadge.color}`}>
+            <div 
+              key={status} // <-- Forces re-render of animation when status changes
+              className={`px-2.5 py-1.5 rounded-lg text-[10px] font-bold tracking-wider flex items-center gap-1.5 border shadow-sm animate-attention ${statusBadge.color}`}
+            >
               <StatusIcon className="w-3.5 h-3.5" />
               <span className="uppercase">{statusBadge.label}</span>
             </div>
@@ -238,32 +248,29 @@ export const BurnRateWidget = ({ velocityStats, isLoading = false, onSeeTrends, 
         </div>
       ) : (
         <>
-          <div className="grid grid-cols-3 gap-2.5 mb-4">
-            <div className="bg-surface p-3 rounded-xl border border-line shadow-sm text-center">
-              <p className="text-[11px] text-fg-subtle uppercase font-bold tracking-wider mb-1">Free money</p>
-              <p
-                className={`text-sm font-black truncate ${freeMoneyNegative ? 'text-danger' : 'text-fg'}`}
-                title={formatMYR(freeMoney)}
-              >
-                {compactMYR(freeMoney)}
+          {/* HERO: Free Money */}
+          <div className="mb-5">
+            <p className="text-[11px] text-fg-subtle uppercase font-bold tracking-wider mb-1">Free money</p>
+            <div className={`text-4xl font-black tracking-tighter tabular-figures ${freeMoneyNegative ? 'text-danger' : 'text-fg'}`}>
+              <AnimatedNumber value={freeMoney} format={formatMYR} />
+            </div>
+            <p className="text-[11px] text-fg-muted mt-1">Available to spend before payday.</p>
+          </div>
+
+          {/* SECONDARY: Daily Avg & Runway */}
+          <div className="grid grid-cols-2 gap-4 mb-5 border-y border-line py-3">
+            <div>
+              <p className="text-[10px] text-fg-subtle uppercase font-bold tracking-wider mb-0.5">Daily avg</p>
+              <p className="text-lg font-bold text-fg tabular-figures">
+                {hasEverydayData ? <AnimatedNumber value={dailyAverage} format={formatMYR} /> : '—'}
               </p>
             </div>
-            <div className="bg-surface p-3 rounded-xl border border-line shadow-sm text-center">
-              <p className="text-[11px] text-fg-subtle uppercase font-bold tracking-wider mb-1">Daily avg</p>
-              <p className="text-sm font-black text-fg truncate" title={formatMYR(dailyAverage)}>
-                {hasEverydayData ? compactMYR(dailyAverage) : '—'}
-              </p>
-            </div>
-            <div className="bg-surface p-3 rounded-xl border border-line shadow-sm text-center">
-              <p className="text-[11px] text-fg-subtle uppercase font-bold tracking-wider mb-1">Runway</p>
-              <p className={`text-sm font-black ${
-                !hasEverydayData
-                  ? 'text-fg-subtle'
-                  : runwayDays < CRITICAL_RUNWAY_DAYS
-                    ? 'text-danger'
-                    : 'text-fg'
+            <div>
+              <p className="text-[10px] text-fg-subtle uppercase font-bold tracking-wider mb-0.5">Runway</p>
+              <p className={`text-lg font-bold tabular-figures ${
+                !hasEverydayData ? 'text-fg-subtle' : runwayDays < CRITICAL_RUNWAY_DAYS ? 'text-danger' : 'text-fg'
               }`}>
-                {isInfiniteRunway ? '∞' : `${runwayDays}d`}
+                {isInfiniteRunway ? '∞' : <><AnimatedNumber value={runwayDays} format={(v) => Math.round(v)} />d</>}
               </p>
             </div>
           </div>
@@ -366,7 +373,7 @@ export const BurnRateWidget = ({ velocityStats, isLoading = false, onSeeTrends, 
           <div className="overflow-hidden space-y-3">
             <div className="bg-surface-2/60 p-3.5 rounded-xl border border-line">
               <p className="text-[11px] text-fg-subtle uppercase font-bold tracking-wider">Balance</p>
-              <p className="text-sm font-black text-fg mt-1">{formatMYR(balance)}</p>
+              <p className="text-sm font-black text-fg mt-1 tabular-figures">{formatMYR(balance)}</p>
             </div>
 
             <div className="bg-surface-2/60 p-3.5 rounded-xl border border-line">
@@ -378,12 +385,12 @@ export const BurnRateWidget = ({ velocityStats, isLoading = false, onSeeTrends, 
                   </span>
                 )}
               </div>
-              <p className="text-sm font-black text-fg">− {formatMYR(billsBeforePayday)}</p>
+              <p className="text-sm font-black text-fg tabular-figures">− {formatMYR(billsBeforePayday)}</p>
             </div>
 
             <div className="bg-surface-2/60 p-3.5 rounded-xl border border-line">
               <p className="text-[11px] text-fg-subtle uppercase font-bold tracking-wider">Free money</p>
-              <p className={`text-base font-black mt-1 ${freeMoneyNegative ? 'text-danger' : 'text-fg'}`}>
+              <p className={`text-base font-black mt-1 tabular-figures ${freeMoneyNegative ? 'text-danger' : 'text-fg'}`}>
                 {formatMYR(freeMoney)}
               </p>
               <p className="text-[10px] text-fg-subtle mt-1">
@@ -393,7 +400,7 @@ export const BurnRateWidget = ({ velocityStats, isLoading = false, onSeeTrends, 
 
             <div className="bg-surface-2/60 p-3.5 rounded-xl border border-line">
               <p className="text-[11px] text-fg-subtle uppercase font-bold tracking-wider">Safe daily spend</p>
-              <p className="text-sm font-black text-fg mt-1">
+              <p className="text-sm font-black text-fg mt-1 tabular-figures">
                 {safeDailySpend > 0 ? formatMYR(safeDailySpend) : '—'}
               </p>
               <p className="text-[10px] text-fg-subtle mt-1">
@@ -407,7 +414,7 @@ export const BurnRateWidget = ({ velocityStats, isLoading = false, onSeeTrends, 
                   <p className="text-[11px] text-fg-subtle uppercase font-bold tracking-wider">
                     Spent this month
                   </p>
-                  <p className="text-sm font-black text-fg mt-1">
+                  <p className="text-sm font-black text-fg mt-1 tabular-figures">
                     {formatMYR(rawEverydaySpentThisMonth)}
                   </p>
                 </div>
@@ -416,7 +423,7 @@ export const BurnRateWidget = ({ velocityStats, isLoading = false, onSeeTrends, 
                   <p className="text-[11px] text-success-text uppercase font-bold tracking-wider">
                     Owed back to you
                   </p>
-                  <p className="text-sm font-black text-success-text mt-1">
+                  <p className="text-sm font-black text-success-text mt-1 tabular-figures">
                     − {formatMYR(receivablesOffset)}
                   </p>
                   <p className="text-[10px] text-success-text/80 mt-1 leading-relaxed">
@@ -428,7 +435,7 @@ export const BurnRateWidget = ({ velocityStats, isLoading = false, onSeeTrends, 
 
             <div className="bg-surface-2/60 p-3.5 rounded-xl border border-line">
               <p className="text-[11px] text-fg-subtle uppercase font-bold tracking-wider">Your daily average</p>
-              <p className={`text-sm font-black mt-1 ${
+              <p className={`text-sm font-black mt-1 tabular-figures ${
                 safeDailySpend > 0 && dailyAverage > safeDailySpend ? 'text-danger' : 'text-success'
               }`}>
                 {formatMYR(dailyAverage)}
@@ -438,7 +445,7 @@ export const BurnRateWidget = ({ velocityStats, isLoading = false, onSeeTrends, 
             <div className="bg-surface-2/60 p-3.5 rounded-xl border border-line flex items-center justify-between gap-3">
               <div>
                 <p className="text-[11px] text-fg-subtle uppercase font-bold tracking-wider">Expected balance at payday</p>
-                <p className={`text-base font-black mt-0.5 ${expectedBalanceAtPayday < 0 ? 'text-danger' : 'text-fg'}`}>
+                <p className={`text-base font-black mt-0.5 tabular-figures ${expectedBalanceAtPayday < 0 ? 'text-danger' : 'text-fg'}`}>
                   {formatMYR(expectedBalanceAtPayday)}
                 </p>
               </div>

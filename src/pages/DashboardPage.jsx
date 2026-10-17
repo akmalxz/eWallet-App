@@ -9,6 +9,7 @@ import { OnboardingChecklist } from '../components/dashboard/OnboardingChecklist
 import { useFriendRequests } from '../hooks/useFriendRequests'
 import { useOnboardingProgress } from '../hooks/useOnboardingProgress'
 import { trackEvent } from '../lib/analytics'
+import { formatMYR } from '../utils/formatters' // Ensure this is imported
 
 export function DashboardPage({
   // Onboarding
@@ -59,10 +60,13 @@ export function DashboardPage({
     }
   }
 
-  return (
-    <div className="space-y-4 md:space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
+  // Calculate total balance for the hero number
+  const totalBalance = activeAccounts.reduce((sum, a) => sum + (Number(a.balance) || 0), 0)
 
-      {/* ONBOARDING CHECKLIST — above everything until dismissed or complete */}
+  return (
+    <div className="space-y-6 md:space-y-10 animate-enter">
+
+      {/* ONBOARDING CHECKLIST */}
       {onboarding.shouldShow && !isLoading && (
         <OnboardingChecklist
           steps={onboarding.steps}
@@ -112,7 +116,7 @@ export function DashboardPage({
           <div className="w-10 h-10 bg-surface-2 text-fg rounded-full flex items-center justify-center group-hover:scale-110 transition-transform">
             <Users className="w-5 h-5" />
           </div>
-          <span className="text-xs font-bold text-fg-muted">Network</span>
+          <span className="text-xs font-bold text-fg-muted tracking-tight">Network</span>
         </button>
 
         <button
@@ -122,7 +126,7 @@ export function DashboardPage({
           <div className="w-10 h-10 bg-surface-2 text-fg rounded-full flex items-center justify-center group-hover:scale-110 transition-transform">
             <Receipt className="w-5 h-5" />
           </div>
-          <span className="text-xs font-bold text-fg-muted">Split Bill</span>
+          <span className="text-xs font-bold text-fg-muted tracking-tight">Split Bill</span>
         </button>
 
         <button
@@ -132,7 +136,7 @@ export function DashboardPage({
           <div className="w-10 h-10 bg-surface-2 text-fg rounded-full flex items-center justify-center group-hover:scale-110 transition-transform">
             <Activity className="w-5 h-5" />
           </div>
-          <span className="text-xs font-bold text-fg-muted">Analytics</span>
+          <span className="text-xs font-bold text-fg-muted tracking-tight">Analytics</span>
         </button>
       </section>
 
@@ -140,7 +144,7 @@ export function DashboardPage({
       <section className="bg-surface/70 backdrop-blur-xl border border-line/60 rounded-3xl shadow-sm overflow-hidden">
         <div className="px-4 pt-4 pb-3 md:px-5 md:pt-5 md:pb-4 border-b border-line">
           <div className="flex items-center justify-between gap-3 mb-3">
-            <span className="text-[11px] font-bold text-fg-subtle uppercase tracking-wider">
+            <span className="text-[10px] font-bold text-fg-subtle uppercase tracking-wider">
               This month
             </span>
           </div>

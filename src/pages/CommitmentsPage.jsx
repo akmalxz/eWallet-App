@@ -19,7 +19,7 @@ export const CommitmentsPage = ({
   onSkipCommitment,
   onUnmarkAsPaid
 }) => (
-  <div className="max-w-2xl mx-auto animate-in fade-in slide-in-from-bottom-4 duration-500 pb-12 space-y-4">
+  <div className="max-w-2xl mx-auto animate-enter pb-12 space-y-4">
 
     {/* Desktop page header — matches LogItemPage / TransactionsPage */}
     <div className="hidden md:block mb-5 px-1">
