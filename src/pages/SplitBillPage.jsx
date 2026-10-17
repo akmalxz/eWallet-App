@@ -126,36 +126,27 @@ export function SplitBillPage({
   const [isLocking, setIsLocking] = useState(false)
 
   // 4. Ledger-logging State (Issue 2)
-  //    Controls whether locking the session also writes the full bill to
-  //    the host's ledger. On by default; the ledger stays in sync with the
-  //    dashboard out of the box. Users who already logged the payment
-  //    manually can uncheck the box.
   const [logToLedger, setLogToLedger] = useState(true)
   const [logAccountId, setLogAccountId] = useState('')
 
-  // Default logAccountId whenever accounts load or change
   useEffect(() => {
     if (accounts.length > 0 && !logAccountId) {
-      // Prefer hub, fall back to first active
       const hub = accounts.find(a => a.classification === 'hub' && !a.is_archived)
       const first = accounts.find(a => !a.is_archived)
       setLogAccountId(hub?.id || first?.id || '')
     }
   }, [accounts, logAccountId])
 
-  // Sync when App changes the requested initial tab
   useEffect(() => {
     setActiveTab(initialTab)
   }, [initialTab])
 
-  // Initialize Default Participant
   useEffect(() => {
     if (user) {
       setSessionParticipants([{ id: user.id, name: 'Me', type: 'user' }])
     }
   }, [user])
 
-  // Pending debt count for the tab badge
   const refreshPendingCount = async () => {
     if (!user?.id) return
     const { count } = await supabase
@@ -175,7 +166,6 @@ export function SplitBillPage({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user?.id])
 
-  // Tab items for the sliding pill control.
   const tabItems = useMemo(() => [
     {
       id: 'new',
@@ -193,7 +183,7 @@ export function SplitBillPage({
           <HandCoins className="w-3.5 h-3.5" />
           <span>Debts</span>
           {pendingCount > 0 && (
-            <span className="inline-flex items-center justify-center min-w-[16px] h-4 px-1 rounded-full text-[9px] font-black bg-current/20 tabular-nums">
+            <span className="inline-flex items-center justify-center min-w-[16px] h-4 px-1 rounded-full text-[9px] font-black bg-current/20 tabular-figures">
               {pendingCount > 9 ? '9+' : pendingCount}
             </span>
           )}
@@ -202,7 +192,6 @@ export function SplitBillPage({
     }
   ], [pendingCount])
 
-  // Fetch Friends and Contacts (only when the modal is opened)
   useEffect(() => {
     async function fetchNetworkAndContacts() {
       if (!user?.id || !isAddModalOpen) return
@@ -257,7 +246,6 @@ export function SplitBillPage({
     }
   }, [searchQuery, ghostContacts])
 
-  // Live username search across all profiles (debounced)
   useEffect(() => {
     if (!isAddModalOpen) {
       setProfileSearchResults([])
@@ -479,7 +467,6 @@ export function SplitBillPage({
   const handleLockSession = async () => {
     if (!ledgerPreview) return
 
-    // Guard the ledger-log choice before we start any writes
     if (logToLedger && !logAccountId) {
       showToast('Choose an account to log the payment from.', 'warning')
       return
@@ -488,9 +475,6 @@ export function SplitBillPage({
     setIsLocking(true)
 
     try {
-      // ----------------------------------------------------------
-      // 1. Create the session
-      // ----------------------------------------------------------
       const { data: session, error: sessionErr } = await supabase
         .from('split_sessions')
         .insert({
@@ -507,9 +491,6 @@ export function SplitBillPage({
 
       if (sessionErr) throw sessionErr
 
-      // ----------------------------------------------------------
-      // 2. Insert claims
-      // ----------------------------------------------------------
       const claimsPayload = []
       receiptData.items.forEach((item, index) => {
         const claimants = claims[index] || []
@@ -528,9 +509,6 @@ export function SplitBillPage({
         })
       })
 
-      // ----------------------------------------------------------
-      // 3. Insert debts
-      // ----------------------------------------------------------
       const debtsPayload = ledgerPreview
         .filter(person => person.id !== user.id && person.final_owed > 0)
         .map(person => ({
@@ -542,11 +520,6 @@ export function SplitBillPage({
           status: 'pending'
         }))
 
-      // ----------------------------------------------------------
-      // 4. Optional: log the host's own share as an expense
-      // ----------------------------------------------------------
-      // Only the host's share is logged. Money friends owe is tracked
-      // separately in split_debts and doesn't belong in the ledger.
       const hostShare = ledgerPreview.find(p => p.id === user.id)?.final_owed || 0
 
       let loggedTransaction = null
@@ -576,9 +549,6 @@ export function SplitBillPage({
         loggedTransaction = tx
       }
 
-      // ----------------------------------------------------------
-      // 5. Persist children
-      // ----------------------------------------------------------
       if (claimsPayload.length > 0) {
         const { error: claimsErr } = await supabase
           .from('split_claims').insert(claimsPayload)
@@ -591,9 +561,6 @@ export function SplitBillPage({
         if (debtsErr) throw debtsErr
       }
 
-      // ----------------------------------------------------------
-      // 6. Success
-      // ----------------------------------------------------------
       showToast(
         loggedTransaction
           ? 'Session locked and logged to your ledger!'
@@ -610,8 +577,6 @@ export function SplitBillPage({
       setCapturedImage(null)
       await refreshPendingCount()
 
-      // Trigger a global refresh so the ledger, burn rate, and receivables
-      // all pick up the new transaction + new debts.
       window.dispatchEvent(new CustomEvent('debts-changed'))
 
     } catch (err) {
@@ -720,28 +685,28 @@ export function SplitBillPage({
           {activeTab === 'new' && (
             <>
               {appState === 'idle' && (
-                <section className="bg-surface/60 backdrop-blur-xl border border-line/50 rounded-3xl p-5 shadow-sm">
-                  <div className="flex items-center gap-3 mb-4">
-                    <div className="p-2.5 rounded-xl bg-brand-soft text-brand shadow-sm">
+                <section className="space-y-4">
+                  <div className="flex items-center gap-3">
+                    <div className="p-2.5 rounded-xl bg-brand-soft text-brand">
                       <Receipt className="w-5 h-5" />
                     </div>
-                    <span className="font-bold text-base text-fg">New Split Bill</span>
+                    <h2 className="font-bold text-base text-fg">New Split Bill</h2>
                   </div>
 
-                  <p className="text-sm text-fg-muted mb-4">
+                  <p className="text-sm text-fg-muted">
                     Snap a photo of your receipt, or paste its text below.
                   </p>
 
                   <button
                     onClick={openCamera}
-                    className="w-full flex items-center justify-center gap-2.5 bg-brand-solid hover:bg-brand-solid-hover text-white py-4 rounded-2xl text-sm font-bold transition-colors mb-5"
+                    className="w-full flex items-center justify-center gap-2.5 bg-brand-solid hover:bg-brand-solid-hover text-white py-4 rounded-2xl text-sm font-bold transition-colors"
                     style={{ minHeight: 56 }}
                   >
                     <Camera className="w-5 h-5" />
                     Scan Receipt
                   </button>
 
-                  <div className="flex items-center gap-3 mb-4">
+                  <div className="flex items-center gap-3">
                     <div className="flex-1 h-px bg-line" />
                     <span className="text-[10px] font-bold text-fg-subtle uppercase tracking-wider">
                       or paste text
@@ -753,7 +718,7 @@ export function SplitBillPage({
                     value={rawText}
                     onChange={(e) => setRawText(e.target.value)}
                     placeholder="Murni Discovery&#10;Nasi Goreng 12.00..."
-                    className="w-full h-40 bg-surface-2 border border-line rounded-xl p-4 text-sm text-fg placeholder:text-fg-subtle outline-none focus:border-brand transition-all resize-none mb-3"
+                    className="w-full h-40 bg-surface border border-line rounded-xl p-4 text-sm text-fg placeholder:text-fg-subtle outline-none focus:border-brand transition-all resize-none"
                   />
 
                   <button
@@ -769,20 +734,20 @@ export function SplitBillPage({
               )}
 
               {appState === 'capturing' && capturedImage && (
-                <section className="bg-surface/60 backdrop-blur-xl border border-line/50 rounded-3xl p-5 shadow-sm">
-                  <div className="flex items-center gap-3 mb-4">
-                    <div className="p-2.5 rounded-xl bg-brand-soft text-brand shadow-sm">
+                <section className="space-y-4">
+                  <div className="flex items-center gap-3">
+                    <div className="p-2.5 rounded-xl bg-brand-soft text-brand">
                       <ImageIcon className="w-5 h-5" />
                     </div>
                     <div>
-                      <span className="font-bold text-base text-fg block">Confirm Photo</span>
-                      <span className="text-xs text-fg-muted">
+                      <h2 className="font-bold text-base text-fg block">Confirm Photo</h2>
+                      <p className="text-xs text-fg-muted">
                         Make sure the receipt is fully visible and in focus.
-                      </span>
+                      </p>
                     </div>
                   </div>
 
-                  <div className="rounded-2xl overflow-hidden border border-line bg-surface-2 mb-4">
+                  <div className="rounded-2xl overflow-hidden border border-line bg-surface-2">
                     {capturedImage.previewSupported ? (
                       <img
                         src={capturedImage.previewUrl}
@@ -837,7 +802,7 @@ export function SplitBillPage({
               )}
 
               {appState === 'processing' && (
-                <section className="bg-surface/60 backdrop-blur-xl border border-line/50 rounded-3xl p-12 shadow-sm flex flex-col items-center justify-center text-center">
+                <section className="flex flex-col items-center justify-center text-center py-16">
                   <div className="w-16 h-16 relative flex items-center justify-center mb-4">
                     <div className="absolute inset-0 border-4 border-brand-soft rounded-full"></div>
                     <div className="absolute inset-0 border-4 border-brand border-t-transparent rounded-full animate-spin"></div>
@@ -849,7 +814,8 @@ export function SplitBillPage({
 
               {appState === 'claiming' && receiptData && (
                 <>
-                  <section className="bg-surface/60 backdrop-blur-xl border border-line/50 rounded-3xl p-5 shadow-sm sticky top-4 z-30">
+                  {/* Sticky summary — solid, no blur */}
+                  <section className="bg-surface border border-line rounded-2xl p-5 shadow-sm sticky top-4 z-30">
                     <div className="flex items-center justify-between mb-3">
                       <h2 className="font-bold text-lg text-fg truncate pr-4">
                         {receiptData.merchant || 'Merchant'}
@@ -858,7 +824,7 @@ export function SplitBillPage({
                         <div className="text-[10px] font-bold text-fg-subtle uppercase tracking-wider">
                           Receipt Total
                         </div>
-                        <div className="text-sm font-black text-fg">
+                        <div className="text-sm font-black text-fg tabular-figures">
                           RM {receiptData.total?.toFixed(2)}
                         </div>
                       </div>
@@ -866,7 +832,9 @@ export function SplitBillPage({
 
                     <div className="flex justify-between text-xs font-bold mb-1.5">
                       <span className="text-fg-muted">Items Claimed</span>
-                      <span className={totalClaimed === subtotal ? 'text-success' : 'text-fg'}>
+                      <span
+                        className={`tabular-figures ${totalClaimed === subtotal ? 'text-success' : 'text-fg'}`}
+                      >
                         RM {totalClaimed.toFixed(2)} / RM {subtotal.toFixed(2)}
                       </span>
                     </div>
@@ -889,6 +857,7 @@ export function SplitBillPage({
                     </button>
                   </section>
 
+                  {/* Participant pills */}
                   <section className="flex items-center gap-2 overflow-x-auto scrollbar-hide py-1">
                     {sessionParticipants.map(person => (
                       <button
@@ -899,7 +868,7 @@ export function SplitBillPage({
                             ? person.type === 'user'
                               ? 'bg-brand-solid text-white shadow-md'
                               : 'bg-purple-500 text-white shadow-md'
-                            : 'bg-surface/60 backdrop-blur-xl text-fg-muted hover:text-fg border border-line/50'
+                            : 'bg-surface text-fg-muted hover:text-fg border border-line'
                         }`}
                         style={{ minHeight: 44 }}
                       >
@@ -918,7 +887,8 @@ export function SplitBillPage({
                     </button>
                   </section>
 
-                  <section className="bg-surface/60 backdrop-blur-xl border border-line/50 rounded-3xl shadow-sm overflow-hidden pb-2">
+                  {/* Items list */}
+                  <section className="bg-surface border border-line rounded-2xl overflow-hidden">
                     <div className="divide-y divide-line">
                       {receiptData.items.map((item, index) => {
                         const claimants = claims[index] || []
@@ -929,7 +899,7 @@ export function SplitBillPage({
                           <button
                             key={index}
                             onClick={() => toggleClaim(index)}
-                            className="w-full flex items-center justify-between p-4 hover:bg-surface-2/50 transition-colors text-left"
+                            className="w-full flex items-center justify-between p-4 hover:bg-surface-2 transition-colors text-left"
                             style={{ minHeight: 44 }}
                           >
                             <div className="flex items-center gap-3">
@@ -964,7 +934,7 @@ export function SplitBillPage({
                                 )}
                               </div>
                             </div>
-                            <span className="text-sm font-bold text-fg">
+                            <span className="text-sm font-bold text-fg tabular-figures">
                               RM {item.price.toFixed(2)}
                             </span>
                           </button>
@@ -1004,38 +974,36 @@ export function SplitBillPage({
             </div>
 
             <div className="flex-1 overflow-y-auto p-5 space-y-4">
-              {/* Per-person shares */}
-              {ledgerPreview.map(person => (
-                <div
-                  key={person.id}
-                  className={`p-4 rounded-xl border ${
-                    person.id === user.id
-                      ? 'bg-brand-soft border-brand-soft'
-                      : 'bg-surface-2 border-line'
-                  }`}
-                >
-                  <div className="flex justify-between items-center mb-2">
-                    <span className={`font-bold text-sm ${
-                      person.id === user.id ? 'text-brand' : 'text-fg'
-                    }`}>
-                      {person.name} {person.id === user.id && '(Host)'}
-                    </span>
-                    <span className="font-black text-sm text-fg">
-                      RM {person.final_owed.toFixed(2)}
-                    </span>
+              {/* Per-person shares — grouped list */}
+              <div className="bg-surface border border-line rounded-xl overflow-hidden divide-y divide-line">
+                {ledgerPreview.map(person => (
+                  <div
+                    key={person.id}
+                    className={`p-4 ${person.id === user.id ? 'bg-brand-soft' : ''}`}
+                  >
+                    <div className="flex justify-between items-center mb-2">
+                      <span className={`font-bold text-sm ${
+                        person.id === user.id ? 'text-brand' : 'text-fg'
+                      }`}>
+                        {person.name} {person.id === user.id && '(Host)'}
+                      </span>
+                      <span className="font-black text-sm text-fg tabular-figures">
+                        RM {person.final_owed.toFixed(2)}
+                      </span>
+                    </div>
+                    <div className="flex justify-between text-xs text-fg-muted tabular-figures">
+                      <span>Items claimed:</span>
+                      <span>RM {person.items_total.toFixed(2)}</span>
+                    </div>
+                    <div className="flex justify-between text-xs text-fg-muted mt-1 tabular-figures">
+                      <span>Proportional tax:</span>
+                      <span>RM {person.tax_share.toFixed(2)}</span>
+                    </div>
                   </div>
-                  <div className="flex justify-between text-xs text-fg-muted">
-                    <span>Items claimed:</span>
-                    <span>RM {person.items_total.toFixed(2)}</span>
-                  </div>
-                  <div className="flex justify-between text-xs text-fg-muted mt-1">
-                    <span>Proportional tax:</span>
-                    <span>RM {person.tax_share.toFixed(2)}</span>
-                  </div>
-                </div>
-              ))}
+                ))}
+              </div>
 
-              {/* Ledger logging (Issue 2, Option A) */}
+              {/* Ledger logging */}
               <div className="bg-surface-2/50 border border-line rounded-xl p-4 space-y-3">
                 <label className="flex items-start gap-3 cursor-pointer">
                   <input
@@ -1046,7 +1014,7 @@ export function SplitBillPage({
                     className="mt-0.5 w-4 h-4 rounded border-line-strong text-brand focus:ring-brand"
                   />
                   <div className="min-w-0 flex-1">
-                    <p className="text-sm font-bold text-fg">
+                    <p className="text-sm font-bold text-fg tabular-figures">
                       Log RM {(
                         ledgerPreview.find(p => p.id === user.id)?.final_owed || 0
                       ).toFixed(2)} to my ledger
@@ -1177,65 +1145,73 @@ export function SplitBillPage({
               />
             </div>
 
-            <div className="space-y-2">
-              {filteredFriends.map(friend => (
-                <button
-                  key={friend.id}
-                  onClick={() => addParticipantToBill(friend)}
-                  className="w-full flex items-center gap-3 p-3 bg-surface border border-line rounded-xl hover:bg-surface-2 transition-colors text-left"
-                  style={{ minHeight: 44 }}
-                >
-                  <div className="w-8 h-8 bg-brand-soft text-brand rounded-full flex items-center justify-center shrink-0">
-                    <User className="w-4 h-4" />
-                  </div>
-                  <span className="text-sm font-bold text-fg">{friend.name}</span>
-                </button>
-              ))}
-
-              {ghostContacts.length > 0 && (
-                <div>
+            {/* Friends — grouped list */}
+            {filteredFriends.length > 0 && (
+              <div className="bg-surface border border-line rounded-xl overflow-hidden divide-y divide-line mb-3">
+                {filteredFriends.map(friend => (
                   <button
-                    type="button"
-                    onClick={() => setShowGhosts(s => !s)}
-                    className="w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-left hover:bg-surface-2 transition-colors"
+                    key={friend.id}
+                    onClick={() => addParticipantToBill(friend)}
+                    className="w-full flex items-center gap-3 px-4 py-3 hover:bg-surface-2 transition-colors text-left"
                     style={{ minHeight: 44 }}
-                    aria-expanded={showGhosts}
                   >
-                    <span className="text-xs font-bold text-fg-subtle uppercase tracking-wider flex items-center gap-2">
-                      <Users className="w-3.5 h-3.5 text-purple" />
-                      Guests ({ghostContacts.length})
-                    </span>
-                    {showGhosts
-                      ? <ChevronUp className="w-4 h-4 text-fg-muted" />
-                      : <ChevronDown className="w-4 h-4 text-fg-muted" />}
-                  </button>
-
-                  {showGhosts && (
-                    <div className="space-y-2 mt-1">
-                      {filteredGhosts.map(ghost => (
-                        <button
-                          key={ghost.id}
-                          onClick={() => addParticipantToBill(ghost)}
-                          className="w-full flex items-center gap-3 p-3 bg-surface border border-line rounded-xl hover:bg-surface-2 transition-colors text-left"
-                          style={{ minHeight: 44 }}
-                        >
-                          <div className="w-8 h-8 bg-purple-soft text-purple rounded-full flex items-center justify-center shrink-0">
-                            <Users className="w-4 h-4" />
-                          </div>
-                          <span className="text-sm font-bold text-fg">{ghost.name}</span>
-                        </button>
-                      ))}
-                      {filteredGhosts.length === 0 && (
-                        <p className="text-xs text-fg-muted py-3 px-3">
-                          No guests match "{searchQuery.trim()}".
-                        </p>
-                      )}
+                    <div className="w-8 h-8 bg-brand-soft text-brand rounded-full flex items-center justify-center shrink-0">
+                      <User className="w-4 h-4" />
                     </div>
-                  )}
-                </div>
-              )}
-            </div>
+                    <span className="text-sm font-bold text-fg">{friend.name}</span>
+                  </button>
+                ))}
+              </div>
+            )}
 
+            {/* Ghost contacts — grouped list */}
+            {ghostContacts.length > 0 && (
+              <div className="mb-3">
+                <button
+                  type="button"
+                  onClick={() => setShowGhosts(s => !s)}
+                  className="w-full flex items-center justify-between px-1 py-2.5 text-left hover:opacity-80 transition-opacity"
+                  style={{ minHeight: 44 }}
+                  aria-expanded={showGhosts}
+                >
+                  <span className="text-xs font-bold text-fg-subtle uppercase tracking-wider flex items-center gap-2">
+                    <Users className="w-3.5 h-3.5 text-purple" />
+                    Guests ({ghostContacts.length})
+                  </span>
+                  {showGhosts
+                    ? <ChevronUp className="w-4 h-4 text-fg-muted" />
+                    : <ChevronDown className="w-4 h-4 text-fg-muted" />}
+                </button>
+
+                {showGhosts && (
+                  <>
+                    {filteredGhosts.length > 0 ? (
+                      <div className="bg-surface border border-line rounded-xl overflow-hidden divide-y divide-line">
+                        {filteredGhosts.map(ghost => (
+                          <button
+                            key={ghost.id}
+                            onClick={() => addParticipantToBill(ghost)}
+                            className="w-full flex items-center gap-3 px-4 py-3 hover:bg-surface-2 transition-colors text-left"
+                            style={{ minHeight: 44 }}
+                          >
+                            <div className="w-8 h-8 bg-purple-soft text-purple rounded-full flex items-center justify-center shrink-0">
+                              <Users className="w-4 h-4" />
+                            </div>
+                            <span className="text-sm font-bold text-fg">{ghost.name}</span>
+                          </button>
+                        ))}
+                      </div>
+                    ) : (
+                      <p className="text-xs text-fg-muted py-3 px-3">
+                        No guests match "{searchQuery.trim()}".
+                      </p>
+                    )}
+                  </>
+                )}
+              </div>
+            )}
+
+            {/* Search results — grouped list */}
             {searchQuery.trim().length >= 2 && (
               <div className="mt-5">
                 <p className="text-xs font-bold text-fg-subtle uppercase tracking-wider mb-2">
@@ -1254,7 +1230,7 @@ export function SplitBillPage({
                 )}
 
                 {!searchingProfiles && visibleSearchResults.length > 0 && (
-                  <div className="space-y-2">
+                  <div className="bg-surface border border-line rounded-xl overflow-hidden divide-y divide-line">
                     {visibleSearchResults.map(person => {
                       const displayName =
                         person.first_name || person.username || 'Unknown'
@@ -1268,7 +1244,7 @@ export function SplitBillPage({
                               type: 'user'
                             })
                           }
-                          className="w-full flex items-center gap-3 p-3 bg-surface border border-line rounded-xl hover:bg-surface-2 transition-colors text-left"
+                          className="w-full flex items-center gap-3 px-4 py-3 hover:bg-surface-2 transition-colors text-left"
                           style={{ minHeight: 44 }}
                         >
                           <div className="w-8 h-8 bg-brand-soft text-brand rounded-full flex items-center justify-center shrink-0">

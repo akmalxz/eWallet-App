@@ -30,15 +30,17 @@ export const IconPicker = ({
         title={icon.name}
         onClick={() => onChange(icon.key)}
         className={`relative w-11 h-11 rounded-xl flex items-center justify-center transition-all duration-200 ${
+          isLetter ? '' : 'bg-surface-2'
+        } ${
           isSelected
-            ? 'ring-2 ring-slate-900 ring-offset-2'
-            : 'ring-1 ring-slate-200 hover:ring-slate-400'
+            ? 'ring-2 ring-fg ring-offset-2 ring-offset-surface'
+            : 'ring-1 ring-line hover:ring-line-strong'
         }`}
-        style={{
-          background: isLetter
-            ? `linear-gradient(135deg, ${c1}, ${c2})`
-            : '#f8fafc'
-        }}
+        style={
+          isLetter
+            ? { background: `linear-gradient(135deg, ${c1}, ${c2})` }
+            : undefined
+        }
       >
         {isLetter ? (
           <span
@@ -49,15 +51,15 @@ export const IconPicker = ({
           </span>
         ) : IconComponent ? (
           <IconComponent
-            className="w-5 h-5 text-slate-600"
+            className="w-5 h-5 text-fg-muted"
             aria-hidden="true"
           />
         ) : null}
 
-        {/* Selected check — placed as a corner badge so it doesn't cover the icon */}
+        {/* Selected check — corner badge so it doesn't cover the icon */}
         {isSelected && (
-          <span className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-slate-900 flex items-center justify-center shadow-sm">
-            <Check className="w-2.5 h-2.5 text-white" strokeWidth={3} />
+          <span className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-fg flex items-center justify-center shadow-sm">
+            <Check className="w-2.5 h-2.5 text-fg-inverse" strokeWidth={3} />
           </span>
         )}
       </button>
@@ -68,7 +70,7 @@ export const IconPicker = ({
     <div role="radiogroup" aria-label="Card icon" className="space-y-4">
       {Object.entries(groups).map(([category, icons]) => (
         <div key={category}>
-          <h4 className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2">
+          <h4 className="text-[10px] font-bold text-fg-subtle uppercase tracking-wider mb-2">
             {category}
           </h4>
           <div className="flex flex-wrap gap-2">

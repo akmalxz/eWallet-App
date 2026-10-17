@@ -3,8 +3,8 @@ import { CheckCircle, Building2, Undo2 } from 'lucide-react'
 import { formatMYR } from '../../utils/formatters'
 
 export const PaidBillRow = ({ commitment, account, saving, onUndo }) => (
-  <div className="rounded-xl transition-all border shadow-sm p-4 bg-success-soft/30 border-success-border">
-    <div className="flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-4">
+  <div className="transition-colors bg-success-soft/20 hover:bg-success-soft/30">
+    <div className="flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-4 px-4 py-3">
       <div className="flex items-start gap-3 min-w-0 flex-1">
         <div className="shrink-0 w-8 h-8 rounded-lg flex items-center justify-center bg-success-soft text-success">
           <CheckCircle className="w-4 h-4" />
@@ -30,8 +30,8 @@ export const PaidBillRow = ({ commitment, account, saving, onUndo }) => (
         </div>
       </div>
 
-      <div className="flex items-center justify-between sm:justify-end gap-3 shrink-0 border-t sm:border-t-0 border-line pt-3 sm:pt-0">
-        <span className="text-base font-black text-fg-subtle line-through whitespace-nowrap">
+      <div className="flex items-center justify-between sm:justify-end gap-3 shrink-0 border-t sm:border-t-0 border-line/60 pt-3 sm:pt-0">
+        <span className="text-base font-black text-fg-subtle line-through whitespace-nowrap tabular-figures">
           {formatMYR(commitment.amount)}
         </span>
 

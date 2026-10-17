@@ -1,18 +1,15 @@
 // src/components/dashboard/ActionLedger.jsx
 import { useState, useMemo } from 'react'
 import {
-  ArrowDownRight, ArrowUpRight, RefreshCw, List,
-  Trash2, Edit2, Plus, Inbox, Calendar, ChevronDown, ChevronUp
+  ArrowDownRight, ArrowUpRight, RefreshCw,
+  Trash2, Edit2, Plus, Inbox, Calendar, ChevronDown, ChevronUp, Search, X
 } from 'lucide-react'
 import { formatMYR } from '../../utils/formatters'
 import { toMYDate, dayKey } from '../../utils/dateHelpers'
-import { AccountCard } from '../shared/AccountCard'
+import { getColorTheme } from '../../utils/theme/themeRegistry'
 import { ConfirmSheet } from '../shared/ConfirmSheet'
 import { LedgerEditForm } from './LedgerEditForm'
 
-// Format a YYYY-MM-DD MY date key as a compact group label.
-// "Today" / "Yesterday" for the last two days; otherwise "Wed, 15 Oct",
-// dropping the year for the current MY year.
 const formatGroupLabel = (dateKey, todayKey, yesterdayKey) => {
   if (dateKey === todayKey) return 'Today'
   if (dateKey === yesterdayKey) return 'Yesterday'
@@ -28,9 +25,6 @@ const formatGroupLabel = (dateKey, todayKey, yesterdayKey) => {
   })
 }
 
-// Sum money-in (income) and money-out (expense) for a day's transactions.
-// Transfers (both source and destination set) are neither — excluded from
-// both totals.
 const getDailyTotals = (transactions) => {
   let moneyIn = 0
   let moneyOut = 0
@@ -38,11 +32,29 @@ const getDailyTotals = (transactions) => {
     const hasSource = !!tx.source_account_id
     const hasDest = !!tx.destination_account_id
     const amt = Number(tx.amount) || 0
-    if (hasSource && hasDest) continue          // transfer
-    if (!hasSource && hasDest) moneyIn += amt   // income
-    else if (hasSource && !hasDest) moneyOut += amt // expense
+    if (hasSource && hasDest) continue
+    if (!hasSource && hasDest) moneyIn += amt
+    else if (hasSource && !hasDest) moneyOut += amt
   }
   return { moneyIn, moneyOut }
+}
+
+// Minimal pill for the ledger row — keeps the color identity
+// but stays compact and uses a tighter border radius.
+const AccountPill = ({ account }) => {
+  if (!account) return <span className="text-[10px] text-fg-subtle">Unknown</span>
+  const theme = getColorTheme(account.color_theme)
+  const [c1, c2] = theme.gradient
+  const textColor = theme.tone === 'light' ? '#ffffff' : '#0f172a'
+
+  return (
+    <span
+      className="inline-flex items-center px-1.5 py-[2px] rounded text-[9px] font-bold max-w-[100px] truncate leading-none"
+      style={{ background: `linear-gradient(135deg, ${c1}, ${c2})`, color: textColor }}
+    >
+      {account.account_name}
+    </span>
+  )
 }
 
 export const ActionLedger = ({
@@ -59,32 +71,36 @@ export const ActionLedger = ({
   const [editingId, setEditingId] = useState(null)
   const [expandedGroups, setExpandedGroups] = useState({})
   const [pendingDelete, setPendingDelete] = useState(null)
+  const [searchQuery, setSearchQuery] = useState('')
+
+  const filteredTransactions = useMemo(() => {
+    if (!recentTransactions) return []
+    if (!searchQuery.trim()) return recentTransactions
+    const q = searchQuery.toLowerCase()
+    return recentTransactions.filter(tx => 
+      (tx.description || '').toLowerCase().includes(q) ||
+      (tx.category || '').toLowerCase().includes(q) ||
+      String(tx.amount).includes(q)
+    )
+  }, [recentTransactions, searchQuery])
 
   const groupedTransactions = useMemo(() => {
-    if (!recentTransactions || recentTransactions.length === 0) return []
-
+    if (filteredTransactions.length === 0) return []
     const todayKey = dayKey(new Date())
     const yesterdayKey = dayKey(new Date(Date.now() - 24 * 60 * 60 * 1000))
-
     const groups = {}
 
-    recentTransactions.forEach((tx) => {
+    filteredTransactions.forEach((tx) => {
       const dateKey = dayKey(tx.transaction_date || tx.created_at)
       const label = formatGroupLabel(dateKey, todayKey, yesterdayKey)
-
       if (!groups[dateKey]) {
-        groups[dateKey] = {
-          label,
-          date: dateKey,
-          isToday: dateKey === todayKey,
-          transactions: []
-        }
+        groups[dateKey] = { label, date: dateKey, isToday: dateKey === todayKey, transactions: [] }
       }
       groups[dateKey].transactions.push(tx)
     })
 
     return Object.values(groups).sort((a, b) => b.date.localeCompare(a.date))
-  }, [recentTransactions])
+  }, [filteredTransactions])
 
   const toggleGroup = (dateKey) => {
     setExpandedGroups((prev) => ({ ...prev, [dateKey]: !prev[dateKey] }))
@@ -95,332 +111,238 @@ export const ActionLedger = ({
     return expandedGroups[group.date] ?? false
   }
 
-  // Parent-side: track which transaction's form is open.
-  // Everything else about editing lives inside LedgerEditForm.
   const beginEdit = (id) => setEditingId(id)
   const endEdit = () => setEditingId(null)
-
   const accountFor = (id) => accounts.find((a) => a.id === id)
 
   if (!recentTransactions || recentTransactions.length === 0) {
     return (
-      <section className="bg-surface rounded-2xl shadow-md border border-line flex flex-col overflow-hidden transition-all duration-300">
-        <div className="px-4 pt-4 pb-1 border-b border-line bg-surface-2/60 flex items-center justify-between flex-shrink-0">
-          <div className="flex items-center gap-3 px-1 mb-3">
-            <div className="p-2 rounded-xl bg-surface-2 text-fg-muted border border-line">
-              <List className="w-5 h-5" />
-            </div>
-            <div>
-              <h2 className="text-base font-bold text-fg leading-tight">
-                Action Ledger
-              </h2>
-              <p className="text-[9px] font-bold uppercase tracking-wider text-fg-subtle">
-                Verified History
-              </p>
-            </div>
-          </div>
-
-          <button
-            onClick={onRefresh}
-            disabled={isRefreshing}
-            className={`ml-auto w-11 h-11 flex items-center justify-center rounded-lg transition-all ${
-              isRefreshing
-                ? 'text-fg-subtle/50 cursor-not-allowed'
-                : 'text-fg-subtle hover:text-fg-muted hover:bg-surface-2'
-            }`}
-            title="Refresh transactions"
-            aria-label="Refresh transactions"
-          >
-            <RefreshCw className={`w-4 h-4 ${isRefreshing ? 'animate-spin' : ''}`} />
-          </button>
+      <section className="flex flex-col items-center justify-center p-12 text-fg-subtle border border-dashed border-line-strong rounded-3xl">
+        <div className="w-14 h-14 bg-surface-2 border border-line rounded-2xl flex items-center justify-center mb-4 text-fg-subtle">
+          <Inbox className="w-6 h-6" />
         </div>
-
-        <div className="flex-1 flex flex-col items-center justify-center p-8 text-fg-subtle">
-          <div className="w-14 h-14 bg-surface-2 border border-line rounded-2xl flex items-center justify-center mb-4 text-fg-subtle">
-            <Inbox className="w-6 h-6" />
-          </div>
-          <p className="text-sm font-bold text-fg">No Transactions Yet</p>
-          <p className="text-xs text-fg-subtle text-center mt-1 max-w-xs leading-relaxed">
-            Record a fast entry with the platform omnibar tools or choose the transaction button below.
-          </p>
-          <button
-            onClick={onAddTransaction}
-            className="mt-4 inline-flex items-center justify-center gap-2 px-4 py-2.5 bg-brand-solid hover:bg-brand-solid-hover text-white text-xs font-bold rounded-xl shadow-sm transition-all"
-            style={{ minHeight: 44 }}
-          >
-            <Plus className="w-4 h-4" /> Log Transaction
-          </button>
-        </div>
+        <p className="text-sm font-bold text-fg">No Transactions Yet</p>
+        <p className="text-xs text-fg-subtle text-center mt-1 max-w-xs leading-relaxed">
+          Record a fast entry with the platform omnibar tools or choose the transaction button below.
+        </p>
+        <button
+          onClick={onAddTransaction}
+          className="mt-4 inline-flex items-center justify-center gap-2 px-4 py-2.5 bg-brand-solid hover:bg-brand-solid-hover text-white text-xs font-bold rounded-xl shadow-sm transition-all"
+          style={{ minHeight: 44 }}
+        >
+          <Plus className="w-4 h-4" /> Log Transaction
+        </button>
       </section>
     )
   }
 
   return (
     <>
-      <section className="bg-surface rounded-2xl shadow-md border border-line flex flex-col overflow-hidden transition-all duration-300">
-        <div className="px-4 pt-4 pb-1 border-b border-line bg-surface-2/60 flex items-center justify-between flex-shrink-0">
-          <div className="flex items-center gap-3 px-1 mb-3">
-            <div className="p-2 rounded-xl bg-surface-2 text-fg-muted border border-line">
-              <List className="w-5 h-5" />
-            </div>
-            <div>
-              <h2 className="text-base font-bold text-fg leading-tight">
-                Action Ledger
-              </h2>
-              <p className="text-[9px] font-bold uppercase tracking-wider text-fg-subtle">
-                Verified History
-              </p>
-            </div>
-          </div>
+      <section className="flex flex-col flex-1">
+        {/* HEADER & SEARCH */}
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
+          <h2 className="text-base font-bold text-fg tracking-tight flex items-center gap-2">
+            Action Ledger
+            <span className="text-[10px] font-bold uppercase tracking-wider text-fg-subtle bg-surface-2 px-2 py-0.5 rounded-md">
+              {filteredTransactions.length}
+            </span>
+          </h2>
 
-          <button
-            onClick={onRefresh}
-            disabled={isRefreshing}
-            className={`ml-auto w-11 h-11 flex items-center justify-center rounded-lg transition-all ${
-              isRefreshing
-                ? 'text-fg-subtle/50 cursor-not-allowed'
-                : 'text-fg-subtle hover:text-fg-muted hover:bg-surface-2'
-            }`}
-            title="Refresh transactions"
-            aria-label="Refresh transactions"
-          >
-            <RefreshCw className={`w-4 h-4 ${isRefreshing ? 'animate-spin' : ''}`} />
-          </button>
+          <div className="flex items-center gap-2">
+            <div className="relative flex-1 sm:w-64">
+              <Search className="w-3.5 h-3.5 text-fg-subtle absolute left-3 top-1/2 -translate-y-1/2" />
+              <input
+                type="text"
+                placeholder="Search transactions..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="w-full bg-surface-2 border border-line rounded-xl py-2 pl-9 pr-8 text-xs text-fg placeholder:text-fg-subtle outline-none focus:border-brand focus:ring-2 focus:ring-brand/20 transition-all"
+              />
+              {searchQuery && (
+                <button
+                  onClick={() => setSearchQuery('')}
+                  className="absolute right-2 top-1/2 -translate-y-1/2 p-1 text-fg-subtle hover:text-fg"
+                >
+                  <X className="w-3 h-3" />
+                </button>
+              )}
+            </div>
+            
+            <button
+              onClick={onRefresh}
+              disabled={isRefreshing}
+              className={`shrink-0 w-9 h-9 flex items-center justify-center rounded-xl transition-all border border-line ${
+                isRefreshing
+                  ? 'text-fg-subtle/50 cursor-not-allowed bg-surface-2'
+                  : 'text-fg-muted hover:text-fg hover:bg-surface-2 bg-surface'
+              }`}
+              title="Refresh transactions"
+            >
+              <RefreshCw className={`w-3.5 h-3.5 ${isRefreshing ? 'animate-spin' : ''}`} />
+            </button>
+          </div>
         </div>
 
-        <div className="flex-1 overflow-y-auto space-y-3 p-3">
-          {groupedTransactions.map((group) => {
-            const { moneyIn, moneyOut } = getDailyTotals(group.transactions)
-            const hasFlow = moneyIn > 0 || moneyOut > 0
-            const isToday = group.isToday
-            const isExpanded = isGroupExpanded(group)
+        {/* SCROLLABLE LIST CONTAINER */}
+        <div className="bg-surface border border-line rounded-2xl overflow-hidden flex flex-col flex-1 max-h-[60vh]">
+          <div className="overflow-y-auto overscroll-contain scrollbar-thin">
+            {groupedTransactions.length === 0 ? (
+              <div className="p-8 text-center text-fg-subtle">
+                <Search className="w-6 h-6 mx-auto mb-2 opacity-50" />
+                <p className="text-sm font-bold">No results found</p>
+                <p className="text-xs mt-1">Try a different search term.</p>
+              </div>
+            ) : (
+              groupedTransactions.map((group) => {
+                const { moneyIn, moneyOut } = getDailyTotals(group.transactions)
+                const hasFlow = moneyIn > 0 || moneyOut > 0
+                const isToday = group.isToday
+                const isExpanded = isGroupExpanded(group)
 
-            return (
-              <div key={group.date} className="space-y-1.5">
-                <div
-                  className="flex items-center gap-3 px-2 py-1.5 cursor-pointer hover:bg-surface-2 rounded-lg transition-colors select-none"
-                  onClick={() => toggleGroup(group.date)}
-                >
-                  <div className="flex items-center gap-2 flex-1 min-w-0">
-                    <Calendar className="w-3.5 h-3.5 text-fg-subtle shrink-0" />
-                    <span
-                      className={`text-xs font-bold truncate ${
-                        isToday ? 'text-brand' : 'text-fg-muted'
-                      }`}
+                return (
+                  <div key={group.date} className="border-b border-line last:border-0">
+                    {/* GROUP HEADER */}
+                    <div
+                      className="flex items-center gap-3 px-4 py-3 cursor-pointer hover:bg-surface-2 transition-colors select-none sticky top-0 bg-surface/95 backdrop-blur-sm z-10 border-b border-line/50"
+                      onClick={() => toggleGroup(group.date)}
                     >
-                      {group.label}
-                    </span>
-                    {!isExpanded && (
-                      <span className="text-[10px] font-medium text-fg-subtle shrink-0">
-                        ({group.transactions.length} txns)
-                      </span>
-                    )}
-                  </div>
-                  <div className="flex items-center gap-2 shrink-0">
-                    {hasFlow && (
-                      <div className="flex items-center gap-1 text-[10px] font-semibold whitespace-nowrap">
-                        {moneyIn > 0 && (
-                          <span className="text-success">+{formatMYR(moneyIn)}</span>
-                        )}
-                        {moneyIn > 0 && moneyOut > 0 && (
-                          <span className="text-fg-subtle font-normal">·</span>
-                        )}
-                        {moneyOut > 0 && (
-                          <span className="text-fg">-{formatMYR(moneyOut)}</span>
+                      <div className="flex items-center gap-2 flex-1 min-w-0">
+                        <Calendar className="w-3.5 h-3.5 text-fg-subtle shrink-0" />
+                        <span className={`text-xs font-bold truncate ${isToday ? 'text-brand' : 'text-fg'}`}>
+                          {group.label}
+                        </span>
+                        {!isExpanded && (
+                          <span className="text-[10px] font-medium text-fg-subtle shrink-0">
+                            ({group.transactions.length})
+                          </span>
                         )}
                       </div>
-                    )}
-                    <button
-                      className="w-11 h-11 flex items-center justify-center text-fg-subtle hover:text-fg-muted hover:bg-surface-2 rounded-lg transition-all"
-                      onClick={(e) => {
-                        e.stopPropagation()
-                        toggleGroup(group.date)
-                      }}
-                      aria-label={isExpanded ? 'Collapse' : 'Expand'}
-                      aria-expanded={isExpanded}
-                    >
-                      {isExpanded ? (
-                        <ChevronUp className="w-3.5 h-3.5" />
-                      ) : (
-                        <ChevronDown className="w-3.5 h-3.5" />
-                      )}
-                    </button>
-                  </div>
-                </div>
-
-                {isExpanded && (
-                  <div className="space-y-1.5 animate-fadeIn">
-                    {group.transactions.map((tx) => {
-                      const isIncome = !tx.source_account_id && tx.destination_account_id
-                      const isTransfer = tx.source_account_id && tx.destination_account_id
-                      const isEditingThis = editingId === tx.id
-                      const globalIndex = recentTransactions.findIndex((t) => t.id === tx.id)
-
-                      return (
-                        <div
-                          key={tx.id}
-                          className="relative overflow-hidden rounded-xl border border-line bg-surface"
-                        >
-                          {isEditingThis && (
-                            <LedgerEditForm
-                              key={tx.id}
-                              transaction={tx}
-                              accounts={accounts}
-                              mainCategories={mainCategories}
-                              getSubCategories={getSubCategories}
-                              onSave={(updates) => {
-                                handleEditTransaction(tx.id, updates)
-                                endEdit()
-                              }}
-                              onCancel={endEdit}
-                            />
-                          )}
-
-                          {!isEditingThis && (
-                            <div
-                              id={`tx-${globalIndex}`}
-                              className="flex items-center justify-between p-3.5 hover:bg-surface-2/60 transition-all duration-200 border-b border-line group last:border-none"
-                            >
-                              <div className="flex items-center gap-3.5 min-w-0 flex-1">
-                                <div
-                                  className={`w-8 h-8 flex items-center justify-center rounded-xl shrink-0 ${
-                                    isIncome
-                                      ? 'bg-success-soft text-success'
-                                      : isTransfer
-                                        ? 'bg-info-soft text-info'
-                                        : 'bg-surface-2 text-fg-muted'
-                                  }`}
-                                >
-                                  {isIncome ? (
-                                    <ArrowUpRight className="w-4 h-4" />
-                                  ) : isTransfer ? (
-                                    <RefreshCw className="w-3.5 h-3.5" />
-                                  ) : (
-                                    <ArrowDownRight className="w-4 h-4" />
-                                  )}
-                                </div>
-                                <div className="min-w-0 flex-1">
-                                  <p className="text-sm font-semibold text-fg truncate">
-                                    {tx.description}
-                                  </p>
-                                  <p className="text-xs text-fg-subtle">
-                                    {tx.category || 'Uncategorized'}
-                                  </p>
-
-                                  <div className="flex items-center gap-1.5 mt-1 min-w-0">
-                                    {isIncome && (
-                                      <>
-                                        <span className="text-[10px] font-bold text-fg-subtle shrink-0">
-                                          →
-                                        </span>
-                                        {accountFor(tx.destination_account_id) ? (
-                                          <AccountCard
-                                            account={accountFor(tx.destination_account_id)}
-                                            size="chip"
-                                            showIcon={false}
-                                          />
-                                        ) : (
-                                          <span className="text-[10px] text-fg-subtle">
-                                            Unknown
-                                          </span>
-                                        )}
-                                      </>
-                                    )}
-
-                                    {isTransfer && (
-                                      <>
-                                        {accountFor(tx.source_account_id) ? (
-                                          <AccountCard
-                                            account={accountFor(tx.source_account_id)}
-                                            size="chip"
-                                            showIcon={false}
-                                          />
-                                        ) : (
-                                          <span className="text-[10px] text-fg-subtle">
-                                            Unknown
-                                          </span>
-                                        )}
-                                        <span className="text-[10px] font-bold text-fg-subtle shrink-0">
-                                          →
-                                        </span>
-                                        {accountFor(tx.destination_account_id) ? (
-                                          <AccountCard
-                                            account={accountFor(tx.destination_account_id)}
-                                            size="chip"
-                                            showIcon={false}
-                                          />
-                                        ) : (
-                                          <span className="text-[10px] text-fg-subtle">
-                                            Unknown
-                                          </span>
-                                        )}
-                                      </>
-                                    )}
-
-                                    {!isIncome && !isTransfer && (
-                                      <>
-                                        <span className="text-[10px] font-bold text-fg-subtle shrink-0">
-                                          ←
-                                        </span>
-                                        {accountFor(tx.source_account_id) ? (
-                                          <AccountCard
-                                            account={accountFor(tx.source_account_id)}
-                                            size="chip"
-                                            showIcon={false}
-                                          />
-                                        ) : (
-                                          <span className="text-[10px] text-fg-subtle">
-                                            Unknown
-                                          </span>
-                                        )}
-                                      </>
-                                    )}
-                                  </div>
-                                </div>
-                              </div>
-                              <div className="flex items-center gap-2.5 ml-2 shrink-0">
-                                <span
-                                  className={`text-sm font-black whitespace-nowrap ${
-                                    isIncome
-                                      ? 'text-success'
-                                      : isTransfer
-                                        ? 'text-fg-muted'
-                                        : 'text-fg'
-                                  }`}
-                                >
-                                  {isIncome ? '+' : isTransfer ? '' : '-'}
-                                  {formatMYR(tx.amount)}
-                                </span>
-
-                                <div className="flex items-center md:opacity-0 md:group-hover:opacity-100 focus-within:opacity-100 transition-opacity gap-0.5">
-                                  <button
-                                    onClick={() => beginEdit(tx.id)}
-                                    className="w-9 h-9 flex items-center justify-center text-fg-subtle hover:text-fg hover:bg-surface-2 rounded-lg transition-all"
-                                    title="Edit transaction"
-                                    aria-label="Edit transaction"
-                                  >
-                                    <Edit2 className="w-3.5 h-3.5" />
-                                  </button>
-                                  <button
-                                    onClick={() => setPendingDelete(tx)}
-                                    className="w-9 h-9 flex items-center justify-center text-fg-subtle hover:text-danger hover:bg-danger-soft rounded-lg transition-all"
-                                    title="Delete transaction"
-                                    aria-label="Delete transaction"
-                                  >
-                                    <Trash2 className="w-3.5 h-3.5" />
-                                  </button>
-                                </div>
-                              </div>
-                            </div>
-                          )}
+                      <div className="flex items-center gap-3 shrink-0">
+                        {hasFlow && (
+                          <div className="flex items-center gap-1.5 text-[10px] font-bold tracking-tight tabular-figures">
+                            {moneyIn > 0 && <span className="text-success">+{formatMYR(moneyIn)}</span>}
+                            {moneyIn > 0 && moneyOut > 0 && <span className="text-line-strong font-normal">·</span>}
+                            {moneyOut > 0 && <span className="text-fg">-{formatMYR(moneyOut)}</span>}
+                          </div>
+                        )}
+                        <div className="text-fg-subtle">
+                          {isExpanded ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
                         </div>
-                      )
-                    })}
+                      </div>
+                    </div>
+
+                    {/* GROUP ROWS */}
+                    {isExpanded && (
+                      <div className="divide-y divide-line bg-surface-2/30">
+                        {group.transactions.map((tx) => {
+                          const isIncome = !tx.source_account_id && tx.destination_account_id
+                          const isTransfer = tx.source_account_id && tx.destination_account_id
+                          const isEditingThis = editingId === tx.id
+                          const globalIndex = recentTransactions.findIndex((t) => t.id === tx.id)
+
+                          const srcAcc = accountFor(tx.source_account_id)
+                          const destAcc = accountFor(tx.destination_account_id)
+
+                          return (
+                            <div key={tx.id} className="relative">
+                              {isEditingThis && (
+                                <LedgerEditForm
+                                  key={tx.id}
+                                  transaction={tx}
+                                  accounts={accounts}
+                                  mainCategories={mainCategories}
+                                  getSubCategories={getSubCategories}
+                                  onSave={(updates) => {
+                                    handleEditTransaction(tx.id, updates)
+                                    endEdit()
+                                  }}
+                                  onCancel={endEdit}
+                                />
+                              )}
+
+                              {!isEditingThis && (
+                                <div
+                                  id={`tx-${globalIndex}`}
+                                  className="flex items-center justify-between gap-3 px-4 py-3 hover:bg-surface-2 transition-all group"
+                                >
+                                  {/* LEFT: Description & Meta */}
+                                  <div className="flex flex-col gap-1 min-w-0 flex-1">
+                                    <p className="text-sm font-bold text-fg truncate">
+                                      {tx.description}
+                                    </p>
+                                    
+                                    <div className="flex items-center gap-1.5 text-[11px] text-fg-subtle min-w-0">
+                                      <span className="truncate max-w-[80px] sm:max-w-[120px]">
+                                        {tx.category || 'Uncategorized'}
+                                      </span>
+                                      <span className="text-line-strong shrink-0">•</span>
+                                      
+                                      {/* Custom Account Pills */}
+                                      <div className="flex items-center gap-1 min-w-0 truncate">
+                                        {isIncome && destAcc && (
+                                          <>
+                                            <span className="text-fg-subtle font-bold">→</span>
+                                            <AccountPill account={destAcc} />
+                                          </>
+                                        )}
+                                        {isTransfer && srcAcc && destAcc && (
+                                          <>
+                                            <AccountPill account={srcAcc} />
+                                            <span className="text-fg-subtle font-bold">→</span>
+                                            <AccountPill account={destAcc} />
+                                          </>
+                                        )}
+                                        {!isIncome && !isTransfer && srcAcc && (
+                                          <>
+                                            <span className="text-fg-subtle font-bold">←</span>
+                                            <AccountPill account={srcAcc} />
+                                          </>
+                                        )}
+                                      </div>
+                                    </div>
+                                  </div>
+
+                                  {/* RIGHT: Amount & Actions */}
+                                  <div className="flex flex-col items-end gap-1 shrink-0">
+                                    <span className={`text-sm font-bold tabular-figures whitespace-nowrap ${
+                                      isIncome ? 'text-success' : isTransfer ? 'text-fg-muted' : 'text-fg'
+                                    }`}>
+                                      {isIncome ? '+' : isTransfer ? '' : '-'}{formatMYR(tx.amount)}
+                                    </span>
+                                    
+                                    {/* Actions aligned right under amount, tightly packed */}
+                                    <div className="ml-auto flex items-center justify-end gap-0 opacity-100 md:opacity-0 md:group-hover:opacity-100 focus-within:opacity-100 transition-opacity">
+                                      <button
+                                        onClick={() => beginEdit(tx.id)}
+                                        className="w-6 h-6 flex items-center justify-center text-fg-subtle hover:text-fg hover:bg-surface-3 rounded-md transition-all"
+                                        aria-label="Edit transaction"
+                                      >
+                                        <Edit2 className="w-3 h-3" />
+                                      </button>
+
+                                      <button
+                                        onClick={() => setPendingDelete(tx)}
+                                        className="w-6 h-6 flex items-center justify-center text-fg-subtle hover:text-danger hover:bg-danger-soft rounded-md transition-all"
+                                        aria-label="Delete transaction"
+                                      >
+                                        <Trash2 className="w-3 h-3" />
+                                      </button>
+                                    </div>
+
+                                  </div>
+
+                                </div>
+                              )}
+                            </div>
+                          )
+                        })}
+                      </div>
+                    )}
                   </div>
-                )}
-              </div>
-            )
-          })}
+                )
+              })
+            )}
+          </div>
         </div>
       </section>
 

@@ -43,32 +43,32 @@ const getInitialParam = (key, validValues, fallback) => {
 }
 
 // ============================================================
-// LOADING SKELETON — mimics the Overview tab layout
+// LOADING SKELETON — mirrors the flat layout
 // ============================================================
 const AnalyticsSkeleton = () => (
-  <div className="space-y-4">
+  <div className="space-y-8">
 
-    {/* Two insight rows */}
-    <div className="grid grid-cols-1 md:grid-cols-2 gap-3 md:gap-4">
+    {/* Insight rows — flat */}
+    <div className="space-y-3">
       {[1, 2].map((i) => (
         <div
           key={i}
-          className="bg-surface/60 border border-line/50 rounded-2xl p-4 flex items-start gap-3 animate-pulse"
+          className="flex items-start gap-3 py-3 border-b border-line/60"
         >
-          <div className="w-9 h-9 rounded-xl bg-surface-3 shrink-0" />
+          <div className="w-9 h-9 rounded-xl bg-surface-2 shrink-0 animate-pulse" />
           <div className="flex-1 space-y-2">
-            <div className="h-3 w-full bg-surface-2 rounded-full" />
-            <div className="h-3 w-3/4 bg-surface-2 rounded-full" />
+            <div className="h-3 w-full bg-surface-2 rounded-full animate-pulse" />
+            <div className="h-3 w-3/4 bg-surface-2 rounded-full animate-pulse" />
           </div>
         </div>
       ))}
     </div>
 
-    {/* Trend chart block */}
-    <div className="bg-surface/60 border border-line/50 rounded-3xl p-5 md:p-6 shadow-sm">
-      <div className="flex items-start justify-between mb-4">
+    {/* Trend chart skeleton — flat */}
+    <div className="space-y-3 pt-2">
+      <div className="flex items-start justify-between gap-3">
         <div className="space-y-2">
-          <div className="h-3 w-32 bg-surface-3 rounded-full animate-pulse" />
+          <div className="h-3 w-32 bg-surface-2 rounded-full animate-pulse" />
           <div className="h-2.5 w-48 bg-surface-2 rounded-full animate-pulse" />
         </div>
         <div className="h-11 w-52 bg-surface-2 rounded-2xl animate-pulse" />
@@ -119,7 +119,6 @@ export function AnalyticsPage({
     error
   } = useAnalyticsData(user, showToast)
 
-  // Account filter
   const filteredExpenses = useMemo(() => {
     if (selectedAccount === 'all') return expenses
     return expenses.filter(tx => tx.source_account_id === selectedAccount)
@@ -135,7 +134,6 @@ export function AnalyticsPage({
     return income.filter(tx => tx.destination_account_id === selectedAccount)
   }, [income, selectedAccount])
 
-  // Spending source — mode-aware
   const spendingSource =
     mode === 'everyday' ? filteredEverydayExpenses : filteredExpenses
 
@@ -147,7 +145,6 @@ export function AnalyticsPage({
     return spendingSource.filter(tx => toMYDate(tx.transaction_date) >= cutoff)
   }, [spendingSource, period])
 
-  // Full set — always includes bills (used by Income tab only)
   const periodScopedExpensesAll = useMemo(() => {
     const cutoff = new Date()
     cutoff.setMonth(cutoff.getMonth() - period)
@@ -173,11 +170,6 @@ export function AnalyticsPage({
 
   const showModeControl = tab !== 'income'
 
-  // ────────────────────────────────────────────────────────────
-  // State classification
-  // ────────────────────────────────────────────────────────────
-  // Truly empty: not loading, no error, no data anywhere. Renders
-  // a full-page empty state instead of the filters + tabs.
   const isTrulyEmpty =
     !loading &&
     !error &&
@@ -191,14 +183,11 @@ export function AnalyticsPage({
     else if (onBack) onBack()
   }, [onLogTransaction, onBack])
 
-  // ────────────────────────────────────────────────────────────
-  // Render
-  // ────────────────────────────────────────────────────────────
   return (
-    <div className="max-w-4xl mx-auto animate-enter pb-12 space-y-4">
+    <div className="max-w-4xl mx-auto animate-enter pb-12 space-y-6">
 
       {/* Desktop title row — filters hidden during error / empty */}
-      <div className="hidden md:flex md:items-center md:justify-between md:gap-4 px-1">
+      <div className="hidden md:flex md:items-center md:justify-between md:gap-4">
         <div className="min-w-0">
           <h1 className="text-2xl font-bold text-fg tracking-tight">Analytics</h1>
           <p className="text-sm text-fg-muted mt-1">Deep dive into your financial trends.</p>
@@ -225,9 +214,9 @@ export function AnalyticsPage({
         )}
       </div>
 
-      {/* ─────────── ERROR STATE ─────────── */}
+      {/* ─────────── ERROR STATE — flat alert ─────────── */}
       {error && (
-        <div className="bg-danger-soft border border-danger-border rounded-3xl p-8 text-center">
+        <div className="bg-danger-soft border border-danger-border rounded-xl p-6 text-center">
           <AlertCircle className="w-10 h-10 text-danger mx-auto mb-4" />
           <p className="text-sm font-bold text-danger-text">Couldn't load analytics</p>
           <p className="text-xs text-danger-text/80 mt-1 max-w-sm mx-auto leading-relaxed">
@@ -243,20 +232,18 @@ export function AnalyticsPage({
         </div>
       )}
 
-      {/* ─────────── PAGE-LEVEL EMPTY STATE ─────────── */}
+      {/* ─────────── PAGE-LEVEL EMPTY STATE — no card ─────────── */}
       {!error && isTrulyEmpty && (
-        <div className="bg-surface/60 backdrop-blur-xl border border-line/50 rounded-3xl shadow-sm">
-          <EmptyState
-            icon={BarChart3}
-            title="No data to analyze yet"
-            message="Log a few transactions and come back — trends, categories, and income insights will appear here."
-            action={{
-              label: 'Log a transaction',
-              icon: PlusCircle,
-              onClick: handleLogTransaction,
-            }}
-          />
-        </div>
+        <EmptyState
+          icon={BarChart3}
+          title="No data to analyze yet"
+          message="Log a few transactions and come back. Trends, categories, and income insights will appear here."
+          action={{
+            label: 'Log a transaction',
+            icon: PlusCircle,
+            onClick: handleLogTransaction,
+          }}
+        />
       )}
 
       {/* ─────────── NORMAL PAGE ─────────── */}

@@ -22,12 +22,9 @@ export const AccountCards = ({
 
   const toggleBalances = () => setShowBalances(!showBalances)
 
-  // ────────────────────────────────────────────────────────────
-  // Empty state — dashed card that visually invites adding
-  // ────────────────────────────────────────────────────────────
   if (!accounts || accounts.length === 0) {
     return (
-      <div className="bg-surface/60 backdrop-blur-xl border border-dashed border-line-strong rounded-2xl">
+      <div className="border border-dashed border-line-strong rounded-3xl p-2">
         <EmptyState
           icon={Wallet}
           title="No accounts yet"
@@ -49,7 +46,7 @@ export const AccountCards = ({
     <div className="relative">
       <div className="flex items-center justify-between mb-4">
         <span className="text-xs font-bold text-fg-subtle uppercase tracking-wider">
-          {accounts.length} Accounts
+          Accounts
         </span>
         <button
           onClick={toggleBalances}
@@ -79,6 +76,8 @@ export const AccountCards = ({
             mobileTranslateY += 85
           }
 
+          const anyExpanded = expandedIndex !== -1
+
           return (
             <div
               key={acc.id}
@@ -88,7 +87,7 @@ export const AccountCards = ({
                 zIndex: isExpanded ? 30 : index + 1,
                 marginBottom:
                   index === accounts.length - 1
-                    ? `${(accounts.length - 1) * -110 + (isExpanded ? 85 : 0)}px`
+                    ? `${(accounts.length - 1) * -110 + (anyExpanded ? 85 : 0)}px`
                     : '0px'
               }}
             >

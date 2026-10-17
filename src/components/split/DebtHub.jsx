@@ -2,7 +2,7 @@
 import { useState, useEffect, useMemo, useCallback } from 'react'
 import {
   CheckCircle2, Clock, User, Users, Loader2,
-  ChevronDown, ChevronUp, HandCoins, Wallet, Trash2, Check, X, ChevronRight,
+  ChevronDown, HandCoins, Wallet, Trash2, Check, X, ChevronRight,
   RefreshCw, AlertTriangle
 } from 'lucide-react'
 import { supabase } from '../../lib/supabaseClient'
@@ -33,17 +33,6 @@ export function DebtHub({ user, showToast, onDebtsChanged }) {
     window.dispatchEvent(new CustomEvent('debts-changed'))
     onDebtsChanged?.()
   }, [onDebtsChanged])
-
-  const handleRefresh = async () => {
-    if (refreshing) return
-    setRefreshing(true)
-    try {
-      await fetchDebts({ silent: true })
-      notifyChanged()
-    } finally {
-      setRefreshing(false)
-    }
-  }
 
   const fetchDebts = useCallback(async (opts = {}) => {
     const { silent = false } = opts
@@ -101,6 +90,17 @@ export function DebtHub({ user, showToast, onDebtsChanged }) {
       if (!silent) setLoading(false)
     }
   }, [user.id])
+
+  const handleRefresh = async () => {
+    if (refreshing) return
+    setRefreshing(true)
+    try {
+      await fetchDebts({ silent: true })
+      notifyChanged()
+    } finally {
+      setRefreshing(false)
+    }
+  }
 
   useEffect(() => {
     if (user?.id) fetchDebts()
@@ -310,17 +310,15 @@ export function DebtHub({ user, showToast, onDebtsChanged }) {
           Refresh
         </button>
       </div>
-      {/* Two toggle cards — tap to switch which list is shown */}
-      <div className="grid grid-cols-2 gap-3 mb-4">
+
+      {/* Two-stat toggle — one divided block, no floating cards */}
+      <div className="grid grid-cols-2 divide-x divide-line border-y border-line mb-4">
         <button
           onClick={() => setActiveSide('you_owe')}
-          className={`rounded-2xl p-3.5 border shadow-sm text-left transition-all ${
-            activeSide === 'you_owe' ? 'ring-2 ring-warning' : ''
-          } ${
-            youOweTotal > 0
-              ? 'bg-warning-soft border-warning-border'
-              : 'bg-surface border-line'
+          className={`py-3.5 pr-3 text-left transition-colors ${
+            activeSide === 'you_owe' ? 'bg-warning-soft/30' : 'hover:bg-surface-2/50'
           }`}
+          style={{ minHeight: 60 }}
           aria-pressed={activeSide === 'you_owe'}
         >
           <div className="flex items-center gap-1.5 mb-1">
@@ -331,7 +329,7 @@ export function DebtHub({ user, showToast, onDebtsChanged }) {
               You owe
             </p>
           </div>
-          <p className="text-lg font-black text-fg leading-tight">
+          <p className="text-xl font-black text-fg leading-tight tabular-figures">
             {formatMYR(youOweTotal)}
           </p>
           <p className="text-[11px] text-fg-muted mt-0.5">
@@ -341,13 +339,10 @@ export function DebtHub({ user, showToast, onDebtsChanged }) {
 
         <button
           onClick={() => setActiveSide('owed_to_you')}
-          className={`rounded-2xl p-3.5 border shadow-sm text-left transition-all ${
-            activeSide === 'owed_to_you' ? 'ring-2 ring-brand' : ''
-          } ${
-            owedToYouTotal > 0
-              ? 'bg-brand-soft border-brand'
-              : 'bg-surface border-line'
+          className={`py-3.5 pl-3 text-left transition-colors ${
+            activeSide === 'owed_to_you' ? 'bg-brand-soft/30' : 'hover:bg-surface-2/50'
           }`}
+          style={{ minHeight: 60 }}
           aria-pressed={activeSide === 'owed_to_you'}
         >
           <div className="flex items-center gap-1.5 mb-1">
@@ -358,7 +353,7 @@ export function DebtHub({ user, showToast, onDebtsChanged }) {
               Owed to you
             </p>
           </div>
-          <p className="text-lg font-black text-fg leading-tight">
+          <p className="text-xl font-black text-fg leading-tight tabular-figures">
             {formatMYR(owedToYouTotal)}
           </p>
           <p className="text-[11px] text-fg-muted mt-0.5">
@@ -401,15 +396,15 @@ export function DebtHub({ user, showToast, onDebtsChanged }) {
             </p>
           </div>
         ) : (
-          <div className="space-y-2">
+          <div className="bg-surface border border-line rounded-2xl divide-y divide-line overflow-hidden">
             {groupedOwedToYou.map(person => {
               const isExpanded = expandedPerson === person.id
               const isUser = person.type === 'user'
               return (
-                <div key={person.id} className="bg-surface border border-line rounded-2xl overflow-hidden">
+                <div key={person.id}>
                   <button
                     onClick={() => setExpandedPerson(isExpanded ? null : person.id)}
-                    className="w-full flex items-center gap-3 p-4 text-left hover:bg-surface-2/50 transition-colors"
+                    className="w-full flex items-center gap-3 px-4 py-3 text-left hover:bg-surface-2 transition-colors"
                     aria-expanded={isExpanded}
                   >
                     <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${
@@ -428,12 +423,14 @@ export function DebtHub({ user, showToast, onDebtsChanged }) {
                         )}
                       </p>
                     </div>
-                    <p className="text-base font-black text-fg shrink-0">
+                    <p className="text-base font-black text-fg shrink-0 tabular-figures">
                       {formatMYR(person.total)}
                     </p>
-                    <div className="text-fg-muted shrink-0">
-                      {isExpanded ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
-                    </div>
+                    <ChevronDown
+                      className={`w-4 h-4 text-fg-muted shrink-0 transition-transform ${
+                        isExpanded ? 'rotate-180' : ''
+                      }`}
+                    />
                   </button>
 
                   {isExpanded && (
@@ -446,12 +443,12 @@ export function DebtHub({ user, showToast, onDebtsChanged }) {
                         return (
                           <div
                             key={debt.id}
-                            className={`p-3 border-b border-line last:border-b-0 ${isAwaiting ? 'bg-warning-soft/40' : ''}`}
+                            className={`px-4 py-3 border-b border-line last:border-b-0 ${isAwaiting ? 'bg-warning-soft/40' : ''}`}
                           >
                             <button
                               type="button"
                               onClick={() => setDetailDebt({ debt, mode: 'creditor', counterpartyName: person.name })}
-                              className="w-full flex items-center gap-2 mb-2 text-left rounded-lg -mx-1 px-1 py-1 hover:bg-surface-2/60 transition-colors"
+                              className="w-full flex items-center gap-2 mb-2 text-left rounded-lg -mx-1 px-1 py-1 hover:bg-surface transition-colors"
                               style={{ minHeight: 44 }}
                             >
                               <div className="flex-1 min-w-0">
@@ -472,7 +469,7 @@ export function DebtHub({ user, showToast, onDebtsChanged }) {
                                   <ChevronRight className="w-3 h-3 text-fg-subtle" />
                                 </p>
                               </div>
-                              <p className="text-sm font-bold text-fg shrink-0">
+                              <p className="text-sm font-bold text-fg shrink-0 tabular-figures">
                                 {formatMYR(debt.amount)}
                               </p>
                             </button>
@@ -513,7 +510,7 @@ export function DebtHub({ user, showToast, onDebtsChanged }) {
                               )}
                               <button
                                 onClick={() => setConfirmDelete({ sessionId: debt.session_id, merchant })}
-                                className="shrink-0 flex items-center justify-center w-11 h-11 rounded-lg text-red-500 bg-red-50 hover:bg-red-100 border border-red-200 transition-colors"
+                                className="shrink-0 flex items-center justify-center w-11 h-11 rounded-lg text-danger bg-danger-soft hover:bg-danger-solid hover:text-white border border-danger-border transition-colors"
                                 aria-label={`Delete session ${merchant}`}
                               >
                                 <Trash2 className="w-4 h-4" />
@@ -544,14 +541,14 @@ export function DebtHub({ user, showToast, onDebtsChanged }) {
             </p>
           </div>
         ) : (
-          <div className="space-y-2">
+          <div className="bg-surface border border-line rounded-2xl divide-y divide-line overflow-hidden">
             {groupedYouOwe.map(person => {
               const isExpanded = expandedPerson === person.id
               return (
-                <div key={person.id} className="bg-surface border border-line rounded-2xl overflow-hidden">
+                <div key={person.id}>
                   <button
                     onClick={() => setExpandedPerson(isExpanded ? null : person.id)}
-                    className="w-full flex items-center gap-3 p-4 text-left hover:bg-surface-2/50 transition-colors"
+                    className="w-full flex items-center gap-3 px-4 py-3 text-left hover:bg-surface-2 transition-colors"
                     aria-expanded={isExpanded}
                   >
                     <div className="w-10 h-10 rounded-xl bg-warning-soft text-warning flex items-center justify-center shrink-0">
@@ -566,12 +563,14 @@ export function DebtHub({ user, showToast, onDebtsChanged }) {
                         )}
                       </p>
                     </div>
-                    <p className="text-base font-black text-fg shrink-0">
+                    <p className="text-base font-black text-fg shrink-0 tabular-figures">
                       {formatMYR(person.total)}
                     </p>
-                    <div className="text-fg-muted shrink-0">
-                      {isExpanded ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
-                    </div>
+                    <ChevronDown
+                      className={`w-4 h-4 text-fg-muted shrink-0 transition-transform ${
+                        isExpanded ? 'rotate-180' : ''
+                      }`}
+                    />
                   </button>
 
                   {isExpanded && (
@@ -584,12 +583,12 @@ export function DebtHub({ user, showToast, onDebtsChanged }) {
                         return (
                           <div
                             key={debt.id}
-                            className={`p-3 border-b border-line last:border-b-0 ${isAwaiting ? 'bg-warning-soft/40' : ''}`}
+                            className={`px-4 py-3 border-b border-line last:border-b-0 ${isAwaiting ? 'bg-warning-soft/40' : ''}`}
                           >
                             <button
                               type="button"
                               onClick={() => setDetailDebt({ debt, mode: 'debtor', counterpartyName: person.name })}
-                              className="w-full flex items-center gap-2 mb-2 text-left rounded-lg -mx-1 px-1 py-1 hover:bg-surface-2/60 transition-colors"
+                              className="w-full flex items-center gap-2 mb-2 text-left rounded-lg -mx-1 px-1 py-1 hover:bg-surface transition-colors"
                               style={{ minHeight: 44 }}
                             >
                               <div className="flex-1 min-w-0">
@@ -610,7 +609,7 @@ export function DebtHub({ user, showToast, onDebtsChanged }) {
                                   <ChevronRight className="w-3 h-3 text-fg-subtle" />
                                 </p>
                               </div>
-                              <p className="text-sm font-bold text-fg shrink-0">
+                              <p className="text-sm font-bold text-fg shrink-0 tabular-figures">
                                 {formatMYR(debt.amount)}
                               </p>
                             </button>
@@ -645,7 +644,6 @@ export function DebtHub({ user, showToast, onDebtsChanged }) {
 
       {/* ---- SESSION HISTORY ---- */}
       <SessionHistory user={user} />
-
 
       {/* Detail sheet */}
       {detailDebt && (() => {

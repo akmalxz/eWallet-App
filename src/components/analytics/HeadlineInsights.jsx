@@ -117,7 +117,7 @@ export const HeadlineInsights = ({ expenses, periodMonths, onNavigate }) => {
         id: 'peak_weekday',
         icon: Calendar,
         sentence: (
-          <>You spend the most on <strong>{WEEKDAY_LABELS[peakIdx]}s</strong>, about <strong>{formatMYR(peakAvg)}</strong> on average.</>
+          <>You spend the most on <strong>{WEEKDAY_LABELS[peakIdx]}s</strong>, about <strong className="tabular-figures">{formatMYR(peakAvg)}</strong> on average.</>
         ),
         score: peakAvg,
         tone: 'neutral',
@@ -154,7 +154,7 @@ export const HeadlineInsights = ({ expenses, periodMonths, onNavigate }) => {
         id: 'cat_increase',
         icon: TrendingUp,
         sentence: (
-          <><strong>{biggestIncrease.category}</strong> went up <strong>{formatMYR(biggestIncrease.diff)}</strong> vs last month.</>
+          <><strong>{biggestIncrease.category}</strong> went up <strong className="tabular-figures">{formatMYR(biggestIncrease.diff)}</strong> vs last month.</>
         ),
         score: biggestIncrease.diff,
         tone: 'up',
@@ -180,24 +180,22 @@ export const HeadlineInsights = ({ expenses, periodMonths, onNavigate }) => {
 
   if (insights.length === 0) {
     return (
-      <div className="bg-surface/60 backdrop-blur-xl border border-line/50 rounded-3xl p-6 shadow-sm">
-        <EmptyState
-          icon={Sparkles}
-          title="Keep logging to unlock insights"
-          message="We need about 14 days of data or 15 transactions before we can spot patterns."
-        />
-      </div>
+      <EmptyState
+        icon={Sparkles}
+        title="Keep logging to unlock insights"
+        message="We need about 14 days of data or 15 transactions before we can spot patterns."
+      />
     )
   }
 
   const toneStyles = {
-    up:      { color: theme.up,      bg: 'bg-danger-soft',  border: 'border-danger-border' },
-    down:    { color: theme.down,    bg: 'bg-success-soft', border: 'border-success-border' },
-    neutral: { color: theme.neutral, bg: 'bg-surface-2',    border: 'border-line' }
+    up:      { color: theme.up,      bg: 'bg-danger-soft' },
+    down:    { color: theme.down,    bg: 'bg-success-soft' },
+    neutral: { color: theme.neutral, bg: 'bg-surface-2' }
   }
 
   return (
-    <div className="grid grid-cols-1 md:grid-cols-2 gap-3 md:gap-4">
+    <div className="bg-surface border border-line rounded-2xl divide-y divide-line overflow-hidden">
       {insights.map(card => {
         const Icon = card.icon
         const tone = toneStyles[card.tone] || toneStyles.neutral
@@ -205,7 +203,7 @@ export const HeadlineInsights = ({ expenses, periodMonths, onNavigate }) => {
           <button
             key={card.id}
             onClick={() => card.navigateTo && onNavigate?.(card.navigateTo)}
-            className={`text-left bg-surface/60 backdrop-blur-xl border ${tone.border} rounded-2xl p-4 shadow-sm hover:bg-surface transition-all group flex items-start gap-3`}
+            className="w-full text-left flex items-start gap-3 px-4 py-3 hover:bg-surface-2 transition-colors group"
           >
             <div
               className={`w-9 h-9 ${tone.bg} rounded-xl flex items-center justify-center shrink-0`}
@@ -213,7 +211,7 @@ export const HeadlineInsights = ({ expenses, periodMonths, onNavigate }) => {
             >
               <Icon className="w-4 h-4" />
             </div>
-            <p className="text-sm text-fg-muted leading-relaxed flex-1">
+            <p className="text-sm text-fg-muted leading-relaxed flex-1 pt-1">
               {card.sentence}
             </p>
           </button>

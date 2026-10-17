@@ -150,19 +150,19 @@ export const MainTrendChart = ({ expenses, periodMonths, accounts = [] }) => {
     : null
 
   return (
-    <section className="bg-surface/60 backdrop-blur-xl border border-line/50 rounded-3xl p-5 md:p-6 shadow-sm">
-      <div className="flex flex-wrap items-start justify-between gap-3 mb-4">
+    <section className="space-y-3">
+      <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <h2 className="text-sm font-bold text-fg">Spending Trend</h2>
           {!isEmpty && peakBucket?.total > 0 && (
             <p className="text-xs text-fg-muted mt-0.5">
               Peak {granularity === 'daily' ? 'day' : granularity === 'weekly' ? 'week' : 'month'}:{' '}
-              <strong>{peakBucket.label}</strong> at <strong>{formatMYR(peakBucket.total)}</strong>
+              <strong>{peakBucket.label}</strong> at{' '}
+              <strong className="tabular-figures">{formatMYR(peakBucket.total)}</strong>
             </p>
           )}
         </div>
 
-        {/* Granularity selector — shared sliding pill, matches page-level controls */}
         <div className="w-52 shrink-0">
           <SlidingSegmentedControl
             items={GRANULARITY_OPTIONS}

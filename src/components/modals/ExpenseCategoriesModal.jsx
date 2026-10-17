@@ -156,7 +156,6 @@ export const ExpenseCategoriesModal = ({
       <ModalWrapper title="Expense Setup" closeModal={closeModal}>
         <div className="space-y-4">
 
-          {/* Empty state — only shown when the user has no expense categories yet */}
           {expenseCategories.length === 0 && (
             <div className="text-center py-6 px-4 bg-surface-2/50 border border-dashed border-line-strong rounded-xl">
               <p className="text-sm font-bold text-fg">No categories yet</p>
@@ -222,96 +221,25 @@ export const ExpenseCategoriesModal = ({
             </form>
           )}
 
-          {expenseCategories.map((main) => (
-            <div
-              key={main.id}
-              className="bg-surface border border-line rounded-xl overflow-hidden"
-            >
-              <div className="flex justify-between items-center p-3 bg-surface-2 min-h-[52px]">
-                {editingItemId === main.id ? (
-                  <div className="flex gap-2 w-full">
-                    <input
-                      aria-label="Edit Master Expense Category Name"
-                      autoFocus
-                      type="text"
-                      value={editValue}
-                      onChange={(e) => setEditValue(e.target.value)}
-                      className="flex-1 bg-surface border border-line rounded-lg px-2 py-1.5 text-sm text-fg outline-none focus:border-brand"
-                    />
-                    <div className="flex flex-col gap-1 shrink-0">
-                      <button
-                        onClick={() => handleUpdateCategory(main.id)}
-                        className="inline-flex h-10 w-10 items-center justify-center rounded-lg bg-success-soft text-success-text transition-colors hover:bg-success/20"
-                        aria-label="Save category"
-                      >
-                        <Save className="h-4 w-4" />
-                      </button>
-                      <button
-                        onClick={() => setEditingItemId(null)}
-                        className="inline-flex h-10 w-10 items-center justify-center rounded-lg bg-surface-3 text-fg-muted transition-colors hover:bg-line-strong"
-                        aria-label="Cancel editing"
-                      >
-                        <X className="h-4 w-4" />
-                      </button>
-                    </div>
-                  </div>
-                ) : (
-                  <>
-                    <p className="text-sm font-bold text-fg">{main.name}</p>
-                    <div className="flex items-center gap-1">
-                      <button
-                        onClick={() => {
-                          setAddingSubToId(main.id)
-                          setNewSubCategoryName('')
-                          setEditingItemId(null)
-                        }}
-                        className="inline-flex h-11 w-11 items-center justify-center rounded-lg text-brand transition-colors hover:bg-brand-soft"
-                        aria-label={`Add subcategory to ${main.name}`}
-                      >
-                        <Plus className="h-4 w-4" />
-                      </button>
-                      <button
-                        onClick={() => {
-                          setEditingItemId(main.id)
-                          setEditValue(main.name)
-                          setAddingSubToId(null)
-                        }}
-                        className="inline-flex h-11 w-11 items-center justify-center rounded-lg text-fg-subtle transition-colors hover:bg-brand-soft hover:text-brand"
-                        aria-label={`Edit ${main.name}`}
-                      >
-                        <Edit2 className="h-4 w-4" />
-                      </button>
-                      <button
-                        onClick={() => requestDeleteCategory(main.id, main.name)}
-                        className="inline-flex h-11 w-11 items-center justify-center rounded-lg text-danger/70 transition-colors hover:bg-danger-soft hover:text-danger"
-                        aria-label={`Delete ${main.name}`}
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </button>
-                    </div>
-                  </>
-                )}
-              </div>
-
-              <div className="p-2 space-y-1">
-                {getSubCategories(main.id).map((sub) => (
-                  <div
-                    key={sub.id}
-                    className="pl-6 pr-2 py-1.5 hover:bg-surface-2/60 rounded-lg min-h-[40px]"
-                  >
-                    {editingItemId === sub.id ? (
-                      <div className="flex gap-2">
+          {/* Grouped category list */}
+          {expenseCategories.length > 0 && (
+            <div className="bg-surface border border-line rounded-2xl divide-y divide-line overflow-hidden">
+              {expenseCategories.map((main) => (
+                <div key={main.id}>
+                  <div className="flex justify-between items-center px-3 py-2 bg-surface-2/40">
+                    {editingItemId === main.id ? (
+                      <div className="flex gap-2 w-full">
                         <input
-                          aria-label="Edit Expense Subcategory Name"
+                          aria-label="Edit Master Expense Category Name"
                           autoFocus
                           type="text"
                           value={editValue}
                           onChange={(e) => setEditValue(e.target.value)}
-                          className="flex-1 bg-surface border border-line rounded-md px-2 py-1 text-xs text-fg outline-none focus:border-brand"
+                          className="flex-1 bg-surface border border-line rounded-lg px-2 py-1.5 text-sm text-fg outline-none focus:border-brand"
                         />
                         <div className="flex flex-col gap-1 shrink-0">
                           <button
-                            onClick={() => handleUpdateCategory(sub.id)}
+                            onClick={() => handleUpdateCategory(main.id)}
                             className="inline-flex h-10 w-10 items-center justify-center rounded-lg bg-success-soft text-success-text transition-colors hover:bg-success/20"
                             aria-label="Save category"
                           >
@@ -327,62 +255,135 @@ export const ExpenseCategoriesModal = ({
                         </div>
                       </div>
                     ) : (
-                      <div className="flex justify-between items-center">
-                        <p className="text-xs font-medium text-fg-muted flex items-center gap-2">
-                          <CornerDownRight className="h-3 w-3 text-fg-subtle" />
-                          {sub.name}
-                        </p>
+                      <>
+                        <p className="text-sm font-bold text-fg">{main.name}</p>
                         <div className="flex items-center gap-1">
                           <button
                             onClick={() => {
-                              setEditingItemId(sub.id)
-                              setEditValue(sub.name)
+                              setAddingSubToId(main.id)
+                              setNewSubCategoryName('')
+                              setEditingItemId(null)
+                            }}
+                            className="inline-flex h-11 w-11 items-center justify-center rounded-lg text-brand transition-colors hover:bg-brand-soft"
+                            aria-label={`Add subcategory to ${main.name}`}
+                          >
+                            <Plus className="h-4 w-4" />
+                          </button>
+                          <button
+                            onClick={() => {
+                              setEditingItemId(main.id)
+                              setEditValue(main.name)
                               setAddingSubToId(null)
                             }}
                             className="inline-flex h-11 w-11 items-center justify-center rounded-lg text-fg-subtle transition-colors hover:bg-brand-soft hover:text-brand"
-                            aria-label={`Edit ${sub.name}`}
+                            aria-label={`Edit ${main.name}`}
                           >
-                            <Edit2 className="h-3.5 w-3.5" />
+                            <Edit2 className="h-4 w-4" />
                           </button>
                           <button
-                            onClick={() => requestDeleteCategory(sub.id, sub.name)}
+                            onClick={() => requestDeleteCategory(main.id, main.name)}
                             className="inline-flex h-11 w-11 items-center justify-center rounded-lg text-danger/70 transition-colors hover:bg-danger-soft hover:text-danger"
-                            aria-label={`Delete ${sub.name}`}
+                            aria-label={`Delete ${main.name}`}
                           >
-                            <Trash2 className="h-3.5 w-3.5" />
+                            <Trash2 className="h-4 w-4" />
                           </button>
                         </div>
+                      </>
+                    )}
+                  </div>
+
+                  <div className="divide-y divide-line/60">
+                    {getSubCategories(main.id).map((sub) => (
+                      <div
+                        key={sub.id}
+                        className="pl-8 pr-2 py-1.5 hover:bg-surface-2/60 transition-colors min-h-[40px]"
+                      >
+                        {editingItemId === sub.id ? (
+                          <div className="flex gap-2">
+                            <input
+                              aria-label="Edit Expense Subcategory Name"
+                              autoFocus
+                              type="text"
+                              value={editValue}
+                              onChange={(e) => setEditValue(e.target.value)}
+                              className="flex-1 bg-surface border border-line rounded-md px-2 py-1 text-xs text-fg outline-none focus:border-brand"
+                            />
+                            <div className="flex flex-col gap-1 shrink-0">
+                              <button
+                                onClick={() => handleUpdateCategory(sub.id)}
+                                className="inline-flex h-10 w-10 items-center justify-center rounded-lg bg-success-soft text-success-text transition-colors hover:bg-success/20"
+                                aria-label="Save category"
+                              >
+                                <Save className="h-4 w-4" />
+                              </button>
+                              <button
+                                onClick={() => setEditingItemId(null)}
+                                className="inline-flex h-10 w-10 items-center justify-center rounded-lg bg-surface-3 text-fg-muted transition-colors hover:bg-line-strong"
+                                aria-label="Cancel editing"
+                              >
+                                <X className="h-4 w-4" />
+                              </button>
+                            </div>
+                          </div>
+                        ) : (
+                          <div className="flex justify-between items-center">
+                            <p className="text-xs font-medium text-fg-muted flex items-center gap-2">
+                              <CornerDownRight className="h-3 w-3 text-fg-subtle" />
+                              {sub.name}
+                            </p>
+                            <div className="flex items-center gap-1">
+                              <button
+                                onClick={() => {
+                                  setEditingItemId(sub.id)
+                                  setEditValue(sub.name)
+                                  setAddingSubToId(null)
+                                }}
+                                className="inline-flex h-11 w-11 items-center justify-center rounded-lg text-fg-subtle transition-colors hover:bg-brand-soft hover:text-brand"
+                                aria-label={`Edit ${sub.name}`}
+                              >
+                                <Edit2 className="h-3.5 w-3.5" />
+                              </button>
+                              <button
+                                onClick={() => requestDeleteCategory(sub.id, sub.name)}
+                                className="inline-flex h-11 w-11 items-center justify-center rounded-lg text-danger/70 transition-colors hover:bg-danger-soft hover:text-danger"
+                                aria-label={`Delete ${sub.name}`}
+                              >
+                                <Trash2 className="h-3.5 w-3.5" />
+                              </button>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    ))}
+
+                    {addingSubToId === main.id && (
+                      <div className="pl-8 pr-2 py-2 flex gap-2">
+                        <label htmlFor={`expense-subcat-${main.id}`} className="sr-only">
+                          Expense Subcategory Name
+                        </label>
+                        <input
+                          id={`expense-subcat-${main.id}`}
+                          name={`expense-subcat-${main.id}`}
+                          autoFocus
+                          type="text"
+                          value={newSubCategoryName}
+                          onChange={(e) => setNewSubCategoryName(e.target.value)}
+                          placeholder="Subcategory..."
+                          className="flex-1 bg-surface border border-line rounded-lg px-2 py-1.5 text-xs text-fg placeholder:text-fg-subtle outline-none focus:border-brand"
+                        />
+                        <button
+                          onClick={() => handleAddSubCategory(main.id)}
+                          className="bg-brand-solid hover:bg-brand-solid-hover text-white px-3 py-1.5 rounded-lg text-xs font-bold transition-colors"
+                        >
+                          Save
+                        </button>
                       </div>
                     )}
                   </div>
-                ))}
-
-                {addingSubToId === main.id && (
-                  <div className="pl-6 pr-2 py-2 flex gap-2">
-                    <label htmlFor={`expense-subcat-${main.id}`} className="sr-only">
-                      Expense Subcategory Name
-                    </label>
-                    <input
-                      id={`expense-subcat-${main.id}`}
-                      name={`expense-subcat-${main.id}`}
-                      autoFocus
-                      type="text"
-                      value={newSubCategoryName}
-                      onChange={(e) => setNewSubCategoryName(e.target.value)}
-                      placeholder="Subcategory..."
-                      className="flex-1 bg-surface border border-line rounded-lg px-2 py-1.5 text-xs text-fg placeholder:text-fg-subtle outline-none focus:border-brand"
-                    />
-                    <button
-                      onClick={() => handleAddSubCategory(main.id)}
-                      className="bg-brand-solid hover:bg-brand-solid-hover text-white px-3 py-1.5 rounded-lg text-xs font-bold transition-colors"
-                    >
-                      Save
-                    </button>
-                  </div>
-                )}
-              </div>
+                </div>
+              ))}
             </div>
-          ))}
+          )}
         </div>
       </ModalWrapper>
 

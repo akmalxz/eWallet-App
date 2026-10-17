@@ -11,7 +11,7 @@ export const ModalWrapper = ({ title, closeModal, children }) => (
       paddingLeft: 'max(1rem, env(safe-area-inset-left, 0px))'
     }}
   >
-    <div className="bg-surface/90 backdrop-blur-xl border border-line rounded-3xl max-w-md w-full p-6 shadow-2xl max-h-[85vh] flex flex-col">
+    <div className="bg-surface border border-line rounded-3xl max-w-md w-full p-6 shadow-2xl max-h-[85vh] flex flex-col">
       <div className="flex justify-between items-center mb-6 shrink-0">
         <h2 className="text-lg font-bold text-fg">{title}</h2>
         <button

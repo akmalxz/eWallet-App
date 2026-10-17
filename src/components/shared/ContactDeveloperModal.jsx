@@ -1,5 +1,5 @@
 // src/components/shared/ContactDeveloperModal.jsx
-import { X, Mail, MessageCircle, Globe } from 'lucide-react'
+import { X, Mail } from 'lucide-react'
 import {
   SiGithub,
   SiInstagram,
@@ -39,7 +39,6 @@ const CHANNELS = [
 ]
 
 export function ContactDeveloperModal({ onClose }) {
-  // Freeze the page behind the modal.
   useBodyScrollLock(true)
 
   return (
@@ -70,7 +69,8 @@ export function ContactDeveloperModal({ onClose }) {
           </button>
         </div>
 
-        <div className="space-y-2">
+        {/* One grouped list instead of four cards */}
+        <div className="bg-surface-2 border border-line rounded-2xl divide-y divide-line overflow-hidden">
           {CHANNELS.map(({ id, label, handle, href, Icon }) => {
             const isMailto = href.startsWith('mailto:')
             return (
@@ -79,7 +79,7 @@ export function ContactDeveloperModal({ onClose }) {
                 href={href}
                 target={isMailto ? undefined : '_blank'}
                 rel={isMailto ? undefined : 'noopener noreferrer'}
-                className="flex items-center gap-3 p-3 bg-surface-2/60 hover:bg-surface-2 border border-line rounded-xl transition-colors"
+                className="flex items-center gap-3 px-3 py-3 hover:bg-surface transition-colors"
               >
                 <div className="w-9 h-9 rounded-lg bg-surface text-fg-muted flex items-center justify-center shrink-0">
                   <Icon className="w-4 h-4" />

@@ -50,13 +50,14 @@ export function AppFooter({ user, showToast }) {
 
   return (
     <>
-      <footer className="mt-12 space-y-3">
-        {/* FEEDBACK — inline accordion */}
-        <div className="bg-surface/60 backdrop-blur-xl border border-line/50 rounded-2xl overflow-hidden">
+      <footer className="mt-12 border-t border-line">
+
+        {/* FEEDBACK — flat section */}
+        <div>
           <button
             type="button"
             onClick={() => setFeedbackOpen((o) => !o)}
-            className="w-full flex items-center justify-between p-4 text-left"
+            className="w-full flex items-center justify-between py-4 text-left hover:opacity-80 transition-opacity"
             aria-expanded={feedbackOpen}
           >
             <div className="flex items-center gap-3">
@@ -76,7 +77,7 @@ export function AppFooter({ user, showToast }) {
           </button>
 
           {feedbackOpen && (
-            <form onSubmit={handleSubmit} className="px-4 pb-4 space-y-3">
+            <form onSubmit={handleSubmit} className="pb-4 space-y-3">
               <div className="relative">
                 <textarea
                   value={message}
@@ -84,10 +85,10 @@ export function AppFooter({ user, showToast }) {
                   placeholder="What's on your mind?"
                   rows={4}
                   disabled={sending || sent}
-                  className="w-full bg-surface-2 border border-line rounded-xl py-2.5 px-3 pb-7 text-sm text-fg placeholder:text-fg-subtle outline-none focus:border-brand focus:ring-2 focus:ring-brand/30 resize-none transition-all disabled:opacity-60"
+                  className="w-full bg-surface border border-line rounded-xl py-2.5 px-3 pb-7 text-sm text-fg placeholder:text-fg-subtle outline-none focus:border-brand focus:ring-2 focus:ring-brand/30 resize-none transition-all disabled:opacity-60"
                 />
                 <span
-                  className={`absolute bottom-2 right-3 text-[10px] tabular-nums ${
+                  className={`absolute bottom-2 right-3 text-[10px] tabular-figures ${
                     remaining < 100 ? 'text-warning-text' : 'text-fg-subtle'
                   }`}
                 >
@@ -120,11 +121,11 @@ export function AppFooter({ user, showToast }) {
           )}
         </div>
 
-        {/* SUPPORT — opens modal */}
+        {/* SUPPORT — flat row */}
         <button
           type="button"
           onClick={() => setContactOpen(true)}
-          className="w-full bg-surface/60 backdrop-blur-xl border border-line/50 rounded-2xl p-4 flex items-center justify-between text-left hover:bg-surface/80 transition-colors"
+          className="w-full flex items-center justify-between py-4 border-t border-line text-left hover:opacity-80 transition-opacity"
         >
           <div className="flex items-center gap-3">
             <div className="w-9 h-9 rounded-xl bg-surface-2 text-fg-muted flex items-center justify-center">
@@ -137,6 +138,7 @@ export function AppFooter({ user, showToast }) {
           </div>
           <ChevronRight className="w-4 h-4 text-fg-subtle" />
         </button>
+
       </footer>
 
       {contactOpen && (

@@ -29,7 +29,7 @@ function ItemRow({ item, isEditing, onOpen, onClose, onChange, onDelete }) {
       <button
         type="button"
         onClick={onOpen}
-        className="w-full flex items-center justify-between p-3.5 text-left hover:bg-surface-2/50 transition-colors"
+        className="w-full flex items-center justify-between px-4 py-3 text-left hover:bg-surface-2 transition-colors"
         style={{ minHeight: 44 }}
       >
         <span
@@ -39,7 +39,7 @@ function ItemRow({ item, isEditing, onOpen, onClose, onChange, onDelete }) {
         >
           {item.name || 'Untitled item'}
         </span>
-        <span className="text-sm font-bold text-fg shrink-0">
+        <span className="text-sm font-bold text-fg shrink-0 tabular-figures">
           {formatMYR(displayPrice)}
         </span>
       </button>
@@ -47,7 +47,7 @@ function ItemRow({ item, isEditing, onOpen, onClose, onChange, onDelete }) {
   }
 
   return (
-    <div className="p-3 space-y-2.5 bg-surface-2/40">
+    <div className="px-4 py-3 space-y-2.5 bg-surface-2">
       <div className="flex items-center justify-between gap-2">
         <span className="text-[10px] font-bold text-fg-subtle uppercase tracking-wider">
           Edit item
@@ -55,7 +55,7 @@ function ItemRow({ item, isEditing, onOpen, onClose, onChange, onDelete }) {
         <button
           type="button"
           onClick={onClose}
-          className="p-2 rounded-lg text-fg-muted hover:text-fg hover:bg-surface-2 transition-colors"
+          className="p-2 rounded-lg text-fg-muted hover:text-fg hover:bg-surface-3 transition-colors"
           aria-label="Done editing"
           style={{ minHeight: 36, minWidth: 36 }}
         >
@@ -84,13 +84,13 @@ function ItemRow({ item, isEditing, onOpen, onClose, onChange, onDelete }) {
             inputMode="decimal"
             value={item.price}
             onChange={(e) => onChange({ price: e.target.value })}
-            className="w-full bg-surface border border-line rounded-lg py-2 pl-9 pr-3 text-sm text-fg outline-none focus:border-brand transition-colors"
+            className="w-full bg-surface border border-line rounded-lg py-2 pl-9 pr-3 text-sm text-fg outline-none focus:border-brand transition-colors tabular-figures"
           />
         </div>
         <button
           type="button"
           onClick={onDelete}
-          className="p-2.5 rounded-lg text-red-500 hover:bg-red-50 border border-red-200 transition-colors"
+          className="p-2.5 rounded-lg text-danger hover:bg-danger-soft border border-danger-border transition-colors"
           aria-label="Delete item"
           style={{ minHeight: 44, minWidth: 44 }}
         >
@@ -184,13 +184,13 @@ export function ItemReviewStep({ initialData, onContinue, onCancel }) {
     items.some((it) => String(it.name).trim().length > 0) && !hasMismatch
 
   return (
-    <div className="space-y-4 animate-in fade-in slide-in-from-bottom-4 duration-500">
+    <div className="space-y-6 animate-enter">
       {/* Header */}
       <div className="flex items-center justify-between gap-2">
         <button
           type="button"
           onClick={onCancel}
-          className="flex items-center gap-1.5 text-sm font-bold text-fg-muted hover:text-fg transition-colors px-1"
+          className="flex items-center gap-1.5 text-sm font-bold text-fg-muted hover:text-fg transition-colors"
           style={{ minHeight: 44 }}
         >
           <ChevronLeft className="w-4 h-4" /> Cancel
@@ -205,11 +205,11 @@ export function ItemReviewStep({ initialData, onContinue, onCancel }) {
         </div>
       </div>
 
-      {/* Merchant */}
-      <section className="bg-surface/60 backdrop-blur-xl border border-line/50 rounded-3xl p-5 shadow-sm">
+      {/* Merchant — flat */}
+      <section className="space-y-2">
         <label
           htmlFor="review-merchant"
-          className="block text-[11px] font-bold text-fg-subtle uppercase tracking-wider mb-2"
+          className="block text-[10px] font-bold text-fg-subtle uppercase tracking-wider"
         >
           Merchant
         </label>
@@ -219,14 +219,14 @@ export function ItemReviewStep({ initialData, onContinue, onCancel }) {
           value={merchant}
           onChange={(e) => setMerchant(e.target.value)}
           placeholder="e.g. Murni Discovery"
-          className="w-full bg-surface-2 border border-line rounded-xl py-3 px-3 text-sm text-fg outline-none focus:border-brand transition-colors"
+          className="w-full bg-surface border border-line rounded-xl py-3 px-3 text-sm text-fg outline-none focus:border-brand transition-colors"
         />
       </section>
 
-      {/* Items */}
-      <section className="bg-surface/60 backdrop-blur-xl border border-line/50 rounded-3xl shadow-sm overflow-hidden">
-        <div className="px-5 pt-4 pb-3 border-b border-line flex items-center justify-between gap-3">
-          <span className="text-[11px] font-bold text-fg-subtle uppercase tracking-wider">
+      {/* Items — flat section with one grouped list */}
+      <section className="space-y-3">
+        <div className="flex items-center justify-between gap-3">
+          <span className="text-[10px] font-bold text-fg-subtle uppercase tracking-wider">
             Items ({items.length})
           </span>
           <span className="text-[11px] text-fg-subtle">
@@ -234,45 +234,49 @@ export function ItemReviewStep({ initialData, onContinue, onCancel }) {
           </span>
         </div>
 
-        {items.length === 0 ? (
-          <div className="p-6 text-center">
-            <Receipt className="w-8 h-8 text-fg-subtle mx-auto mb-2" />
-            <p className="text-sm text-fg-muted">No items yet</p>
-            <p className="text-xs text-fg-subtle mt-1">
-              Add an item to get started.
-            </p>
-          </div>
-        ) : (
-          <div className="divide-y divide-line">
-            {items.map((item) => (
-              <ItemRow
-                key={item.id}
-                item={item}
-                isEditing={editingId === item.id}
-                onOpen={() => setEditingId(item.id)}
-                onClose={() => setEditingId(null)}
-                onChange={(patch) => updateItem(item.id, patch)}
-                onDelete={() => deleteItem(item.id)}
-              />
-            ))}
-          </div>
-        )}
+        <div className="bg-surface border border-line rounded-2xl overflow-hidden">
+          {items.length === 0 ? (
+            <div className="p-6 text-center">
+              <Receipt className="w-8 h-8 text-fg-subtle mx-auto mb-2" />
+              <p className="text-sm text-fg-muted">No items yet</p>
+              <p className="text-xs text-fg-subtle mt-1">
+                Add an item to get started.
+              </p>
+            </div>
+          ) : (
+            <div className="divide-y divide-line">
+              {items.map((item) => (
+                <ItemRow
+                  key={item.id}
+                  item={item}
+                  isEditing={editingId === item.id}
+                  onOpen={() => setEditingId(item.id)}
+                  onClose={() => setEditingId(null)}
+                  onChange={(patch) => updateItem(item.id, patch)}
+                  onDelete={() => deleteItem(item.id)}
+                />
+              ))}
+            </div>
+          )}
 
-        <button
-          type="button"
-          onClick={addItem}
-          className="w-full flex items-center justify-center gap-2 py-3.5 text-sm font-bold text-brand hover:bg-brand-soft border-t border-line transition-colors"
-          style={{ minHeight: 44 }}
-        >
-          <Plus className="w-4 h-4" /> Add item
-        </button>
+          <button
+            type="button"
+            onClick={addItem}
+            className="w-full flex items-center justify-center gap-2 py-3.5 text-sm font-bold text-brand hover:bg-brand-soft border-t border-line transition-colors"
+            style={{ minHeight: 44 }}
+          >
+            <Plus className="w-4 h-4" /> Add item
+          </button>
+        </div>
       </section>
 
-      {/* Totals */}
-      <section className="bg-surface/60 backdrop-blur-xl border border-line/50 rounded-3xl p-5 shadow-sm space-y-3">
+      {/* Totals — flat, border-y block */}
+      <section className="space-y-3 border-y border-line py-4">
         <div className="flex items-center justify-between text-sm">
           <span className="text-fg-muted">Subtotal</span>
-          <span className="font-bold text-fg">{formatMYR(subtotal)}</span>
+          <span className="font-bold text-fg tabular-figures">
+            {formatMYR(subtotal)}
+          </span>
         </div>
 
         <div className="flex items-center justify-between gap-3">
@@ -292,7 +296,7 @@ export function ItemReviewStep({ initialData, onContinue, onCancel }) {
               inputMode="decimal"
               value={tax}
               onChange={(e) => setTax(e.target.value)}
-              className="w-full bg-surface border border-line rounded-lg py-2 pl-9 pr-3 text-sm text-fg text-right outline-none focus:border-brand transition-colors"
+              className="w-full bg-surface border border-line rounded-lg py-2 pl-9 pr-3 text-sm text-fg text-right outline-none focus:border-brand transition-colors tabular-figures"
             />
           </div>
         </div>
@@ -313,20 +317,20 @@ export function ItemReviewStep({ initialData, onContinue, onCancel }) {
               inputMode="decimal"
               value={serviceCharge}
               onChange={(e) => setServiceCharge(e.target.value)}
-              className="w-full bg-surface border border-line rounded-lg py-2 pl-9 pr-3 text-sm text-fg text-right outline-none focus:border-brand transition-colors"
+              className="w-full bg-surface border border-line rounded-lg py-2 pl-9 pr-3 text-sm text-fg text-right outline-none focus:border-brand transition-colors tabular-figures"
             />
           </div>
         </div>
 
         <div className="flex items-center justify-between pt-3 border-t border-line">
           <span className="text-sm font-bold text-fg">Total</span>
-          <span className="text-base font-black text-fg">
+          <span className="text-base font-black text-fg tabular-figures">
             {formatMYR(computedTotal)}
           </span>
         </div>
       </section>
 
-      {/* Mismatch warning */}
+      {/* Mismatch warning — callout stays as-is */}
       {hasMismatch && (
         <section className="bg-warning-soft border border-warning-border rounded-2xl p-4 space-y-3">
           <div className="flex items-start gap-3">
@@ -337,10 +341,10 @@ export function ItemReviewStep({ initialData, onContinue, onCancel }) {
               </p>
               <p className="text-xs text-fg-muted mt-1 leading-relaxed">
                 The receipt says{' '}
-                <strong className="text-fg">{formatMYR(ocrTotal)}</strong> but the
+                <strong className="text-fg tabular-figures">{formatMYR(ocrTotal)}</strong> but the
                 items add up to{' '}
-                <strong className="text-fg">{formatMYR(computedTotal)}</strong> — a
-                difference of {formatMYR(mismatchDelta)}.
+                <strong className="text-fg tabular-figures">{formatMYR(computedTotal)}</strong> — a
+                difference of <span className="tabular-figures">{formatMYR(mismatchDelta)}</span>.
               </p>
             </div>
           </div>

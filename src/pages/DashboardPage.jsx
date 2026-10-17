@@ -9,17 +9,13 @@ import { OnboardingChecklist } from '../components/dashboard/OnboardingChecklist
 import { useFriendRequests } from '../hooks/useFriendRequests'
 import { useOnboardingProgress } from '../hooks/useOnboardingProgress'
 import { trackEvent } from '../lib/analytics'
-import { formatMYR } from '../utils/formatters' // Ensure this is imported
 
 export function DashboardPage({
-  // Onboarding
   user,
   profile,
   refreshProfile,
   recentTransactions,
   commitments,
-
-  // Existing
   isLoading,
   accounts,
   activeAccounts,
@@ -38,7 +34,6 @@ export function DashboardPage({
   onOpenBurnRateHelp,
   onNavigate
 }) {
-  // Friend count for the onboarding checklist
   const { friends } = useFriendRequests(user)
 
   const onboarding = useOnboardingProgress({
@@ -60,11 +55,8 @@ export function DashboardPage({
     }
   }
 
-  // Calculate total balance for the hero number
-  const totalBalance = activeAccounts.reduce((sum, a) => sum + (Number(a.balance) || 0), 0)
-
   return (
-    <div className="space-y-6 md:space-y-10 animate-enter">
+    <div className="space-y-8 md:space-y-12 animate-enter">
 
       {/* ONBOARDING CHECKLIST */}
       {onboarding.shouldShow && !isLoading && (
@@ -107,67 +99,53 @@ export function DashboardPage({
         )}
       </section>
 
-      {/* QUICK ACTIONS */}
-      <section className="grid grid-cols-3 gap-3 md:gap-4">
+      {/* QUICK ACTIONS TOOLBAR — grouped into a single bar */}
+      <section className="relative z-10 bg-surface border border-line/60 rounded-2xl overflow-hidden flex divide-x divide-line shadow-sm">
         <button
           onClick={() => onNavigate('network')}
-          className="bg-surface/60 backdrop-blur-xl border border-line/50 p-4 rounded-2xl shadow-sm flex flex-col items-center justify-center gap-2 hover:bg-surface/80 transition-all group"
+          className="flex-1 py-3.5 flex flex-col items-center justify-center gap-1.5 hover:bg-surface-2 transition-colors group"
         >
-          <div className="w-10 h-10 bg-surface-2 text-fg rounded-full flex items-center justify-center group-hover:scale-110 transition-transform">
-            <Users className="w-5 h-5" />
-          </div>
-          <span className="text-xs font-bold text-fg-muted tracking-tight">Network</span>
+          <Users className="w-4 h-4 text-fg-muted group-hover:text-fg transition-colors" />
+          <span className="text-[10px] font-bold text-fg-muted uppercase tracking-wider group-hover:text-fg transition-colors">Network</span>
         </button>
 
         <button
           onClick={() => onNavigate('split')}
-          className="bg-surface/60 backdrop-blur-xl border border-line/50 p-4 rounded-2xl shadow-sm flex flex-col items-center justify-center gap-2 hover:bg-surface/80 transition-all group"
+          className="flex-1 py-3.5 flex flex-col items-center justify-center gap-1.5 hover:bg-surface-2 transition-colors group"
         >
-          <div className="w-10 h-10 bg-surface-2 text-fg rounded-full flex items-center justify-center group-hover:scale-110 transition-transform">
-            <Receipt className="w-5 h-5" />
-          </div>
-          <span className="text-xs font-bold text-fg-muted tracking-tight">Split Bill</span>
-        </button>
-
-        <button
-          onClick={() => onNavigate('analytics')}
-          className="bg-surface/60 backdrop-blur-xl border border-line/50 p-4 rounded-2xl shadow-sm flex flex-col items-center justify-center gap-2 hover:bg-surface/80 transition-all group"
-        >
-          <div className="w-10 h-10 bg-surface-2 text-fg rounded-full flex items-center justify-center group-hover:scale-110 transition-transform">
-            <Activity className="w-5 h-5" />
-          </div>
-          <span className="text-xs font-bold text-fg-muted tracking-tight">Analytics</span>
+          <Receipt className="w-4 h-4 text-fg-muted group-hover:text-fg transition-colors" />
+          <span className="text-[10px] font-bold text-fg-muted uppercase tracking-wider group-hover:text-fg transition-colors">Split Bill</span>
         </button>
       </section>
 
-      {/* THIS MONTH — Burn Rate + Cash Flow */}
-      <section className="bg-surface/70 backdrop-blur-xl border border-line/60 rounded-3xl shadow-sm overflow-hidden">
-        <div className="px-4 pt-4 pb-3 md:px-5 md:pt-5 md:pb-4 border-b border-line">
-          <div className="flex items-center justify-between gap-3 mb-3">
-            <span className="text-[10px] font-bold text-fg-subtle uppercase tracking-wider">
-              This month
-            </span>
-          </div>
+      {/* THIS MONTH — Floating instrument panel */}
+      <section className="pt-2">
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
+          <h2 className="text-xs font-bold text-fg-subtle uppercase tracking-wider">
+            This month
+          </h2>
 
-          <div className="hidden md:block">
-            <AccountChipRow
-              accounts={activeAccounts}
-              value={homeAccountId}
-              onChange={onHomeAccountChange}
-            />
-          </div>
-
-          <div className="md:hidden">
-            <AccountSelector
-              accounts={activeAccounts}
-              value={homeAccountId}
-              onChange={onHomeAccountChange}
-            />
+          <div className="w-full md:w-auto">
+            <div className="hidden md:block">
+              <AccountChipRow
+                accounts={activeAccounts}
+                value={homeAccountId}
+                onChange={onHomeAccountChange}
+              />
+            </div>
+            <div className="md:hidden">
+              <AccountSelector
+                accounts={activeAccounts}
+                value={homeAccountId}
+                onChange={onHomeAccountChange}
+              />
+            </div>
           </div>
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-2 divide-y lg:divide-y-0 lg:divide-x divide-line">
-          <div className="p-4 md:p-5">
+        {/* Widgets float directly on the page, separated by a single dividing line */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 lg:gap-12 lg:divide-x lg:divide-line/60">
+          <div className="lg:pr-6">
             <BurnRateWidget
               velocityStats={velocityStats}
               isLoading={isLoading}
@@ -175,7 +153,7 @@ export function DashboardPage({
               onOpenHelp={onOpenBurnRateHelp}
             />
           </div>
-          <div className="p-4 md:p-5">
+          <div className="lg:pl-6">
             <CashFlowHeatmap
               cashFlowData={cashFlowData}
               accounts={allAccounts}

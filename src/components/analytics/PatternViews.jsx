@@ -22,7 +22,7 @@ const weekdayFromShifted = (shiftedDate) => {
 }
 
 // ============================================================
-// Day-of-week bars — current week + period average (ghost)
+// Day-of-week bars
 // ============================================================
 const DayOfWeekBars = ({ expenses, accounts }) => {
   const theme = useChartTheme()
@@ -109,8 +109,8 @@ const DayOfWeekBars = ({ expenses, accounts }) => {
   const todayWeekday = myWeekdayIndex(new Date())
 
   return (
-    <div className="bg-surface/60 backdrop-blur-xl border border-line/50 rounded-3xl p-5 md:p-6 shadow-sm">
-      <div className="mb-4 flex items-start justify-between gap-3">
+    <section className="space-y-4">
+      <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
           <h3 className="text-sm font-bold text-fg">Spending by Day of Week</h3>
           <p className="text-xs text-fg-muted mt-0.5">
@@ -156,7 +156,6 @@ const DayOfWeekBars = ({ expenses, accounts }) => {
               aria-label={`${WEEKDAY_LABELS[i]}, ${formatMYR(weekVal)} this week, ${formatMYR(avg)} on average`}
               aria-pressed={isSelected}
             >
-              {/* HOVER TOOLTIP */}
               <div
                 className={`absolute bottom-full mb-2 z-20 pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity duration-150 bg-surface border border-line rounded-xl shadow-xl px-3 py-2 whitespace-nowrap ${tooltipAlign}`}
                 role="tooltip"
@@ -170,7 +169,7 @@ const DayOfWeekBars = ({ expenses, accounts }) => {
                     <span className="w-2 h-2 rounded-sm bg-brand shrink-0" />
                     This week
                   </span>
-                  <span className="text-[11px] font-bold text-fg tabular-nums">
+                  <span className="text-[11px] font-bold text-fg tabular-figures">
                     {weekVal > 0 ? formatMYR(weekVal) : '—'}
                   </span>
                 </div>
@@ -180,13 +179,13 @@ const DayOfWeekBars = ({ expenses, accounts }) => {
                     <span className="w-2 h-2 rounded-sm bg-brand/25 shrink-0" />
                     Average
                   </span>
-                  <span className="text-[11px] font-bold text-fg tabular-nums">
+                  <span className="text-[11px] font-bold text-fg tabular-figures">
                     {avg > 0 ? formatMYR(avg) : '—'}
                   </span>
                 </div>
 
                 {weekVal > 0 && avg > 0 && (
-                  <p className="text-[10px] text-fg-subtle mt-1.5 pt-1.5 border-t border-line tabular-nums">
+                  <p className="text-[10px] text-fg-subtle mt-1.5 pt-1.5 border-t border-line tabular-figures">
                     {weekVal > avg
                       ? `${(((weekVal - avg) / avg) * 100).toFixed(0)}% above usual`
                       : weekVal < avg
@@ -196,24 +195,22 @@ const DayOfWeekBars = ({ expenses, accounts }) => {
                 )}
 
                 {weekCount > 0 && (
-                  <p className="text-[10px] text-fg-subtle mt-0.5 tabular-nums">
+                  <p className="text-[10px] text-fg-subtle mt-0.5 tabular-figures">
                     {weekCount} {weekCount === 1 ? 'txn' : 'txns'} this week
                   </p>
                 )}
 
                 {periodCount > 0 && (
-                  <p className="text-[10px] text-fg-subtle tabular-nums">
+                  <p className="text-[10px] text-fg-subtle tabular-figures">
                     {periodCount} {periodCount === 1 ? 'txn' : 'txns'} in period
                   </p>
                 )}
               </div>
 
-              {/* COMPACT LABEL */}
-              <span className="text-[9px] font-bold text-fg-subtle shrink-0 tabular-nums">
+              <span className="text-[9px] font-bold text-fg-subtle shrink-0 tabular-figures">
                 {weekVal > 0 ? compactValue(weekVal) : ''}
               </span>
 
-              {/* BARS */}
               <div className="flex-1 w-full relative">
                 {avg > 0 && (
                   <div
@@ -239,7 +236,6 @@ const DayOfWeekBars = ({ expenses, accounts }) => {
                 )}
               </div>
 
-              {/* WEEKDAY LABEL */}
               <span
                 className={`text-[10px] font-bold shrink-0 ${
                   isToday ? 'text-brand' : 'text-fg-muted'
@@ -254,7 +250,7 @@ const DayOfWeekBars = ({ expenses, accounts }) => {
 
       {selectedDay != null && (
         <>
-          <div className="mt-4 bg-surface-2 border border-line rounded-2xl p-4 animate-fadeIn">
+          <div className="mt-4 pt-4 border-t border-line animate-fadeIn">
             <div className="flex justify-between items-start gap-3">
               <div className="min-w-0">
                 <p className="text-[10px] font-bold text-fg-subtle uppercase tracking-wider">
@@ -262,7 +258,7 @@ const DayOfWeekBars = ({ expenses, accounts }) => {
                 </p>
 
                 <div className="flex items-baseline gap-2 mt-1.5">
-                  <p className="text-lg font-black text-fg">
+                  <p className="text-lg font-black text-fg tabular-figures">
                     {formatMYR(data.thisWeekTotals[selectedDay])}
                   </p>
                   <span className="text-[11px] font-semibold text-fg-muted">this week</span>
@@ -270,7 +266,7 @@ const DayOfWeekBars = ({ expenses, accounts }) => {
 
                 <p className="text-xs text-fg-muted mt-1">
                   Typically{' '}
-                  <strong className="text-fg">
+                  <strong className="text-fg tabular-figures">
                     {formatMYR(data.periodAverages[selectedDay])}
                   </strong>
                   {' · '}
@@ -287,7 +283,7 @@ const DayOfWeekBars = ({ expenses, accounts }) => {
 
               <button
                 onClick={() => setSelectedDay(null)}
-                className="text-xs font-bold text-fg-subtle hover:text-fg px-3 py-2 rounded-lg hover:bg-surface transition-colors shrink-0"
+                className="text-xs font-bold text-fg-subtle hover:text-fg px-3 py-2 rounded-lg hover:bg-surface-2 transition-colors shrink-0"
                 style={{ minHeight: 44 }}
               >
                 Close
@@ -308,7 +304,7 @@ const DayOfWeekBars = ({ expenses, accounts }) => {
           )}
         </>
       )}
-    </div>
+    </section>
   )
 }
 
@@ -399,8 +395,8 @@ const CalendarHeatmap = ({ expenses, accounts }) => {
   }
 
   return (
-    <div className="bg-surface/60 backdrop-blur-xl border border-line/50 rounded-3xl p-5 md:p-6 shadow-sm">
-      <div className="flex items-center justify-between mb-4">
+    <section className="space-y-4">
+      <div className="flex items-center justify-between">
         <div>
           <h3 className="text-sm font-bold text-fg">Daily Spending Calendar</h3>
           <p className="text-xs text-fg-muted mt-0.5">{monthData.monthName}</p>
@@ -463,7 +459,7 @@ const CalendarHeatmap = ({ expenses, accounts }) => {
         })}
       </div>
 
-      <div className="flex items-center justify-end gap-1.5 mt-3">
+      <div className="flex items-center justify-end gap-1.5">
         <span className="text-[9px] text-fg-subtle font-semibold">Less</span>
         {theme.heatmap.map((c, i) => (
           <div key={i} className="w-3 h-3 rounded" style={{ backgroundColor: c }} />
@@ -482,7 +478,7 @@ const CalendarHeatmap = ({ expenses, accounts }) => {
           onClose={() => setSelectedDayKey(null)}
         />
       )}
-    </div>
+    </section>
   )
 }
 
@@ -490,7 +486,7 @@ const CalendarHeatmap = ({ expenses, accounts }) => {
 // PatternViews — exported
 // ============================================================
 export const PatternViews = ({ expenses, accounts }) => (
-  <div className="space-y-4">
+  <div className="space-y-8">
     <DayOfWeekBars expenses={expenses} accounts={accounts} />
     <CalendarHeatmap expenses={expenses} accounts={accounts} />
   </div>

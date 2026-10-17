@@ -7,13 +7,6 @@ import { getPeriodPill } from '../../utils/commitments/commitmentPill'
 import { toMYDate } from '../../utils/dateHelpers'
 import { RowMenu } from '../shared/RowMenu'
 
-/**
- * The primary bill row. Handles both recurring and BNPL. The Skip
- * button is hidden for BNPL rows — you can't skip an instalment.
- *
- * The menu actions array is built by the caller so the row doesn't
- * need to know about editing / pausing / deleting.
- */
 export const BillRow = ({
   period,
   account,
@@ -34,15 +27,15 @@ export const BillRow = ({
     ? Math.max(0, (Number(comm.amount) || 0) * (comm.term_months - paidCount))
     : 0
 
-  const rowClass = isOverdue
-    ? 'bg-danger-soft/50 border-danger-border'
+  const rowTint = isOverdue
+    ? 'bg-danger-soft/40'
     : accountShort
-      ? 'bg-warning-soft/50 border-warning-border'
-      : 'bg-surface border-line hover:border-line-strong'
+      ? 'bg-warning-soft/40'
+      : ''
 
   return (
-    <div className={`rounded-xl transition-all border shadow-sm p-4 ${rowClass}`}>
-      <div className="flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-4">
+    <div className={`transition-colors hover:bg-surface-2 ${rowTint}`}>
+      <div className="flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-4 px-4 py-3">
         <div className="flex items-start gap-3 min-w-0 flex-1">
           <div
             className={`shrink-0 w-8 h-8 rounded-lg flex items-center justify-center ${
@@ -73,7 +66,7 @@ export const BillRow = ({
             </div>
 
             {isBnpl && (
-              <p className="text-[11px] font-medium text-fg-muted">
+              <p className="text-[11px] font-medium text-fg-muted tabular-figures">
                 <span className="font-bold text-fg">{paidCount}</span>
                 {' of '}
                 <span className="font-bold text-fg">{comm.term_months}</span>
@@ -91,15 +84,15 @@ export const BillRow = ({
               </span>
               <span className="text-line-strong">·</span>
               <Wallet className="w-3 h-3 text-fg-subtle shrink-0" />
-              <span className={accountShort ? 'text-warning-text font-semibold' : ''}>
+              <span className={`tabular-figures ${accountShort ? 'text-warning-text font-semibold' : ''}`}>
                 {formatMYR(accountBalance)} available
               </span>
             </div>
           </div>
         </div>
 
-        <div className="flex items-center justify-between sm:justify-end gap-3 shrink-0 border-t sm:border-t-0 border-line pt-3 sm:pt-0">
-          <span className="text-base font-black text-fg whitespace-nowrap">
+        <div className="flex items-center justify-between sm:justify-end gap-3 shrink-0 border-t sm:border-t-0 border-line/60 pt-3 sm:pt-0">
+          <span className="text-base font-black text-fg whitespace-nowrap tabular-figures">
             {formatMYR(period.amount)}
           </span>
 

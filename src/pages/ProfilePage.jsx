@@ -34,16 +34,14 @@ const SetupButton = ({
   return (
     <button
       onClick={handleClick}
-      className={`w-full bg-surface/90 backdrop-blur-xl border border-line/60 rounded-3xl p-5 mb-4 flex items-center justify-between transition-all duration-300 shadow-sm outline-none group ${
-        isThisActive
-          ? 'ring-2 ring-fg shadow-md scale-[1.01]'
-          : 'hover:bg-surface hover:shadow-md hover:-translate-y-0.5'
+      className={`w-full flex items-center justify-between px-4 py-3.5 transition-colors outline-none group ${
+        isThisActive ? 'bg-surface-2' : 'hover:bg-surface-2'
       }`}
-      style={{ minHeight: 44 }}
+      style={{ minHeight: 56 }}
     >
       <div className="flex items-center gap-4">
         <div
-          className={`p-2.5 rounded-xl transition-colors duration-300 ${
+          className={`p-2.5 rounded-xl transition-colors duration-200 ${
             isThisActive
               ? 'bg-fg text-fg-inverse'
               : 'bg-surface-2 text-fg-muted group-hover:bg-surface-3'
@@ -51,15 +49,15 @@ const SetupButton = ({
         >
           <Icon className="w-5 h-5" />
         </div>
-        <span className="font-bold text-base text-fg">
+        <span className="font-bold text-sm text-fg text-left">
           {title}
         </span>
       </div>
       <ChevronRight
-        className={`w-5 h-5 transition-transform duration-300 ${
+        className={`w-4 h-4 transition-transform duration-200 ${
           isThisActive
             ? 'text-fg rotate-90'
-            : 'text-fg-subtle group-hover:translate-x-1'
+            : 'text-fg-subtle group-hover:translate-x-0.5'
         }`}
       />
     </button>
@@ -100,8 +98,8 @@ export function ProfilePage({
   return (
     <div className="max-w-xl mx-auto animate-enter pb-12">
 
-      {/* PROFILE HEADER */}
-      <div className="bg-surface/60 backdrop-blur-xl border border-line/50 p-6 rounded-3xl shadow-sm flex items-center gap-4 mb-8">
+      {/* PROFILE HEADER — flat row with divider below */}
+      <div className="flex items-center gap-4 pb-6 mb-6 border-b border-line">
 
         <Avatar
           profile={profile}
@@ -129,8 +127,8 @@ export function ProfilePage({
 
       </div>
 
-      {/* SETUP BUTTONS */}
-      <div className="space-y-4">
+      {/* SETTINGS — single grouped list */}
+      <div className="bg-surface border border-line rounded-2xl divide-y divide-line overflow-hidden">
 
         <SetupButton
           id="personal_details"

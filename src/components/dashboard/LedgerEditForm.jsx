@@ -107,7 +107,7 @@ export const LedgerEditForm = ({
   }
 
   return (
-    <div className="bg-surface-2/50 p-4 space-y-4 animate-fadeIn">
+    <div className="bg-surface-2 px-4 py-4 space-y-4 animate-fadeIn">
       <div className="flex justify-between items-center border-b border-line pb-2">
         <span className="text-[11px] font-bold uppercase tracking-wider text-fg-subtle">
           Editing

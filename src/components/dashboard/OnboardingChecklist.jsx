@@ -9,17 +9,17 @@ export const OnboardingChecklist = ({
   onDismiss,
 }) => {
   return (
-    <section className="bg-surface/70 backdrop-blur-xl border border-line/60 rounded-3xl shadow-sm overflow-hidden">
+    <section className="border-y border-line">
 
       {/* Header */}
-      <div className="flex items-center justify-between gap-3 px-4 pt-4 pb-3 md:px-5 md:pt-5">
+      <div className="flex items-center justify-between gap-3 py-3">
         <div className="flex items-center gap-3 min-w-0">
           <div className="w-9 h-9 rounded-xl bg-brand-soft text-brand flex items-center justify-center shrink-0">
             <Sparkles className="w-4 h-4" />
           </div>
           <div className="min-w-0">
             <p className="text-sm font-bold text-fg">Get started</p>
-            <p className="text-xs text-fg-muted">
+            <p className="text-xs text-fg-muted tabular-figures">
               {completedCount} of {totalCount} complete
             </p>
           </div>
@@ -36,30 +36,26 @@ export const OnboardingChecklist = ({
       </div>
 
       {/* Progress bar */}
-      <div className="px-4 md:px-5 pb-4">
-        <div className="flex gap-1">
-          {steps.map((s, i) => (
-            <div
-              key={s.id}
-              className={`h-1 flex-1 rounded-full transition-colors ${
-                i < completedCount ? 'bg-brand-solid' : 'bg-surface-3'
-              }`}
-              aria-hidden="true"
-            />
-          ))}
-        </div>
+      <div className="flex gap-1 pb-3">
+        {steps.map((s, i) => (
+          <div
+            key={s.id}
+            className={`h-1 flex-1 rounded-full transition-colors ${
+              i < completedCount ? 'bg-brand-solid' : 'bg-surface-3'
+            }`}
+            aria-hidden="true"
+          />
+        ))}
       </div>
 
       {/* Steps */}
-      <div className="border-t border-line">
-        {steps.map((step, idx) => (
+      <div className="border-t border-line divide-y divide-line/60">
+        {steps.map((step) => (
           <button
             key={step.id}
             type="button"
             onClick={() => onStepClick(step.id)}
-            className={`w-full flex items-center gap-3 px-4 md:px-5 py-3 text-left transition-colors hover:bg-surface-2/50 focus:outline-none focus-visible:bg-surface-2 ${
-              idx !== steps.length - 1 ? 'border-b border-line/60' : ''
-            }`}
+            className="w-full flex items-center gap-3 py-3 text-left transition-colors hover:bg-surface-2/50 focus:outline-none focus-visible:bg-surface-2"
             style={{ minHeight: 56 }}
           >
             <span

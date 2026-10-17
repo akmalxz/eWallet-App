@@ -125,31 +125,31 @@ export const CategoryMovement = ({ expenses, periodMonths }) => {
 
   if (rows.length === 0) {
     return (
-      <div className="bg-surface/60 backdrop-blur-xl border border-line/50 rounded-3xl p-6 shadow-sm">
-        <EmptyState
-          icon={Layers}
-          title="No category data yet"
-          message="Log some transactions to see category movement."
-        />
-      </div>
+      <EmptyState
+        icon={Layers}
+        title="No category data yet"
+        message="Log some transactions to see category movement."
+      />
     )
   }
 
   const biggestChange = rows[0]
 
   return (
-    <div className="space-y-4">
-      <div className="bg-surface/60 backdrop-blur-xl border border-line/50 rounded-3xl p-5 md:p-6 shadow-sm">
-        <div className="mb-4">
+    <div className="space-y-6">
+      {/* Movement list — flat section */}
+      <section className="space-y-3">
+        <div>
           <h3 className="text-sm font-bold text-fg">Category Movement</h3>
           <p className="text-xs text-fg-muted mt-0.5">
             <strong>{biggestChange.category}</strong> moved the most,{' '}
             {biggestChange.diff >= 0 ? 'up' : 'down'}{' '}
-            <strong>{formatMYR(Math.abs(biggestChange.diff))}</strong> vs last month.
+            <strong className="tabular-figures">{formatMYR(Math.abs(biggestChange.diff))}</strong>{' '}
+            vs last month.
           </p>
         </div>
 
-        <div className="space-y-2">
+        <div className="bg-surface border border-line rounded-2xl divide-y divide-line overflow-hidden">
           {rows.slice(0, 8).map(row => {
             const isExpanded = expandedCat === row.category
             const up = row.diff > 0
@@ -157,13 +157,13 @@ export const CategoryMovement = ({ expenses, periodMonths }) => {
             const share = (row.thisMonth / Math.max(1, thisMonthTotal)) * 100
 
             return (
-              <div key={row.category}>
+              <div key={row.category} className="relative">
                 <button
                   onClick={() => setExpandedCat(prev => (prev === row.category ? null : row.category))}
-                  className="w-full text-left relative overflow-hidden rounded-xl bg-surface border border-line hover:border-line-strong transition-all p-3"
+                  className="w-full text-left relative overflow-hidden px-4 py-3 hover:bg-surface-2 transition-colors"
                 >
                   <div
-                    className="absolute inset-y-0 left-0 bg-surface-2 pointer-events-none"
+                    className="absolute inset-y-0 left-0 bg-surface-2/60 pointer-events-none"
                     style={{ width: `${share}%` }}
                   />
 
@@ -172,7 +172,7 @@ export const CategoryMovement = ({ expenses, periodMonths }) => {
                       <p className="text-sm font-bold text-fg truncate">
                         {row.category}
                       </p>
-                      <p className="text-[11px] text-fg-subtle mt-0.5">
+                      <p className="text-[11px] text-fg-subtle mt-0.5 tabular-figures">
                         {formatMYR(row.thisMonth)} this month
                         {row.isNew && <span className="ml-1 text-brand font-bold">· New</span>}
                         {row.dropped && <span className="ml-1 text-fg-subtle font-bold">· None this month</span>}
@@ -181,8 +181,10 @@ export const CategoryMovement = ({ expenses, periodMonths }) => {
 
                     <div className="shrink-0 flex items-center gap-2">
                       {!neutral && (
-                        <div className="flex items-center gap-0.5 text-xs font-black"
-                             style={{ color: up ? theme.up : theme.down }}>
+                        <div
+                          className="flex items-center gap-0.5 text-xs font-black tabular-figures"
+                          style={{ color: up ? theme.up : theme.down }}
+                        >
                           {up ? <ArrowUpRight className="w-3.5 h-3.5" /> : <ArrowDownRight className="w-3.5 h-3.5" />}
                           {formatMYR(Math.abs(row.diff))}
                         </div>
@@ -193,26 +195,29 @@ export const CategoryMovement = ({ expenses, periodMonths }) => {
                 </button>
 
                 {isExpanded && row.txns.length > 0 && (
-                  <div className="mt-1.5 ml-3 pl-3 border-l-2 border-line space-y-1 animate-fadeIn">
-                    {[...row.txns]
-                      .sort((a, b) => b.amount - a.amount)
-                      .slice(0, 3)
-                      .map(tx => (
-                        <div key={tx.id} className="flex justify-between text-[11px] py-1">
-                          <span className="text-fg-muted truncate pr-2">{tx.description}</span>
-                          <span className="text-fg font-bold shrink-0">{formatMYR(tx.amount)}</span>
-                        </div>
-                      ))}
+                  <div className="px-4 pb-3 animate-fadeIn">
+                    <div className="ml-3 pl-3 border-l-2 border-line divide-y divide-line/60">
+                      {[...row.txns]
+                        .sort((a, b) => b.amount - a.amount)
+                        .slice(0, 3)
+                        .map(tx => (
+                          <div key={tx.id} className="flex justify-between text-[11px] py-1.5">
+                            <span className="text-fg-muted truncate pr-2">{tx.description}</span>
+                            <span className="text-fg font-bold shrink-0 tabular-figures">{formatMYR(tx.amount)}</span>
+                          </div>
+                        ))}
+                    </div>
                   </div>
                 )}
               </div>
             )
           })}
         </div>
-      </div>
+      </section>
 
-      <div className="bg-surface/60 backdrop-blur-xl border border-line/50 rounded-3xl p-5 md:p-6 shadow-sm">
-        <h3 className="text-sm font-bold text-fg mb-3">Category Mix Over Time</h3>
+      {/* Category Mix over time — flat section */}
+      <section className="space-y-3">
+        <h3 className="text-sm font-bold text-fg">Category Mix Over Time</h3>
 
         <div className="flex items-end gap-2 h-40">
           {stackedData.map(m => {
@@ -256,7 +261,7 @@ export const CategoryMovement = ({ expenses, periodMonths }) => {
           })}
         </div>
 
-        <div className="flex flex-wrap gap-2 mt-3">
+        <div className="flex flex-wrap gap-2">
           {topCategories.map((c, i) => (
             <div key={c} className="flex items-center gap-1.5">
               <div
@@ -267,7 +272,7 @@ export const CategoryMovement = ({ expenses, periodMonths }) => {
             </div>
           ))}
         </div>
-      </div>
+      </section>
     </div>
   )
 }

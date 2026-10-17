@@ -107,7 +107,7 @@ export const AccountDropdown = ({
         aria-haspopup="listbox"
         aria-expanded={open}
         aria-label={label}
-        className="w-full flex items-center gap-2 bg-surface/80 backdrop-blur-xl border border-line rounded-xl py-2 pl-2 pr-3 min-h-[48px] transition-colors hover:border-line-strong focus:outline-none focus:ring-2 focus:ring-brand/30 focus:border-brand"
+        className="w-full flex items-center gap-2 bg-surface border border-line rounded-xl py-2 pl-2 pr-3 min-h-[48px] transition-colors hover:border-line-strong focus:outline-none focus:ring-2 focus:ring-brand/30 focus:border-brand"
       >
         {triggerChip}
         <ChevronDown

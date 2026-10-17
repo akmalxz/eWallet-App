@@ -45,8 +45,8 @@ export const PatternPicker = ({ value, colorThemeKey, onChange }) => {
             onClick={() => onChange(pattern.key)}
             className={`relative aspect-square rounded-xl overflow-hidden transition-all duration-200 ${
               isSelected
-                ? 'ring-2 ring-slate-900 ring-offset-2'
-                : 'ring-1 ring-slate-200 hover:ring-slate-400'
+                ? 'ring-2 ring-fg ring-offset-2 ring-offset-surface'
+                : 'ring-1 ring-line hover:ring-line-strong'
             }`}
             style={{ background: gradient }}
           >
@@ -65,8 +65,8 @@ export const PatternPicker = ({ value, colorThemeKey, onChange }) => {
             {/* Selected check */}
             {isSelected && (
               <span className="absolute inset-0 flex items-center justify-center">
-                <span className="w-6 h-6 rounded-full bg-white/95 flex items-center justify-center shadow-md">
-                  <Check className="w-3.5 h-3.5 text-slate-900" strokeWidth={3} />
+                <span className="w-6 h-6 rounded-full bg-surface flex items-center justify-center shadow-md">
+                  <Check className="w-3.5 h-3.5 text-fg" strokeWidth={3} />
                 </span>
               </span>
             )}

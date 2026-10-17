@@ -348,23 +348,21 @@ export const CommitmentRadar = ({
   // ------------------------------------------------------------
   if (loading) {
     return (
-      <div className="bg-surface/60 backdrop-blur-xl border border-line/50 rounded-3xl p-6 shadow-sm">
-        <div className="flex items-center justify-center py-10 text-fg-subtle">
-          <Loader2 className="w-6 h-6 animate-spin" />
-          <span className="ml-2 text-sm font-medium">Loading bills…</span>
-        </div>
+      <div className="flex items-center justify-center py-12 text-fg-subtle">
+        <Loader2 className="w-6 h-6 animate-spin" />
+        <span className="ml-2 text-sm font-medium">Loading bills…</span>
       </div>
     )
   }
 
   if (error) {
     return (
-      <div className="bg-surface/60 backdrop-blur-xl border border-danger-border rounded-3xl p-6 shadow-sm">
+      <div className="bg-danger-soft border border-danger-border rounded-xl p-4">
         <div className="flex items-start gap-3">
           <AlertTriangle className="w-5 h-5 text-danger shrink-0 mt-0.5" />
           <div>
-            <p className="text-sm font-bold text-fg">Couldn't load bills</p>
-            <p className="text-xs text-fg-muted mt-1">{error}</p>
+            <p className="text-sm font-bold text-danger-text">Couldn't load bills</p>
+            <p className="text-xs text-danger-text/90 mt-1 leading-relaxed">{error}</p>
           </div>
         </div>
       </div>
@@ -374,30 +372,21 @@ export const CommitmentRadar = ({
   if (!hasAnyCommitments) {
     return (
       <>
-        <div className="bg-surface/60 backdrop-blur-xl border border-line/50 rounded-3xl p-5 shadow-sm overflow-hidden">
-          <div className="flex items-center gap-4 mb-5">
-            <div className="p-2.5 rounded-xl bg-surface-2 text-fg-muted">
-              <Layers className="w-5 h-5" />
-            </div>
-            <span className="font-bold text-base text-fg">Bills</span>
+        <div className="text-center py-10 border border-dashed border-line-strong rounded-2xl">
+          <div className="w-14 h-14 bg-surface-2 border border-line rounded-2xl flex items-center justify-center mx-auto mb-4 text-fg-subtle">
+            <Target className="w-6 h-6" />
           </div>
-
-          <div className="text-center py-8">
-            <div className="w-14 h-14 bg-surface-2 border border-line rounded-2xl flex items-center justify-center mx-auto mb-3 text-fg-subtle">
-              <Target className="w-6 h-6" />
-            </div>
-            <p className="text-sm font-bold text-fg">No bills yet</p>
-            <p className="text-xs text-fg-subtle mt-1 max-w-[260px] mx-auto leading-relaxed">
-              Add your first subscription or bill to track what's coming up.
-            </p>
-            <button
-              onClick={() => setFormState({ mode: 'new' })}
-              className="mt-4 inline-flex items-center gap-2 px-4 py-2.5 bg-brand-solid hover:bg-brand-solid-hover text-white text-xs font-bold rounded-xl shadow-sm transition-colors"
-              style={{ minHeight: 44 }}
-            >
-              <Plus className="w-4 h-4" /> Add your first bill
-            </button>
-          </div>
+          <p className="text-sm font-bold text-fg">No bills yet</p>
+          <p className="text-xs text-fg-subtle mt-1 max-w-[260px] mx-auto leading-relaxed">
+            Add your first subscription or bill to track what's coming up.
+          </p>
+          <button
+            onClick={() => setFormState({ mode: 'new' })}
+            className="mt-4 inline-flex items-center gap-2 px-4 py-2.5 bg-brand-solid hover:bg-brand-solid-hover text-white text-xs font-bold rounded-xl shadow-sm transition-colors"
+            style={{ minHeight: 44 }}
+          >
+            <Plus className="w-4 h-4" /> Add your first bill
+          </button>
         </div>
 
         {formState && (
@@ -419,56 +408,51 @@ export const CommitmentRadar = ({
   // ------------------------------------------------------------
   return (
     <>
-      <div
-        className={`bg-surface/60 backdrop-blur-xl border rounded-3xl p-5 md:p-6 shadow-sm overflow-hidden transition-all duration-300 ${
-          isSafe ? 'border-line/50' : 'border-danger-border'
-        }`}
-      >
-        {/* Card header */}
-        <div className="flex items-center justify-between gap-3 mb-5">
-          <div className="flex items-center gap-4 min-w-0">
-            <div className="p-2.5 rounded-xl bg-surface-2 text-fg-muted shrink-0">
-              <Layers className="w-5 h-5" />
-            </div>
-            <span className="font-bold text-base text-fg truncate">Bills</span>
-          </div>
+      <section className="space-y-4">
 
-          <div className="flex items-center gap-1.5 shrink-0">
-            <button
-              onClick={() => setFormState({ mode: 'new' })}
-              className="w-11 h-11 flex items-center justify-center text-fg-muted hover:text-brand hover:bg-surface-2 rounded-xl transition-all border border-transparent hover:border-line"
-              title="Add bill"
-              aria-label="Add bill"
-            >
-              <Plus className="w-5 h-5" />
-            </button>
-          </div>
+        {/* Header row — minimal: label + action */}
+        <div className="flex items-center justify-between">
+          <span className="text-[10px] uppercase font-bold tracking-wider text-fg-subtle">
+            This month
+          </span>
+          <button
+            onClick={() => setFormState({ mode: 'new' })}
+            className="inline-flex items-center gap-1 px-2.5 py-1.5 text-[11px] font-bold text-brand hover:bg-brand-soft rounded-lg transition-colors"
+            style={{ minHeight: 32 }}
+          >
+            <Plus className="w-3.5 h-3.5" /> Add bill
+          </button>
         </div>
 
-        {/* Stats strip */}
-        <div className="grid grid-cols-3 gap-2 md:gap-3 mb-4">
-          <div className="rounded-xl border border-line bg-surface p-2.5 md:p-3.5 shadow-sm min-w-0">
-            <span className="text-[10px] font-bold uppercase tracking-wider text-fg-subtle whitespace-nowrap">
-              Available
-            </span>
-            <p className="text-sm font-black tracking-tight text-fg mt-1 whitespace-nowrap">
-              {formatMYR(currentBalance)}
-            </p>
-          </div>
-          <div className="rounded-xl border border-line bg-surface p-2.5 md:p-3.5 shadow-sm min-w-0">
-            <span className="text-[10px] font-bold uppercase tracking-wider text-fg-subtle whitespace-nowrap">
+        {/* Stats — Available emphasized as hero, secondary metrics inline below */}
+        <div className="mb-4">
+          <p className="text-[11px] text-fg-subtle uppercase font-bold tracking-wider mb-1">
+            Available
+          </p>
+          <p className="text-4xl font-black tracking-tighter text-fg tabular-figures">
+            {formatMYR(currentBalance)}
+          </p>
+          <p className="text-[11px] text-fg-muted mt-1">
+            Across your linked accounts.
+          </p>
+        </div>
+
+        {/* SECONDARY: To pay · Unpaid — mirrors BurnRateWidget's Daily avg / Runway */}
+        <div className="grid grid-cols-2 gap-4 border-y border-line py-3">
+          <div>
+            <p className="text-[10px] text-fg-subtle uppercase font-bold tracking-wider mb-0.5">
               To pay
-            </span>
-            <p className="text-sm font-black tracking-tight text-fg mt-1 whitespace-nowrap">
+            </p>
+            <p className="text-lg font-bold text-fg tabular-figures">
               {formatMYR(totalRequired)}
             </p>
           </div>
-          <div className="rounded-xl border border-line bg-surface p-2.5 md:p-3.5 shadow-sm min-w-0">
-            <span className="text-[10px] font-bold uppercase tracking-wider text-fg-subtle whitespace-nowrap">
+          <div>
+            <p className="text-[10px] text-fg-subtle uppercase font-bold tracking-wider mb-0.5">
               Unpaid
-            </span>
+            </p>
             <p
-              className={`text-sm font-black tracking-tight mt-1 whitespace-nowrap ${
+              className={`text-lg font-bold tabular-figures ${
                 unpaidCount > 0 ? 'text-warning' : 'text-fg'
               }`}
             >
@@ -479,7 +463,7 @@ export const CommitmentRadar = ({
 
         {/* Needs attention banner */}
         {scheduleSafe.needsAttention.length > 0 && (
-          <div className="mb-3 bg-warning-soft border border-warning-border rounded-xl p-3 flex items-start gap-2">
+          <div className="bg-warning-soft border border-warning-border rounded-xl p-3 flex items-start gap-2">
             <AlertOctagon className="w-4 h-4 text-warning shrink-0 mt-0.5" />
             <div className="flex-1 min-w-0">
               <p className="text-xs text-warning-text leading-relaxed">
@@ -509,7 +493,7 @@ export const CommitmentRadar = ({
 
         {/* Per-account shortfall warnings */}
         {scheduleSafe.accountShortfalls.length > 0 && (
-          <div className="mb-4 bg-warning-soft border border-warning-border rounded-xl p-3.5">
+          <div className="bg-warning-soft border border-warning-border rounded-xl p-3.5">
             <div className="space-y-3">
               {scheduleSafe.accountShortfalls.map((sf, idx) => (
                 <div
@@ -539,17 +523,15 @@ export const CommitmentRadar = ({
           </div>
         )}
 
-        {/* Calendar strip */}
-        <div className="mb-4">
-          <BillsCalendar
-            schedule={scheduleSafe}
-            payments={payments}
-            commitments={commitments}
-            selectedDate={selectedDate}
-            onSelectDate={handleSelectDate}
-            todayKey={todayKey}
-          />
-        </div>
+        {/* Calendar widget */}
+        <BillsCalendar
+          schedule={scheduleSafe}
+          payments={payments}
+          commitments={commitments}
+          selectedDate={selectedDate}
+          onSelectDate={handleSelectDate}
+          todayKey={todayKey}
+        />
 
         {/* All done? */}
         {scheduleSafe.unpaidPeriods.length === 0 ? (
@@ -560,7 +542,7 @@ export const CommitmentRadar = ({
         ) : (
           <>
             {/* SECTION 1 — Bills on the selected day */}
-            <div className="mb-4">
+            <div>
               <div className="flex items-center justify-between gap-2 mb-2.5">
                 <p className="text-[10px] text-fg-subtle uppercase font-bold tracking-wider flex items-center gap-1.5">
                   <Calendar className="w-3.5 h-3.5 text-brand" />
@@ -570,7 +552,7 @@ export const CommitmentRadar = ({
                   )}
                 </p>
                 {selectedDayTotal > 0 && (
-                  <span className="text-[10px] font-bold text-fg-muted tabular-nums">
+                  <span className="text-[10px] font-bold text-fg-muted tabular-figures">
                     {formatMYR(selectedDayTotal)} due
                   </span>
                 )}
@@ -596,7 +578,7 @@ export const CommitmentRadar = ({
                   )}
                 </div>
               ) : (
-                <div className="space-y-2">
+                <div className="bg-surface border border-line rounded-2xl overflow-hidden divide-y divide-line">
                   {selectedPeriods.map((period) => (
                     <BillRow
                       key={`${period.commitmentId}-${period.periodYear}-${period.periodMonth}`}
@@ -633,10 +615,10 @@ export const CommitmentRadar = ({
 
             {/* SECTION 2 — Upcoming */}
             {otherPeriods.length > 0 && (
-              <div className="mb-2">
+              <div>
                 <button
                   onClick={() => setShowUpcoming(!showUpcoming)}
-                  className="w-full flex items-center justify-between p-3 bg-surface hover:bg-surface-2 border border-line rounded-xl transition-colors shadow-sm"
+                  className="w-full flex items-center justify-between py-3 text-left border-b border-line/50 hover:opacity-80 transition-opacity"
                   aria-expanded={showUpcoming}
                   style={{ minHeight: 44 }}
                 >
@@ -650,7 +632,7 @@ export const CommitmentRadar = ({
                 </button>
 
                 {showUpcoming && (
-                  <div className="mt-2 space-y-2">
+                    <div className="mt-3 bg-surface border border-line rounded-2xl overflow-hidden divide-y divide-line">
                     {otherPeriods.map((period) => (
                       <BillRow
                         key={`${period.commitmentId}-${period.periodYear}-${period.periodMonth}`}
@@ -681,10 +663,10 @@ export const CommitmentRadar = ({
 
         {/* Paid this month */}
         {otherPaidCommitments.length > 0 && (
-          <div className="mb-2">
+          <div>
             <button
               onClick={() => setShowPaid(!showPaid)}
-              className="w-full flex items-center justify-between p-3 bg-surface hover:bg-surface-2 border border-line rounded-xl transition-colors shadow-sm"
+              className="w-full flex items-center justify-between py-3 text-left border-b border-line/50 hover:opacity-80 transition-opacity"
               aria-expanded={showPaid}
               style={{ minHeight: 44 }}
             >
@@ -692,11 +674,13 @@ export const CommitmentRadar = ({
                 <CheckCircle className="w-3.5 h-3.5 text-success" /> Paid this month (
                 {otherPaidCommitments.length})
               </span>
-              {showPaid ? <ChevronUp className="w-4 h-4 text-fg-subtle" /> : <ChevronDown className="w-4 h-4 text-fg-subtle" />}
+              {showPaid
+                ? <ChevronUp className="w-4 h-4 text-fg-subtle" />
+                : <ChevronDown className="w-4 h-4 text-fg-subtle" />}
             </button>
 
             {showPaid && (
-              <div className="mt-2 space-y-1.5">
+              <div className="mt-3 space-y-1.5">
                 {otherPaidCommitments.map((comm) => (
                   <div
                     key={comm.id}
@@ -709,7 +693,7 @@ export const CommitmentRadar = ({
                       </span>
                     </div>
                     <div className="flex items-center gap-2 shrink-0">
-                      <span className="text-xs font-bold text-fg-subtle line-through">
+                      <span className="text-xs font-bold text-fg-subtle line-through tabular-figures">
                         {formatMYR(comm.amount)}
                       </span>
                       <button
@@ -731,10 +715,10 @@ export const CommitmentRadar = ({
 
         {/* Skipped this month */}
         {skippedCommitments.length > 0 && (
-          <div className="mb-2">
+          <div>
             <button
               onClick={() => setShowSkipped(!showSkipped)}
-              className="w-full flex items-center justify-between p-3 bg-surface hover:bg-surface-2 border border-line rounded-xl transition-colors shadow-sm"
+              className="w-full flex items-center justify-between py-3 text-left border-b border-line/50 hover:opacity-80 transition-opacity"
               aria-expanded={showSkipped}
               style={{ minHeight: 44 }}
             >
@@ -742,11 +726,13 @@ export const CommitmentRadar = ({
                 <CircleSlash className="w-3.5 h-3.5 text-fg-subtle" /> Skipped this month (
                 {skippedCommitments.length})
               </span>
-              {showSkipped ? <ChevronUp className="w-4 h-4 text-fg-subtle" /> : <ChevronDown className="w-4 h-4 text-fg-subtle" />}
+              {showSkipped
+                ? <ChevronUp className="w-4 h-4 text-fg-subtle" />
+                : <ChevronDown className="w-4 h-4 text-fg-subtle" />}
             </button>
 
             {showSkipped && (
-              <div className="mt-2 space-y-1.5">
+              <div className="mt-3 space-y-1.5">
                 {skippedCommitments.map((comm) => (
                   <div
                     key={comm.id}
@@ -757,7 +743,9 @@ export const CommitmentRadar = ({
                       <span className="text-xs font-medium text-fg-muted truncate">{comm.name}</span>
                     </div>
                     <div className="flex items-center gap-2 shrink-0">
-                      <span className="text-xs font-bold text-fg-subtle">{formatMYR(comm.amount)}</span>
+                      <span className="text-xs font-bold text-fg-subtle tabular-figures">
+                        {formatMYR(comm.amount)}
+                      </span>
                       <button
                         onClick={() => setConfirm({ kind: 'undo', commitment: comm })}
                         disabled={saving}
@@ -776,10 +764,10 @@ export const CommitmentRadar = ({
 
         {/* All bills */}
         {sortedAllBills.length > 0 && (
-          <div className="mb-2">
+          <div>
             <button
               onClick={() => setShowAllBills(!showAllBills)}
-              className="w-full flex items-center justify-between p-3 bg-surface hover:bg-surface-2 border border-line rounded-xl transition-colors shadow-sm"
+              className="w-full flex items-center justify-between py-3 text-left border-b border-line/50 hover:opacity-80 transition-opacity"
               aria-expanded={showAllBills}
               style={{ minHeight: 44 }}
             >
@@ -793,15 +781,15 @@ export const CommitmentRadar = ({
             </button>
 
             {showAllBills && (
-              <div className="mt-2 animate-fadeIn">
-                <div className="px-3 pb-2 flex items-center justify-between gap-3 flex-wrap">
+              <div className="mt-3 animate-fadeIn">
+                <div className="px-1 pb-2 flex items-center justify-between gap-3 flex-wrap">
                   <p className="text-[11px] text-fg-subtle">
                     {allBillsFilter === 'all' && (
                       <>
                         {allBillsSummary.totalCount}{' '}
                         {allBillsSummary.totalCount === 1 ? 'bill' : 'bills'}
                         <span className="text-line-strong mx-1.5">·</span>
-                        <span className="font-bold text-fg-muted">
+                        <span className="font-bold text-fg-muted tabular-figures">
                           {formatMYR(allBillsSummary.combinedTotal)}/month
                         </span>
                         {allBillsSummary.bnplCount > 0 && (
@@ -819,7 +807,7 @@ export const CommitmentRadar = ({
                       <>
                         {allBillsSummary.recurringCount} recurring
                         <span className="text-line-strong mx-1.5">·</span>
-                        <span className="font-bold text-fg-muted">
+                        <span className="font-bold text-fg-muted tabular-figures">
                           {formatMYR(allBillsSummary.recurringTotal)}/month
                         </span>
                         {allBillsSummary.recurringActiveCount < allBillsSummary.recurringCount && (
@@ -836,7 +824,7 @@ export const CommitmentRadar = ({
                       <>
                         {allBillsSummary.bnplCount} BNPL
                         <span className="text-line-strong mx-1.5">·</span>
-                        <span className="font-bold text-purple">
+                        <span className="font-bold text-purple tabular-figures">
                           {formatMYR(allBillsSummary.bnplTotal)}/month
                         </span>
                         {allBillsSummary.bnplActiveCount < allBillsSummary.bnplCount && (
@@ -880,7 +868,7 @@ export const CommitmentRadar = ({
                     No {allBillsFilter === 'bnpl' ? 'BNPL plans' : 'recurring bills'} in this list.
                   </div>
                 ) : (
-                  <div className="bg-surface-2/40 border border-line rounded-xl divide-y divide-line overflow-hidden">
+                  <div className="bg-surface border border-line rounded-2xl divide-y divide-line overflow-hidden">
                     {filteredAllBills.map((comm) => (
                       <AllBillsRow
                         key={`all-${comm.id}`}
@@ -898,7 +886,7 @@ export const CommitmentRadar = ({
 
         {/* Top-level shortfall */}
         {!isSafe && totalRequired > 0 && (
-          <div className="bg-danger-soft border border-danger-border rounded-xl p-3.5 mt-4 flex items-start gap-2.5">
+          <div className="bg-danger-soft border border-danger-border rounded-xl p-3.5 flex items-start gap-2.5">
             <AlertTriangle className="w-4 h-4 text-danger shrink-0 mt-0.5" />
             <div>
               <p className="text-xs font-bold text-danger-text">
@@ -910,7 +898,7 @@ export const CommitmentRadar = ({
             </div>
           </div>
         )}
-      </div>
+      </section>
 
       {/* Mark-paid sheet */}
       {marking && (

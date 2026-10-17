@@ -11,7 +11,7 @@ export const ChartTooltip = ({ active, payload, title, rows, footer }) => {
   const data = payload[0].payload
 
   return (
-    <div className="bg-surface/95 backdrop-blur-md px-3 py-2 border border-line rounded-xl shadow-xl">
+    <div className="bg-surface px-3 py-2 border border-line rounded-xl shadow-xl">
       <p className="text-[10px] font-bold text-fg-subtle uppercase tracking-wider">
         {title ? title(data) : data.label}
       </p>
@@ -21,13 +21,13 @@ export const ChartTooltip = ({ active, payload, title, rows, footer }) => {
             <span className="text-[11px] font-semibold" style={{ color: r.color }}>
               {r.label}
             </span>
-            <span className="text-xs font-black text-fg">
+            <span className="text-xs font-black text-fg tabular-figures">
               {formatMYR(r.value)}
             </span>
           </div>
         ))
       ) : (
-        <p className="text-sm font-black text-fg mt-0.5">
+        <p className="text-sm font-black text-fg mt-0.5 tabular-figures">
           {formatMYR(data.total || data.value || 0)}
         </p>
       )}
@@ -65,13 +65,13 @@ export const TransactionDrilldown = ({
   const accountFor = (id) => accounts.find(a => a.id === id)
 
   const listBody = (
-    <>
+    <div className="divide-y divide-line">
       {visible.map(tx => {
         const sourceAccount = accountFor(tx.source_account_id)
         return (
           <div
             key={tx.id}
-            className="flex items-center justify-between bg-surface border border-line rounded-lg px-3 py-2"
+            className="flex items-center justify-between px-3 py-2.5"
           >
             <div className="min-w-0 flex-1 pr-2">
               <p className="text-xs font-bold text-fg truncate">
@@ -86,29 +86,29 @@ export const TransactionDrilldown = ({
                 )}
               </div>
             </div>
-            <span className="text-xs font-black text-fg shrink-0">
+            <span className="text-xs font-black text-fg shrink-0 tabular-figures">
               {formatMYR(tx.amount)}
             </span>
           </div>
         )
       })}
-    </>
+    </div>
   )
 
   return (
-    <div className="mt-4 bg-surface-2/70 border border-line rounded-2xl animate-fadeIn">
-      <div className="flex items-start justify-between px-4 pt-4 pb-3">
+    <div className="mt-4 bg-surface border border-line rounded-2xl overflow-hidden animate-fadeIn">
+      <div className="flex items-start justify-between px-4 pt-4 pb-3 border-b border-line">
         <div>
           <p className="text-[10px] font-bold text-fg-subtle uppercase tracking-wider">
             {title}
           </p>
-          <p className="text-base font-black text-fg mt-0.5">
+          <p className="text-base font-black text-fg mt-0.5 tabular-figures">
             {formatMYR(total)}
           </p>
         </div>
         <button
           onClick={onClose}
-          className="inline-flex h-7 w-7 items-center justify-center rounded-lg text-fg-subtle hover:text-fg hover:bg-surface transition-colors"
+          className="inline-flex h-7 w-7 items-center justify-center rounded-lg text-fg-subtle hover:text-fg hover:bg-surface-2 transition-colors"
           aria-label="Close drill-down"
         >
           <X className="h-4 w-4" />
@@ -116,14 +116,14 @@ export const TransactionDrilldown = ({
       </div>
 
       {scrollable ? (
-        <div className="max-h-72 overflow-y-auto overscroll-contain scrollbar-thin px-4 pb-4 space-y-1.5">
+        <div className="max-h-72 overflow-y-auto overscroll-contain scrollbar-thin">
           {listBody}
         </div>
       ) : (
         <>
-          <div className="px-4 pb-4 space-y-1.5">{listBody}</div>
+          {listBody}
           {hidden > 0 && (
-            <p className="text-[11px] font-semibold text-fg-subtle text-center pb-4 -mt-1">
+            <p className="text-[11px] font-semibold text-fg-subtle text-center py-3 border-t border-line">
               + {hidden} more transactions
             </p>
           )}
@@ -138,10 +138,6 @@ export { AccountDropdown as AccountSelect } from '../shared/AccountDropdown'
 
 // ============================================================
 // EMPTY STATE
-//
-// Shared across pages and dashboard widgets. Use `compact` for
-// tight spaces (widgets), default for full sections (pages).
-// `hint` renders a smaller muted line under the message.
 // ============================================================
 export const EmptyState = ({
   icon: Icon = Inbox,
@@ -195,11 +191,10 @@ export const EmptyState = ({
 // SKELETONS
 // ============================================================
 
-// Card-shaped pulse block — used as a loading placeholder for
-// small metric cards.
+// Metric card placeholder — pulse-only, no card chrome.
 export const CardSkeleton = ({ lines = 2 }) => (
-  <div className="bg-surface/60 border border-line/50 rounded-2xl p-4 animate-pulse">
-    <div className="h-2.5 w-20 bg-surface-3 rounded-full" />
+  <div className="animate-pulse py-3">
+    <div className="h-2.5 w-20 bg-surface-2 rounded-full" />
     {Array.from({ length: lines }).map((_, i) => (
       <div
         key={i}
@@ -209,8 +204,7 @@ export const CardSkeleton = ({ lines = 2 }) => (
   </div>
 )
 
-// Chart-shaped pulse block — no inner spinner, the pulse alone
-// communicates loading.
+// Chart placeholder — flat pulse block.
 export const ChartSkeleton = ({ height = 280 }) => (
   <div
     className="bg-surface-2 rounded-2xl animate-pulse"
@@ -219,13 +213,16 @@ export const ChartSkeleton = ({ height = 280 }) => (
   />
 )
 
-// Row list skeleton — for friend lists, transaction lists, etc.
+// Row list skeleton — flat rows in a grouped container.
 export const ListSkeleton = ({ rows = 3, height = 56 }) => (
-  <div className="space-y-2" aria-hidden="true">
+  <div
+    className="bg-surface border border-line rounded-2xl divide-y divide-line overflow-hidden"
+    aria-hidden="true"
+  >
     {Array.from({ length: rows }).map((_, i) => (
       <div
         key={i}
-        className="bg-surface-2 rounded-xl animate-pulse"
+        className="bg-surface-2/40 animate-pulse"
         style={{ height }}
       />
     ))}

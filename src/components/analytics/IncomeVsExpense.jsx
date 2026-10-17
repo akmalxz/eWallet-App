@@ -66,71 +66,75 @@ export const IncomeVsExpense = ({
 
   if (!hasIncome) {
     return (
-      <div className="bg-surface/60 backdrop-blur-xl border border-line/50 rounded-3xl p-6 shadow-sm">
-        <EmptyState
-          icon={Wallet}
-          title={isScoped ? `No income for ${accountLabel}` : 'No income logged yet'}
-          message={
-            isScoped
-              ? `Try switching to All accounts, or log income for ${accountLabel}.`
-              : 'Log an income transaction to unlock savings rate analytics.'
-          }
-          action={
-            !isScoped && onAddIncome
-              ? { label: 'Log Income', icon: TrendingUp, onClick: onAddIncome }
-              : null
-          }
-        />
-      </div>
+      <EmptyState
+        icon={Wallet}
+        title={isScoped ? `No income for ${accountLabel}` : 'No income logged yet'}
+        message={
+          isScoped
+            ? `Try switching to All accounts, or log income for ${accountLabel}.`
+            : 'Log an income transaction to unlock savings rate analytics.'
+        }
+        action={
+          !isScoped && onAddIncome
+            ? { label: 'Log Income', icon: TrendingUp, onClick: onAddIncome }
+            : null
+        }
+      />
     )
   }
 
   return (
-    <div className="space-y-4">
-      {/* Hero savings rate */}
-      <div className="bg-surface/60 backdrop-blur-xl border border-line/50 rounded-3xl p-6 shadow-sm text-center">
+    <div className="space-y-6">
+      {/* HERO: Savings rate — flat */}
+      <div className="text-center py-2">
         <p className="text-[10px] font-bold text-fg-subtle uppercase tracking-wider">
           Savings Rate
         </p>
-        <p className="text-4xl font-black mt-1" style={{ color: rateColor }}>
+        <p
+          className="text-4xl font-black mt-1 tracking-tighter tabular-figures"
+          style={{ color: rateColor }}
+        >
           {stats.savingsRate !== null ? `${stats.savingsRate.toFixed(0)}%` : '—'}
         </p>
         <p className="text-xs text-fg-subtle mt-1">
           The share of your income you kept.
         </p>
-        <p className="text-xs text-fg-muted mt-3 max-w-md mx-auto">
+        <p className="text-xs text-fg-muted mt-3 max-w-md mx-auto leading-relaxed">
           {isScoped ? (
             <>
-              For <strong>{accountLabel}</strong>: you saved <strong>{formatMYR(stats.net)}</strong> out
-              of <strong>{formatMYR(stats.totalIncome)}</strong> income over the last {periodMonths} months.
+              For <strong>{accountLabel}</strong>: you saved{' '}
+              <strong className="tabular-figures">{formatMYR(stats.net)}</strong> out of{' '}
+              <strong className="tabular-figures">{formatMYR(stats.totalIncome)}</strong>{' '}
+              income over the last {periodMonths} months.
             </>
           ) : (
             <>
-              You saved <strong>{formatMYR(stats.net)}</strong> out of{' '}
-              <strong>{formatMYR(stats.totalIncome)}</strong> income over the last {periodMonths} months.
+              You saved <strong className="tabular-figures">{formatMYR(stats.net)}</strong> out of{' '}
+              <strong className="tabular-figures">{formatMYR(stats.totalIncome)}</strong>{' '}
+              income over the last {periodMonths} months.
             </>
           )}
         </p>
       </div>
 
-      {/* 3 summary cards */}
-      <div className="grid grid-cols-3 gap-3">
-        <div className="bg-surface/60 backdrop-blur-xl border border-line/50 rounded-2xl p-3 text-center">
-          <p className="text-[9px] font-bold text-fg-subtle uppercase tracking-wider">Avg Income</p>
-          <p className="text-sm font-black mt-1 break-all" style={{ color: theme.down }}>
+      {/* SECONDARY: 3 metrics in a single divided strip */}
+      <div className="grid grid-cols-3 divide-x divide-line border-y border-line py-4">
+        <div className="text-center">
+          <p className="text-[10px] font-bold text-fg-subtle uppercase tracking-wider">Avg Income</p>
+          <p className="text-sm font-black mt-1 break-all tabular-figures" style={{ color: theme.down }}>
             {formatMYR(stats.avgIncome)}
           </p>
         </div>
-        <div className="bg-surface/60 backdrop-blur-xl border border-line/50 rounded-2xl p-3 text-center">
-          <p className="text-[9px] font-bold text-fg-subtle uppercase tracking-wider">Avg Expense</p>
-          <p className="text-sm font-black mt-1 break-all" style={{ color: theme.up }}>
+        <div className="text-center">
+          <p className="text-[10px] font-bold text-fg-subtle uppercase tracking-wider">Avg Expense</p>
+          <p className="text-sm font-black mt-1 break-all tabular-figures" style={{ color: theme.up }}>
             {formatMYR(stats.avgExpense)}
           </p>
         </div>
-        <div className="bg-surface/60 backdrop-blur-xl border border-line/50 rounded-2xl p-3 text-center">
-          <p className="text-[9px] font-bold text-fg-subtle uppercase tracking-wider">Net</p>
+        <div className="text-center">
+          <p className="text-[10px] font-bold text-fg-subtle uppercase tracking-wider">Net</p>
           <p
-            className="text-sm font-black mt-1 break-all"
+            className="text-sm font-black mt-1 break-all tabular-figures"
             style={{ color: stats.net >= 0 ? theme.down : theme.up }}
           >
             {formatMYR(stats.net)}
@@ -138,9 +142,9 @@ export const IncomeVsExpense = ({
         </div>
       </div>
 
-      {/* Paired monthly bars */}
-      <div className="bg-surface/60 backdrop-blur-xl border border-line/50 rounded-3xl p-5 md:p-6 shadow-sm">
-        <div className="flex items-start justify-between gap-3 mb-3">
+      {/* Paired monthly bars — flat section */}
+      <section className="space-y-3">
+        <div className="flex items-start justify-between gap-3">
           <h3 className="text-sm font-bold text-fg">Income vs Expense</h3>
           <span className="text-[10px] font-semibold text-fg-subtle shrink-0">
             {accountLabel}
@@ -185,7 +189,7 @@ export const IncomeVsExpense = ({
             <Bar dataKey="expense" fill={theme.up}   radius={[4, 4, 0, 0]} name="Expense" />
           </BarChart>
         </ResponsiveContainer>
-      </div>
+      </section>
     </div>
   )
 }

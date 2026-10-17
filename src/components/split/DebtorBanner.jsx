@@ -168,7 +168,7 @@ export function DebtorBanner({ user }) {
         </button>
 
         {expanded && (
-          <div className="border-t border-warning-border bg-surface/40">
+          <div className="border-t border-warning-border bg-surface-2/40">
             {grouped.map(person => (
               <div key={person.id} className="p-3 border-b border-warning-border last:border-b-0">
                 <div className="flex items-center gap-3 mb-2">

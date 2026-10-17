@@ -119,8 +119,7 @@ export const useTransactions = (user, showToast) => {
           .eq('user_id', user.id)
           .order('needs_review', { ascending: false })
           .order('transaction_date', { ascending: false })
-          .order('created_at', { ascending: false })
-          .limit(30),
+          .order('created_at', { ascending: false }),
 
         supabase
           .from('commitments')

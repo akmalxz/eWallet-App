@@ -148,7 +148,7 @@ export const BankAccountsModal = ({
   }
 
   // ----------------------------------------------------------
-  // Move bills + archive (3a)
+  // Move bills + archive
   // ----------------------------------------------------------
   const handleMoveAndArchive = async () => {
     if (!moveWarning) return
@@ -253,7 +253,7 @@ export const BankAccountsModal = ({
   // ----------------------------------------------------------
   // Render
   // ----------------------------------------------------------
-    return (
+  return (
     <>
       <ModalWrapper title="Bank Accounts" closeModal={closeModal}>
         <div className="space-y-3">
@@ -277,7 +277,7 @@ export const BankAccountsModal = ({
           )}
 
           {activeAccounts.length > 0 && (
-            <div className="space-y-2">
+            <div className="bg-surface-2 border border-line rounded-2xl divide-y divide-line overflow-hidden">
               {activeAccounts.map((acc) => {
                 const classLabel =
                   classifications.find((c) => c.key_name === acc.classification)?.label ||
@@ -286,12 +286,12 @@ export const BankAccountsModal = ({
                 return (
                   <div
                     key={acc.id}
-                    className="flex items-center justify-between gap-2 p-2 bg-surface-2 border border-line rounded-xl"
+                    className="flex items-center justify-between gap-2 px-3 py-2"
                   >
                     <button
                       type="button"
                       onClick={() => openEditEditor(acc)}
-                      className="flex items-center gap-2 min-w-0 flex-1 text-left rounded-lg px-1 py-1 hover:bg-surface transition-colors"
+                      className="flex items-center gap-2 min-w-0 flex-1 text-left rounded-lg py-1 hover:opacity-80 transition-opacity"
                       aria-label={`Edit ${acc.account_name}`}
                     >
                       <AccountCard account={acc} size="chip" />
@@ -324,7 +324,7 @@ export const BankAccountsModal = ({
           {(activeAccounts.length > 0 || archivedAccounts.length > 0) && (
             <button
               onClick={openNewEditor}
-              className="w-full flex items-center justify-center gap-2 py-3 rounded-xl text-xs font-bold transition-colors shadow-sm border bg-brand-solid text-white border-brand-solid hover:bg-brand-solid-hover"
+              className="w-full flex items-center justify-center gap-2 py-3 rounded-xl text-xs font-bold transition-colors shadow-sm bg-brand-solid text-white hover:bg-brand-solid-hover"
               style={{ minHeight: 44 }}
             >
               <Plus className="w-4 h-4" /> Add Account
@@ -335,7 +335,7 @@ export const BankAccountsModal = ({
             <div>
               <button
                 onClick={() => setShowArchived((s) => !s)}
-                className="w-full flex items-center justify-between p-3 bg-surface hover:bg-surface-2 border border-line rounded-xl transition-colors"
+                className="w-full flex items-center justify-between py-3 border-b border-line/50 hover:opacity-80 transition-opacity"
                 style={{ minHeight: 44 }}
                 aria-expanded={showArchived}
               >
@@ -351,11 +351,11 @@ export const BankAccountsModal = ({
               </button>
 
               {showArchived && (
-                <div className="mt-2 space-y-1.5 animate-fadeIn">
+                <div className="mt-3 bg-surface-2/50 border border-line rounded-2xl divide-y divide-line overflow-hidden">
                   {archivedAccounts.map((acc) => (
                     <div
                       key={acc.id}
-                      className="flex items-center justify-between gap-2 p-2 bg-surface-2/50 border border-line/60 rounded-xl opacity-75"
+                      className="flex items-center justify-between gap-2 px-3 py-2 opacity-75"
                     >
                       <div className="flex items-center gap-2 min-w-0 flex-1">
                         <AccountCard account={acc} size="chip" />
@@ -469,7 +469,7 @@ export const BankAccountsModal = ({
                 <div className="flex items-center justify-between gap-3">
                   <div className="min-w-0">
                     <p className="text-sm font-bold text-fg truncate">{bill.name}</p>
-                    <p className="text-[11px] text-fg-subtle">
+                    <p className="text-[11px] text-fg-subtle tabular-figures">
                       {formatMYR(bill.amount)} · due day {bill.due_day_of_month}
                     </p>
                   </div>
