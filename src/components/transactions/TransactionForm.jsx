@@ -1,7 +1,7 @@
 // src/components/transactions/TransactionForm.jsx
 import { useState, useEffect, useMemo, useRef } from 'react'
 import {
-  AlertCircle, Loader2,
+  AlertCircle, Loader2, ChevronDown,
   ArrowUpRight, ArrowDownRight, ArrowRight,
 } from 'lucide-react'
 import { supabase } from '../../lib/supabaseClient'
@@ -21,9 +21,9 @@ const TYPE_ICON = {
 }
 
 const TYPE_COLOR = {
-  expense:  'text-muted',
-  income:   'text-muted',
-  transfer: 'text-muted',
+  expense:  'text-fg-muted',
+  income:   'text-fg-muted',
+  transfer: 'text-fg-muted',
 }
 
 const HEADER_LABEL = {
@@ -39,10 +39,10 @@ export function TransactionForm({
   getSubCategories,
   fetchAllData,
   showToast,
-  onSuccess,                 // optional, called after successful insert
-  onCancel,                  // optional, renders a Cancel button if provided
+  onSuccess,
+  onCancel,
   submitLabel = 'Log Transaction',
-  initialAccountId,          // optional pre-selected account
+  initialAccountId,
 }) {
   const [txType, setTxType] = useState('expense')
   const [amount, setAmount] = useState('')
@@ -147,6 +147,9 @@ export function TransactionForm({
       setDescription('')
       setCategory('uncategorized')
       setErrors({})
+      
+      // Scroll to top so the keyboard doesn't hide the reset form
+      window.scrollTo({ top: 0, behavior: 'smooth' })
       amountRef.current?.focus()
 
       if (onSuccess) onSuccess(payload.description)
@@ -229,10 +232,12 @@ export function TransactionForm({
       </div>
 
       <form onSubmit={handleSubmit} className="space-y-4">
+        
         {/* Date + Amount + Category */}
         <div className={`grid gap-3 ${
           showCategory ? 'grid-cols-1 sm:grid-cols-3' : 'grid-cols-1 sm:grid-cols-2'
         }`}>
+          
           <div>
             <label htmlFor="tx-date" className="block text-xs font-bold text-fg-subtle uppercase mb-1">
               Date
@@ -244,7 +249,7 @@ export function TransactionForm({
               required
               value={txDate}
               onChange={(e) => setTxDate(e.target.value)}
-              className="w-full bg-surface-2 border border-line rounded-xl py-2 px-3 outline-none focus:border-brand focus:ring-2 focus:ring-brand/30 text-sm text-fg transition-all"
+              className="w-full h-[46px] bg-surface border border-line-strong rounded-xl py-2 px-3 outline-none focus:border-brand focus:ring-2 focus:ring-brand/30 text-sm text-fg transition-all appearance-none"
             />
           </div>
 
@@ -270,10 +275,10 @@ export function TransactionForm({
                 required
                 value={amount}
                 onChange={(e) => { setAmount(e.target.value); clearError('amount') }}
-                className={`w-full bg-surface-2 border ${
+                className={`w-full h-[46px] bg-surface border ${
                   errors.amount
                     ? 'border-danger-border focus:border-danger'
-                    : 'border-line focus:border-brand'
+                    : 'border-line-strong focus:border-brand'
                 } rounded-xl py-2 pl-9 pr-3 text-sm text-fg placeholder:text-fg-subtle outline-none focus:ring-2 focus:ring-brand/30 transition-all`}
                 placeholder="0.00"
               />
@@ -290,20 +295,23 @@ export function TransactionForm({
               <label htmlFor="tx-category" className="block text-xs font-bold text-fg-subtle uppercase mb-1">
                 Category
               </label>
-              <select
-                id="tx-category"
-                name="tx-category"
-                value={category}
-                onChange={(e) => { setCategory(e.target.value); clearError('category') }}
-                className={`w-full bg-surface-2 border ${
-                  errors.category
-                    ? 'border-danger-border focus:border-danger'
-                    : 'border-line focus:border-brand'
-                } rounded-xl py-2 px-3 text-sm text-fg outline-none focus:ring-2 focus:ring-brand/30 transition-all`}
-              >
-                <option value="uncategorized">Select...</option>
-                {renderCategoryTree()}
-              </select>
+              <div className="relative">
+                <select
+                  id="tx-category"
+                  name="tx-category"
+                  value={category}
+                  onChange={(e) => { setCategory(e.target.value); clearError('category') }}
+                  className={`w-full h-[46px] bg-surface border ${
+                    errors.category
+                      ? 'border-danger-border focus:border-danger'
+                      : 'border-line-strong focus:border-brand'
+                  } rounded-xl py-2 pl-3 pr-10 text-sm text-fg outline-none focus:ring-2 focus:ring-brand/30 transition-all appearance-none`}
+                >
+                  <option value="uncategorized">Select...</option>
+                  {renderCategoryTree()}
+                </select>
+                <ChevronDown className="w-4 h-4 text-fg-muted absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+              </div>
               {errors.category && (
                 <p className="mt-1 text-[11px] text-danger flex items-center gap-1">
                   <AlertCircle className="w-3 h-3 shrink-0" /> {errors.category}
@@ -326,10 +334,10 @@ export function TransactionForm({
             required
             value={description}
             onChange={(e) => { setDescription(e.target.value); clearError('description') }}
-            className={`w-full bg-surface-2 border ${
+            className={`w-full h-[46px] bg-surface border ${
               errors.description
                 ? 'border-danger-border focus:border-danger'
-                : 'border-line focus:border-brand'
+                : 'border-line-strong focus:border-brand'
             } rounded-xl py-2 px-3 text-fg placeholder:text-fg-subtle outline-none focus:ring-2 focus:ring-brand/30 transition-all`}
             placeholder={
               txType === 'transfer'
@@ -352,17 +360,20 @@ export function TransactionForm({
             <label htmlFor="tx-source" className="block text-xs font-bold text-fg-subtle uppercase mb-1">
               {txType === 'income' ? 'Deposit To' : 'Pay From'}
             </label>
-            <select
-              id="tx-source"
-              name="tx-source"
-              value={source}
-              onChange={(e) => setSource(e.target.value)}
-              className="w-full bg-surface-2 border border-line rounded-xl py-2 px-3 outline-none focus:border-brand focus:ring-2 focus:ring-brand/30 text-fg transition-all"
-            >
-              {accounts.map(a => (
-                <option key={a.id} value={a.id}>{a.account_name}</option>
-              ))}
-            </select>
+            <div className="relative">
+              <select
+                id="tx-source"
+                name="tx-source"
+                value={source}
+                onChange={(e) => setSource(e.target.value)}
+                className="w-full h-[46px] bg-surface border border-line-strong rounded-xl py-2 pl-3 pr-10 outline-none focus:border-brand focus:ring-2 focus:ring-brand/30 text-sm text-fg transition-all appearance-none"
+              >
+                {accounts.map(a => (
+                  <option key={a.id} value={a.id}>{a.account_name}</option>
+                ))}
+              </select>
+              <ChevronDown className="w-4 h-4 text-fg-muted absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+            </div>
           </div>
         ) : (
           <div className="grid grid-cols-2 gap-4">
@@ -370,39 +381,45 @@ export function TransactionForm({
               <label htmlFor="tx-transfer-from" className="block text-xs font-bold text-fg-subtle uppercase mb-1">
                 From
               </label>
-              <select
-                id="tx-transfer-from"
-                value={source}
-                onChange={(e) => { setSource(e.target.value); clearError('source') }}
-                className={`w-full bg-surface-2 border ${
-                  errors.source
-                    ? 'border-danger-border focus:border-danger'
-                    : 'border-line focus:border-brand'
-                } rounded-xl py-2 px-3 text-fg outline-none focus:ring-2 focus:ring-brand/30 transition-all`}
-              >
-                {accounts.map(a => (
-                  <option key={a.id} value={a.id}>{a.account_name}</option>
-                ))}
-              </select>
+              <div className="relative">
+                <select
+                  id="tx-transfer-from"
+                  value={source}
+                  onChange={(e) => { setSource(e.target.value); clearError('source') }}
+                  className={`w-full h-[46px] bg-surface border ${
+                    errors.source
+                      ? 'border-danger-border focus:border-danger'
+                      : 'border-line-strong focus:border-brand'
+                  } rounded-xl py-2 pl-3 pr-10 text-sm text-fg outline-none focus:ring-2 focus:ring-brand/30 transition-all appearance-none`}
+                >
+                  {accounts.map(a => (
+                    <option key={a.id} value={a.id}>{a.account_name}</option>
+                  ))}
+                </select>
+                <ChevronDown className="w-4 h-4 text-fg-muted absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+              </div>
             </div>
             <div>
               <label htmlFor="tx-transfer-to" className="block text-xs font-bold text-fg-subtle uppercase mb-1">
                 To
               </label>
-              <select
-                id="tx-transfer-to"
-                value={dest}
-                onChange={(e) => { setDest(e.target.value); clearError('dest') }}
-                className={`w-full bg-surface-2 border ${
-                  errors.dest
-                    ? 'border-danger-border focus:border-danger'
-                    : 'border-line focus:border-brand'
-                } rounded-xl py-2 px-3 text-fg outline-none focus:ring-2 focus:ring-brand/30 transition-all`}
-              >
-                {accounts.map(a => (
-                  <option key={a.id} value={a.id}>{a.account_name}</option>
-                ))}
-              </select>
+              <div className="relative">
+                <select
+                  id="tx-transfer-to"
+                  value={dest}
+                  onChange={(e) => { setDest(e.target.value); clearError('dest') }}
+                  className={`w-full h-[46px] bg-surface border ${
+                    errors.dest
+                      ? 'border-danger-border focus:border-danger'
+                      : 'border-line-strong focus:border-brand'
+                  } rounded-xl py-2 pl-3 pr-10 text-sm text-fg outline-none focus:ring-2 focus:ring-brand/30 transition-all appearance-none`}
+                >
+                  {accounts.map(a => (
+                    <option key={a.id} value={a.id}>{a.account_name}</option>
+                  ))}
+                </select>
+                <ChevronDown className="w-4 h-4 text-fg-muted absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+              </div>
             </div>
           </div>
         )}
@@ -413,7 +430,7 @@ export function TransactionForm({
             <button
               type="button"
               onClick={onCancel}
-              className="flex-1 bg-surface-2 hover:bg-surface-3 text-fg-muted font-medium py-3 rounded-xl transition-colors text-sm"
+              className="flex-1 bg-surface-2 border border-line hover:bg-surface-3 text-fg-muted font-medium py-3 rounded-xl transition-colors text-sm"
               style={{ minHeight: 44 }}
             >
               Cancel
@@ -432,7 +449,7 @@ export function TransactionForm({
           <button
             type="submit"
             disabled={saving}
-            className="w-full bg-brand-solid hover:bg-brand-solid-hover text-white font-medium py-3 rounded-xl mt-4 transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
+            className="w-full bg-brand-solid hover:bg-brand-solid-hover text-white font-medium py-3 rounded-xl mt-6 transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
             style={{ minHeight: 44 }}
           >
             {saving && <Loader2 className="w-4 h-4 animate-spin" />}
