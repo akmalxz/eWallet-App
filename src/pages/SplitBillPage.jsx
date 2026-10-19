@@ -1,11 +1,13 @@
 // src/pages/SplitBillPage.jsx
 import { useState, useEffect, useMemo, useRef } from 'react'
+import { createPortal } from 'react-dom' // <-- Added for layout fix
 import {
   Receipt, ChevronLeft, ChevronDown, ChevronUp, Loader2, FileText,
   User, CheckCircle2, Circle, Users, Plus, X, Search, Check,
   HandCoins, Camera, Image as ImageIcon, RotateCcw, Wallet
 } from 'lucide-react'
 import { supabase } from '../lib/supabaseClient'
+import { useBodyScrollLock } from '../hooks/useBodyScrollLock' // <-- Added for scroll locking
 import { DebtHub } from '../components/split/DebtHub'
 import { ItemReviewStep } from '../components/split/ItemReviewStep'
 import { SlidingSegmentedControl } from '../components/shared/SlidingSegmentedControl'
@@ -128,6 +130,9 @@ export function SplitBillPage({
   // 4. Ledger-logging State (Issue 2)
   const [logToLedger, setLogToLedger] = useState(true)
   const [logAccountId, setLogAccountId] = useState('')
+
+  // Lock body scroll when any inline modal is open
+  useBodyScrollLock(showReviewModal || isAddModalOpen)
 
   useEffect(() => {
     if (accounts.length > 0 && !logAccountId) {
@@ -639,6 +644,320 @@ export function SplitBillPage({
 
   const isReviewMode = activeTab === 'new' && appState === 'review'
 
+  // ============================================
+  // INLINE MODAL PORTALS
+  // ============================================
+  const reviewModalContent = showReviewModal && ledgerPreview && (
+    <div className="fixed inset-0 z-[150] flex items-center justify-center p-4 animate-in fade-in duration-200 bg-black/60 backdrop-blur-sm">
+      <div
+        className="absolute inset-0"
+        onClick={() => !isLocking && setShowReviewModal(false)}
+      />
+      <div className="relative bg-surface border border-line-strong rounded-3xl shadow-2xl w-full max-w-sm overflow-hidden animate-in zoom-in-95 duration-200 max-h-[92vh] flex flex-col">
+        <div className="p-5 border-b border-line shrink-0">
+          <h3 className="font-bold text-lg text-fg mb-1">Confirm Final Split</h3>
+          <p className="text-xs text-fg-muted">
+            Taxes and service charges have been distributed proportionally.
+          </p>
+        </div>
+
+        <div className="flex-1 overflow-y-auto p-5 space-y-4">
+          <div className="bg-surface border border-line rounded-xl overflow-hidden divide-y divide-line">
+            {ledgerPreview.map(person => (
+              <div
+                key={person.id}
+                className={`p-4 ${person.id === user.id ? 'bg-brand-soft' : ''}`}
+              >
+                <div className="flex justify-between items-center mb-2">
+                  <span className={`font-bold text-sm ${
+                    person.id === user.id ? 'text-brand' : 'text-fg'
+                  }`}>
+                    {person.name} {person.id === user.id && '(Host)'}
+                  </span>
+                  <span className="font-black text-sm text-fg tabular-figures">
+                    RM {person.final_owed.toFixed(2)}
+                  </span>
+                </div>
+                <div className="flex justify-between text-xs text-fg-muted tabular-figures">
+                  <span>Items claimed:</span>
+                  <span>RM {person.items_total.toFixed(2)}</span>
+                </div>
+                <div className="flex justify-between text-xs text-fg-muted mt-1 tabular-figures">
+                  <span>Proportional tax:</span>
+                  <span>RM {person.tax_share.toFixed(2)}</span>
+                </div>
+              </div>
+            ))}
+          </div>
+
+          <div className="bg-surface-2 border border-line rounded-xl p-4 space-y-3">
+            <label className="flex items-start gap-3 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={logToLedger}
+                onChange={(e) => setLogToLedger(e.target.checked)}
+                disabled={isLocking}
+                className="mt-0.5 w-4 h-4 rounded border-line-strong text-brand focus:ring-brand"
+              />
+              <div className="min-w-0 flex-1">
+                <p className="text-sm font-bold text-fg tabular-figures">
+                  Log RM {(
+                    ledgerPreview.find(p => p.id === user.id)?.final_owed || 0
+                  ).toFixed(2)} to my ledger
+                </p>
+                <p className="text-[11px] text-fg-muted mt-0.5 leading-relaxed">
+                  Records only your share. What friends owe you stays in your Debts tab.
+                </p>
+              </div>
+            </label>
+
+            {logToLedger && (
+              <div className="pl-7">
+                <label
+                  htmlFor="log-account"
+                  className="block text-[10px] font-bold text-fg-subtle uppercase tracking-wider mb-1.5"
+                >
+                  Paid from
+                </label>
+                <div className="relative">
+                  <Wallet className="w-4 h-4 text-fg-subtle absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+                  <select
+                    id="log-account"
+                    value={logAccountId}
+                    onChange={(e) => setLogAccountId(e.target.value)}
+                    disabled={isLocking}
+                    className="w-full bg-surface border border-line rounded-lg py-2.5 pl-9 pr-3 text-sm text-fg outline-none focus:border-brand transition-colors appearance-none disabled:opacity-50"
+                  >
+                    {accounts.length === 0 && (
+                      <option value="">No accounts available</option>
+                    )}
+                    {accounts.map(a => (
+                      <option key={a.id} value={a.id}>
+                        {a.account_name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+
+        <div className="p-5 border-t border-line bg-surface-2 flex gap-3 shrink-0">
+          <button
+            onClick={() => setShowReviewModal(false)}
+            disabled={isLocking}
+            className="flex-1 bg-surface border border-line-strong hover:bg-surface-3 text-fg py-2.5 rounded-xl text-sm font-bold transition-colors disabled:opacity-50"
+            style={{ minHeight: 44 }}
+          >
+            Cancel
+          </button>
+          <button
+            onClick={handleLockSession}
+            disabled={isLocking}
+            className="flex-1 bg-brand-solid hover:bg-brand-solid-hover text-white py-2.5 rounded-xl text-sm font-bold transition-colors disabled:opacity-50 flex justify-center items-center gap-2"
+            style={{ minHeight: 44 }}
+          >
+            {isLocking
+              ? <Loader2 className="w-4 h-4 animate-spin" />
+              : <Check className="w-4 h-4" />}
+            Confirm & Lock
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+
+  const addParticipantModalContent = isAddModalOpen && (
+    <div className="fixed inset-0 z-[150] flex flex-col justify-end animate-in fade-in duration-200 bg-black/60 backdrop-blur-sm">
+      <div
+        className="absolute inset-0"
+        onClick={() => setIsAddModalOpen(false)}
+      />
+      <div
+        className="relative bg-surface border-t border-line-strong rounded-t-3xl p-5 shadow-2xl animate-in slide-in-from-bottom duration-200 max-h-[80vh] flex flex-col"
+        style={{ paddingBottom: 'calc(1.25rem + env(safe-area-inset-bottom, 0px))' }}
+      >
+        <div className="flex items-center justify-between mb-4 shrink-0">
+          <h3 className="font-bold text-lg text-fg">Add to Bill</h3>
+          <button
+            onClick={() => setIsAddModalOpen(false)}
+            className="p-2 bg-surface-2 rounded-full text-fg-muted hover:text-fg transition-colors"
+            style={{ minHeight: 44, minWidth: 44 }}
+            aria-label="Close"
+          >
+            <X className="w-4 h-4" />
+          </button>
+        </div>
+
+        <div className="flex-1 overflow-y-auto overscroll-contain pr-1 -mr-1">
+          <div className="mb-6 bg-surface-2 border border-line rounded-xl p-4">
+            <p className="text-xs font-bold text-fg-subtle uppercase tracking-wider mb-2">
+              Create Guest Profile
+            </p>
+            <div className="flex gap-2">
+              <input
+                type="text"
+                value={newGhostName}
+                onChange={(e) => setNewGhostName(e.target.value)}
+                placeholder="e.g. Ali"
+                className="flex-1 bg-surface border border-line-strong rounded-lg px-3 py-2 text-sm text-fg outline-none focus:border-brand"
+              />
+              <button
+                onClick={handleCreateGhost}
+                disabled={!newGhostName.trim() || isCreatingGhost}
+                className="bg-brand-solid text-white px-4 py-2 rounded-lg text-sm font-bold disabled:opacity-50 flex items-center gap-2"
+                style={{ minHeight: 44 }}
+              >
+                {isCreatingGhost
+                  ? <Loader2 className="w-4 h-4 animate-spin" />
+                  : <Plus className="w-4 h-4" />}
+                Add
+              </button>
+            </div>
+          </div>
+
+          <p className="text-xs font-bold text-fg-subtle uppercase tracking-wider mb-2">
+            Search Network & Contacts
+          </p>
+          <div className="relative mb-4">
+            <Search className="w-4 h-4 text-fg-subtle absolute left-3 top-3" />
+            <input
+              type="text"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder="Search by username or name..."
+              className="w-full bg-surface-2 border border-line-strong rounded-lg pl-9 pr-3 py-2.5 text-sm text-fg outline-none focus:border-brand"
+            />
+          </div>
+
+          {/* Friends — grouped list */}
+          {filteredFriends.length > 0 && (
+            <div className="bg-surface border border-line rounded-xl overflow-hidden divide-y divide-line mb-3">
+              {filteredFriends.map(friend => (
+                <button
+                  key={friend.id}
+                  onClick={() => addParticipantToBill(friend)}
+                  className="w-full flex items-center gap-3 px-4 py-3 hover:bg-surface-2 transition-colors text-left"
+                  style={{ minHeight: 44 }}
+                >
+                  <div className="w-8 h-8 bg-brand-soft text-brand rounded-full flex items-center justify-center shrink-0">
+                    <User className="w-4 h-4" />
+                  </div>
+                  <span className="text-sm font-bold text-fg">{friend.name}</span>
+                </button>
+              ))}
+            </div>
+          )}
+
+          {/* Ghost contacts — grouped list */}
+          {ghostContacts.length > 0 && (
+            <div className="mb-3">
+              <button
+                type="button"
+                onClick={() => setShowGhosts(s => !s)}
+                className="w-full flex items-center justify-between px-1 py-2.5 text-left hover:opacity-80 transition-opacity"
+                style={{ minHeight: 44 }}
+                aria-expanded={showGhosts}
+              >
+                <span className="text-xs font-bold text-fg-subtle uppercase tracking-wider flex items-center gap-2">
+                  <Users className="w-3.5 h-3.5 text-purple" />
+                  Guests ({ghostContacts.length})
+                </span>
+                {showGhosts
+                  ? <ChevronUp className="w-4 h-4 text-fg-muted" />
+                  : <ChevronDown className="w-4 h-4 text-fg-muted" />}
+              </button>
+
+              {showGhosts && (
+                <>
+                  {filteredGhosts.length > 0 ? (
+                    <div className="bg-surface border border-line rounded-xl overflow-hidden divide-y divide-line">
+                      {filteredGhosts.map(ghost => (
+                        <button
+                          key={ghost.id}
+                          onClick={() => addParticipantToBill(ghost)}
+                          className="w-full flex items-center gap-3 px-4 py-3 hover:bg-surface-2 transition-colors text-left"
+                          style={{ minHeight: 44 }}
+                        >
+                          <div className="w-8 h-8 bg-purple-soft text-purple rounded-full flex items-center justify-center shrink-0">
+                            <Users className="w-4 h-4" />
+                          </div>
+                          <span className="text-sm font-bold text-fg">{ghost.name}</span>
+                        </button>
+                      ))}
+                    </div>
+                  ) : (
+                    <p className="text-xs text-fg-muted py-3 px-3">
+                      No guests match "{searchQuery.trim()}".
+                    </p>
+                  )}
+                </>
+              )}
+            </div>
+          )}
+
+          {/* Search results — grouped list */}
+          {searchQuery.trim().length >= 2 && (
+            <div className="mt-5">
+              <p className="text-xs font-bold text-fg-subtle uppercase tracking-wider mb-2">
+                Other users
+              </p>
+
+              {searchingProfiles && (
+                <p className="text-xs text-fg-muted py-3">Searching…</p>
+              )}
+
+              {!searchingProfiles && visibleSearchResults.length === 0 && (
+                <p className="text-xs text-fg-muted py-3">
+                  No users match "{searchQuery.trim()}". They need to sign up first,
+                  or you can create a guest profile above.
+                </p>
+              )}
+
+              {!searchingProfiles && visibleSearchResults.length > 0 && (
+                <div className="bg-surface border border-line rounded-xl overflow-hidden divide-y divide-line">
+                  {visibleSearchResults.map(person => {
+                    const displayName =
+                      person.first_name || person.username || 'Unknown'
+                    return (
+                      <button
+                        key={person.id}
+                        onClick={() =>
+                          addParticipantToBill({
+                            id: person.id,
+                            name: displayName,
+                            type: 'user'
+                          })
+                        }
+                        className="w-full flex items-center gap-3 px-4 py-3 hover:bg-surface-2 transition-colors text-left"
+                        style={{ minHeight: 44 }}
+                      >
+                        <div className="w-8 h-8 bg-brand-soft text-brand rounded-full flex items-center justify-center shrink-0">
+                          <User className="w-4 h-4" />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-bold text-fg truncate">
+                            {displayName}
+                          </p>
+                          {person.username && (
+                            <p className="text-[11px] text-fg-subtle truncate">
+                              @{person.username}
+                            </p>
+                          )}
+                        </div>
+                      </button>
+                    )
+                  })}
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  )
+
   return (
     <div className="max-w-2xl mx-auto animate-enter pb-24 space-y-4">
       <input
@@ -814,7 +1133,6 @@ export function SplitBillPage({
 
               {appState === 'claiming' && receiptData && (
                 <>
-                  {/* Sticky summary — solid, no blur */}
                   <section className="bg-surface border border-line rounded-2xl p-5 shadow-sm sticky top-4 z-30">
                     <div className="flex items-center justify-between mb-3">
                       <h2 className="font-bold text-lg text-fg truncate pr-4">
@@ -857,7 +1175,6 @@ export function SplitBillPage({
                     </button>
                   </section>
 
-                  {/* Participant pills */}
                   <section className="flex items-center gap-2 overflow-x-auto scrollbar-hide py-1">
                     {sessionParticipants.map(person => (
                       <button
@@ -887,7 +1204,6 @@ export function SplitBillPage({
                     </button>
                   </section>
 
-                  {/* Items list */}
                   <section className="bg-surface border border-line rounded-2xl overflow-hidden">
                     <div className="divide-y divide-line">
                       {receiptData.items.map((item, index) => {
@@ -947,7 +1263,6 @@ export function SplitBillPage({
             </>
           )}
 
-          {/* ===================== DEBTS TAB ===================== */}
           {activeTab === 'debts' && (
             <DebtHub
               user={user}
@@ -958,318 +1273,9 @@ export function SplitBillPage({
         </>
       )}
 
-      {/* ===================== REVIEW & LOCK MODAL ===================== */}
-      {showReviewModal && ledgerPreview && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-          <div
-            className="absolute inset-0 bg-black/60 backdrop-blur-sm"
-            onClick={() => !isLocking && setShowReviewModal(false)}
-          />
-          <div className="relative bg-surface border border-line rounded-3xl shadow-2xl w-full max-w-sm overflow-hidden animate-in zoom-in-95 duration-200 max-h-[92vh] flex flex-col">
-            <div className="p-5 border-b border-line shrink-0">
-              <h3 className="font-bold text-lg text-fg mb-1">Confirm Final Split</h3>
-              <p className="text-xs text-fg-muted">
-                Taxes and service charges have been distributed proportionally.
-              </p>
-            </div>
-
-            <div className="flex-1 overflow-y-auto p-5 space-y-4">
-              {/* Per-person shares — grouped list */}
-              <div className="bg-surface border border-line rounded-xl overflow-hidden divide-y divide-line">
-                {ledgerPreview.map(person => (
-                  <div
-                    key={person.id}
-                    className={`p-4 ${person.id === user.id ? 'bg-brand-soft' : ''}`}
-                  >
-                    <div className="flex justify-between items-center mb-2">
-                      <span className={`font-bold text-sm ${
-                        person.id === user.id ? 'text-brand' : 'text-fg'
-                      }`}>
-                        {person.name} {person.id === user.id && '(Host)'}
-                      </span>
-                      <span className="font-black text-sm text-fg tabular-figures">
-                        RM {person.final_owed.toFixed(2)}
-                      </span>
-                    </div>
-                    <div className="flex justify-between text-xs text-fg-muted tabular-figures">
-                      <span>Items claimed:</span>
-                      <span>RM {person.items_total.toFixed(2)}</span>
-                    </div>
-                    <div className="flex justify-between text-xs text-fg-muted mt-1 tabular-figures">
-                      <span>Proportional tax:</span>
-                      <span>RM {person.tax_share.toFixed(2)}</span>
-                    </div>
-                  </div>
-                ))}
-              </div>
-
-              {/* Ledger logging */}
-              <div className="bg-surface-2/50 border border-line rounded-xl p-4 space-y-3">
-                <label className="flex items-start gap-3 cursor-pointer">
-                  <input
-                    type="checkbox"
-                    checked={logToLedger}
-                    onChange={(e) => setLogToLedger(e.target.checked)}
-                    disabled={isLocking}
-                    className="mt-0.5 w-4 h-4 rounded border-line-strong text-brand focus:ring-brand"
-                  />
-                  <div className="min-w-0 flex-1">
-                    <p className="text-sm font-bold text-fg tabular-figures">
-                      Log RM {(
-                        ledgerPreview.find(p => p.id === user.id)?.final_owed || 0
-                      ).toFixed(2)} to my ledger
-                    </p>
-                    <p className="text-[11px] text-fg-muted mt-0.5 leading-relaxed">
-                      Records only your share. What friends owe you stays in your Debts tab.
-                    </p>
-                  </div>
-                </label>
-
-                {logToLedger && (
-                  <div className="pl-7">
-                    <label
-                      htmlFor="log-account"
-                      className="block text-[10px] font-bold text-fg-subtle uppercase tracking-wider mb-1.5"
-                    >
-                      Paid from
-                    </label>
-                    <div className="relative">
-                      <Wallet className="w-4 h-4 text-fg-subtle absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
-                      <select
-                        id="log-account"
-                        value={logAccountId}
-                        onChange={(e) => setLogAccountId(e.target.value)}
-                        disabled={isLocking}
-                        className="w-full bg-surface border border-line rounded-lg py-2.5 pl-9 pr-3 text-sm text-fg outline-none focus:border-brand transition-colors appearance-none disabled:opacity-50"
-                      >
-                        {accounts.length === 0 && (
-                          <option value="">No accounts available</option>
-                        )}
-                        {accounts.map(a => (
-                          <option key={a.id} value={a.id}>
-                            {a.account_name}
-                          </option>
-                        ))}
-                      </select>
-                    </div>
-                  </div>
-                )}
-              </div>
-            </div>
-
-            <div className="p-5 border-t border-line bg-surface-2/50 flex gap-3 shrink-0">
-              <button
-                onClick={() => setShowReviewModal(false)}
-                disabled={isLocking}
-                className="flex-1 bg-surface border border-line hover:bg-surface-3 text-fg py-2.5 rounded-xl text-sm font-bold transition-colors disabled:opacity-50"
-                style={{ minHeight: 44 }}
-              >
-                Cancel
-              </button>
-              <button
-                onClick={handleLockSession}
-                disabled={isLocking}
-                className="flex-1 bg-brand-solid hover:bg-brand-solid-hover text-white py-2.5 rounded-xl text-sm font-bold transition-colors disabled:opacity-50 flex justify-center items-center gap-2"
-                style={{ minHeight: 44 }}
-              >
-                {isLocking
-                  ? <Loader2 className="w-4 h-4 animate-spin" />
-                  : <Check className="w-4 h-4" />}
-                Confirm & Lock
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* ===================== ADD PARTICIPANT MODAL ===================== */}
-      {isAddModalOpen && (
-        <div className="fixed inset-0 z-50 flex flex-col justify-end">
-          <div
-            className="absolute inset-0 bg-black/40 backdrop-blur-sm"
-            onClick={() => setIsAddModalOpen(false)}
-          />
-          <div
-            className="relative bg-surface rounded-t-3xl p-5 shadow-2xl animate-in slide-in-from-bottom max-h-[80vh] overflow-y-auto"
-            style={{ paddingBottom: 'calc(1.25rem + env(safe-area-inset-bottom, 0px))' }}
-          >
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="font-bold text-lg text-fg">Add to Bill</h3>
-              <button
-                onClick={() => setIsAddModalOpen(false)}
-                className="p-2 bg-surface-2 rounded-full text-fg-muted hover:text-fg"
-                style={{ minHeight: 44, minWidth: 44 }}
-                aria-label="Close"
-              >
-                <X className="w-4 h-4" />
-              </button>
-            </div>
-
-            <div className="mb-6 bg-surface-2 p-4 rounded-xl border border-line">
-              <p className="text-xs font-bold text-fg-subtle uppercase tracking-wider mb-2">
-                Create Guest Profile
-              </p>
-              <div className="flex gap-2">
-                <input
-                  type="text"
-                  value={newGhostName}
-                  onChange={(e) => setNewGhostName(e.target.value)}
-                  placeholder="e.g. Ali"
-                  className="flex-1 bg-surface border border-line rounded-lg px-3 py-2 text-sm text-fg outline-none focus:border-brand"
-                />
-                <button
-                  onClick={handleCreateGhost}
-                  disabled={!newGhostName.trim() || isCreatingGhost}
-                  className="bg-brand-solid text-white px-4 py-2 rounded-lg text-sm font-bold disabled:opacity-50 flex items-center gap-2"
-                  style={{ minHeight: 44 }}
-                >
-                  {isCreatingGhost
-                    ? <Loader2 className="w-4 h-4 animate-spin" />
-                    : <Plus className="w-4 h-4" />}
-                  Add
-                </button>
-              </div>
-            </div>
-
-            <p className="text-xs font-bold text-fg-subtle uppercase tracking-wider mb-2">
-              Search Network & Contacts
-            </p>
-            <div className="relative mb-4">
-              <Search className="w-4 h-4 text-fg-subtle absolute left-3 top-3" />
-              <input
-                type="text"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder="Search by username or name..."
-                className="w-full bg-surface-2 border border-line rounded-lg pl-9 pr-3 py-2.5 text-sm text-fg outline-none focus:border-brand"
-              />
-            </div>
-
-            {/* Friends — grouped list */}
-            {filteredFriends.length > 0 && (
-              <div className="bg-surface border border-line rounded-xl overflow-hidden divide-y divide-line mb-3">
-                {filteredFriends.map(friend => (
-                  <button
-                    key={friend.id}
-                    onClick={() => addParticipantToBill(friend)}
-                    className="w-full flex items-center gap-3 px-4 py-3 hover:bg-surface-2 transition-colors text-left"
-                    style={{ minHeight: 44 }}
-                  >
-                    <div className="w-8 h-8 bg-brand-soft text-brand rounded-full flex items-center justify-center shrink-0">
-                      <User className="w-4 h-4" />
-                    </div>
-                    <span className="text-sm font-bold text-fg">{friend.name}</span>
-                  </button>
-                ))}
-              </div>
-            )}
-
-            {/* Ghost contacts — grouped list */}
-            {ghostContacts.length > 0 && (
-              <div className="mb-3">
-                <button
-                  type="button"
-                  onClick={() => setShowGhosts(s => !s)}
-                  className="w-full flex items-center justify-between px-1 py-2.5 text-left hover:opacity-80 transition-opacity"
-                  style={{ minHeight: 44 }}
-                  aria-expanded={showGhosts}
-                >
-                  <span className="text-xs font-bold text-fg-subtle uppercase tracking-wider flex items-center gap-2">
-                    <Users className="w-3.5 h-3.5 text-purple" />
-                    Guests ({ghostContacts.length})
-                  </span>
-                  {showGhosts
-                    ? <ChevronUp className="w-4 h-4 text-fg-muted" />
-                    : <ChevronDown className="w-4 h-4 text-fg-muted" />}
-                </button>
-
-                {showGhosts && (
-                  <>
-                    {filteredGhosts.length > 0 ? (
-                      <div className="bg-surface border border-line rounded-xl overflow-hidden divide-y divide-line">
-                        {filteredGhosts.map(ghost => (
-                          <button
-                            key={ghost.id}
-                            onClick={() => addParticipantToBill(ghost)}
-                            className="w-full flex items-center gap-3 px-4 py-3 hover:bg-surface-2 transition-colors text-left"
-                            style={{ minHeight: 44 }}
-                          >
-                            <div className="w-8 h-8 bg-purple-soft text-purple rounded-full flex items-center justify-center shrink-0">
-                              <Users className="w-4 h-4" />
-                            </div>
-                            <span className="text-sm font-bold text-fg">{ghost.name}</span>
-                          </button>
-                        ))}
-                      </div>
-                    ) : (
-                      <p className="text-xs text-fg-muted py-3 px-3">
-                        No guests match "{searchQuery.trim()}".
-                      </p>
-                    )}
-                  </>
-                )}
-              </div>
-            )}
-
-            {/* Search results — grouped list */}
-            {searchQuery.trim().length >= 2 && (
-              <div className="mt-5">
-                <p className="text-xs font-bold text-fg-subtle uppercase tracking-wider mb-2">
-                  Other users
-                </p>
-
-                {searchingProfiles && (
-                  <p className="text-xs text-fg-muted py-3">Searching…</p>
-                )}
-
-                {!searchingProfiles && visibleSearchResults.length === 0 && (
-                  <p className="text-xs text-fg-muted py-3">
-                    No users match "{searchQuery.trim()}". They need to sign up first,
-                    or you can create a guest profile above.
-                  </p>
-                )}
-
-                {!searchingProfiles && visibleSearchResults.length > 0 && (
-                  <div className="bg-surface border border-line rounded-xl overflow-hidden divide-y divide-line">
-                    {visibleSearchResults.map(person => {
-                      const displayName =
-                        person.first_name || person.username || 'Unknown'
-                      return (
-                        <button
-                          key={person.id}
-                          onClick={() =>
-                            addParticipantToBill({
-                              id: person.id,
-                              name: displayName,
-                              type: 'user'
-                            })
-                          }
-                          className="w-full flex items-center gap-3 px-4 py-3 hover:bg-surface-2 transition-colors text-left"
-                          style={{ minHeight: 44 }}
-                        >
-                          <div className="w-8 h-8 bg-brand-soft text-brand rounded-full flex items-center justify-center shrink-0">
-                            <User className="w-4 h-4" />
-                          </div>
-                          <div className="flex-1 min-w-0">
-                            <p className="text-sm font-bold text-fg truncate">
-                              {displayName}
-                            </p>
-                            {person.username && (
-                              <p className="text-[11px] text-fg-subtle truncate">
-                                @{person.username}
-                              </p>
-                            )}
-                          </div>
-                        </button>
-                      )
-                    })}
-                  </div>
-                )}
-              </div>
-            )}
-          </div>
-        </div>
-      )}
+      {/* PORTAL WRAPPERS TO FIX LAYOUT BUG */}
+      {typeof document !== 'undefined' && createPortal(reviewModalContent, document.body)}
+      {typeof document !== 'undefined' && createPortal(addParticipantModalContent, document.body)}
     </div>
   )
 }

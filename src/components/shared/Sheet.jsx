@@ -1,8 +1,9 @@
 // src/components/shared/Sheet.jsx
 import { useEffect, useRef, useState, useCallback } from 'react'
+import { createPortal } from 'react-dom' // <-- Added this import
 import { X } from 'lucide-react'
 import { useBodyScrollLock } from '../../hooks/useBodyScrollLock'
-import { ConfirmSheet } from './ConfirmSheet' // <-- Added import
+import { ConfirmSheet } from './ConfirmSheet'
 
 const FOCUSABLE =
   'a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])'
@@ -29,8 +30,6 @@ export const Sheet = ({
   const [entered, setEntered] = useState(false)
   const [hasMoreBelow, setHasMoreBelow] = useState(false)
   const [keyboardOpen, setKeyboardOpen] = useState(false)
-  
-  // NEW: State for the discard confirmation
   const [showDiscardConfirm, setShowDiscardConfirm] = useState(false)
 
   const [dragY, setDragY] = useState(0)
@@ -39,7 +38,6 @@ export const Sheet = ({
   const dragStartTimeRef = useRef(null)
   const suppressClickRef = useRef(false)
 
-  // Layer 1 + 2: freeze html and body.
   useBodyScrollLock(true)
 
   useEffect(() => {
@@ -204,7 +202,7 @@ export const Sheet = ({
       }
     : undefined
 
-  return (
+  const content = (
     <>
       <div
         className="fixed inset-0 z-[130] flex items-end md:items-center justify-center bg-black/50 backdrop-blur-sm p-0 md:p-4 animate-in fade-in duration-200"
@@ -269,7 +267,6 @@ export const Sheet = ({
         </div>
       </div>
 
-      {/* NEW: Custom Discard Confirmation Modal */}
       {showDiscardConfirm && (
         <ConfirmSheet
           destructive
@@ -286,4 +283,7 @@ export const Sheet = ({
       )}
     </>
   )
+
+  if (typeof document === 'undefined') return content
+  return createPortal(content, document.body)
 }
