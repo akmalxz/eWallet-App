@@ -1,5 +1,6 @@
 // src/components/modals/AccountEditorModal.jsx
 import { useState, useEffect, useRef } from 'react'
+import { createPortal } from 'react-dom'
 import {
   X, Save, RotateCcw, Sparkles, AlertCircle
 } from 'lucide-react'
@@ -8,6 +9,7 @@ import { AccountCard } from '../shared/AccountCard'
 import { ColorPicker } from '../shared/ColorPicker'
 import { PatternPicker } from '../shared/PatternPicker'
 import { IconPicker } from '../shared/IconPicker'
+import { ConfirmSheet } from '../shared/ConfirmSheet'
 import { COLOR_THEMES, PATTERNS, ICONS } from '../../utils/theme/themeRegistry'
 import { useBodyScrollLock } from '../../hooks/useBodyScrollLock'
 
@@ -45,10 +47,8 @@ export const AccountEditorModal = ({
 }) => {
   const isNew = !account
   const nameInputRef = useRef(null)
+  const [showDiscardConfirm, setShowDiscardConfirm] = useState(false)
 
-  // Freeze the page behind the modal. Nested locks (this modal opened
-  // from BankAccountsModal, which is itself inside a Sheet) are handled
-  // by the counter in the hook.
   useBodyScrollLock(true)
 
   const initial = isNew ? buildDefaults(classifications) : fromAccount(account)
@@ -68,7 +68,7 @@ export const AccountEditorModal = ({
     const onKey = (e) => {
       if (e.key !== 'Escape' || saving) return
       if (hasChanges) {
-        if (window.confirm('Discard unsaved changes?')) onClose()
+        setShowDiscardConfirm(true)
       } else {
         onClose()
       }
@@ -201,206 +201,220 @@ export const AccountEditorModal = ({
   const previewLetter =
     (draft.account_name.trim().charAt(0) || 'A').toUpperCase()
 
-  return (
-    <div
-      className="fixed inset-0 z-[120] flex items-end md:items-center justify-center bg-black/60 backdrop-blur-md animate-in fade-in duration-200"
-      onClick={() => !saving && onClose()}
-      style={{ touchAction: 'none' }}
-    >
+  const content = (
+    <>
       <div
-        className="w-full md:max-w-lg bg-surface rounded-t-3xl md:rounded-3xl shadow-2xl overflow-hidden flex flex-col max-h-[92vh] md:max-h-[85vh] animate-in slide-in-from-bottom-4 md:zoom-in-95 duration-300"
-        onClick={e => e.stopPropagation()}
+        className="fixed inset-0 z-[120] flex items-center justify-center bg-black/60 backdrop-blur-md animate-in fade-in duration-200 p-4"
+        onClick={() => !saving && onClose()}
+        style={{ touchAction: 'none' }}
       >
-        <div className="flex items-center justify-between px-5 py-4 border-b border-line shrink-0">
-          <h2 className="text-base font-bold text-fg">
-            {isNew ? 'New account' : 'Edit account'}
-          </h2>
-          <button
-            onClick={onClose}
-            disabled={saving}
-            className="inline-flex h-11 w-11 items-center justify-center rounded-full text-fg-subtle hover:text-fg hover:bg-surface-2 transition-colors disabled:opacity-50"
-            aria-label="Close editor"
-          >
-            <X className="h-4 w-4" />
-          </button>
-        </div>
-
-        <div className="px-5 py-4 bg-surface-2/70 border-b border-line shrink-0">
-          <div className="max-w-[240px] mx-auto">
-            <AccountCard
-              account={previewAccount}
-              size="full"
-              showBalance
-              classificationLabel={previewClassLabel}
-            />
-          </div>
-        </div>
-
-        <div className="flex-1 overflow-y-auto overscroll-contain px-5 py-5 space-y-6">
-
-          <section>
-            <div className="flex items-center justify-between mb-2">
-              <label
-                htmlFor="editor-name"
-                className="block text-[11px] font-bold text-fg-subtle uppercase tracking-wider"
-              >
-                Name
-              </label>
-              <span
-                className={`text-[10px] font-medium ${
-                  draft.account_name.length > NAME_MAX ? 'text-danger' : 'text-fg-subtle'
-                }`}
-              >
-                {draft.account_name.length}/{NAME_MAX}
-              </span>
-            </div>
-            <input
-              id="editor-name"
-              ref={nameInputRef}
-              type="text"
-              value={draft.account_name}
-              onChange={e => update('account_name', e.target.value)}
-              maxLength={NAME_MAX + 5}
-              placeholder="e.g. Maybank"
-              className={`w-full bg-surface border ${
-                error ? 'border-danger-border' : 'border-line'
-              } rounded-xl py-3 px-3 text-sm text-fg placeholder:text-fg-subtle outline-none focus:border-brand transition-colors`}
-            />
-            {error && (
-              <p className="mt-1.5 text-[11px] text-danger font-medium flex items-center gap-1">
-                <AlertCircle className="w-3 h-3" />
-                {error}
-              </p>
-            )}
-          </section>
-
-          <section>
-            <label
-              htmlFor="editor-class"
-              className="block text-[11px] font-bold text-fg-subtle uppercase tracking-wider mb-2"
-            >
-              Type
-            </label>
-            <select
-              id="editor-class"
-              value={draft.classification}
-              onChange={e => update('classification', e.target.value)}
-              className="w-full bg-surface border border-line rounded-xl py-3 px-3 text-sm text-fg outline-none focus:border-brand transition-colors"
-            >
-              {classifications.map(c => (
-                <option key={c.id} value={c.key_name}>{c.label}</option>
-              ))}
-            </select>
-          </section>
-
-          <section>
-            <label
-              htmlFor="editor-balance"
-              className="block text-[11px] font-bold text-fg-subtle uppercase tracking-wider mb-2"
-            >
-              {isNew ? 'Current balance (RM)' : 'Opening balance (RM)'}
-            </label>
-            <input
-              id="editor-balance"
-              type="number"
-              step="0.01"
-              inputMode="decimal"
-              value={draft.starting_balance}
-              onChange={e => update('starting_balance', e.target.value)}
-              placeholder="0.00"
-              className="w-full bg-surface border border-line rounded-xl py-3 px-3 text-sm text-fg placeholder:text-fg-subtle outline-none focus:border-brand transition-colors"
-            />
-            <p className="mt-1.5 text-[11px] text-fg-subtle leading-relaxed">
-              {isNew
-                ? "How much is in this account right now? Leave blank if it starts at zero."
-                : "The balance when you started tracking. Adjusting this shifts your current balance by the same amount."}
-            </p>
-          </section>
-
-          <section>
-            <div className="flex items-center justify-between mb-2">
-              <label className="block text-[11px] font-bold text-fg-subtle uppercase tracking-wider">
-                Color
-              </label>
-              <button
-                type="button"
-                onClick={handleSurprise}
-                className="inline-flex items-center gap-1 text-[11px] font-bold text-fg-muted hover:text-fg transition-colors px-2 py-1 rounded-lg hover:bg-surface-2"
-              >
-                <Sparkles className="w-3 h-3" />
-                Surprise me
-              </button>
-            </div>
-            <ColorPicker
-              value={draft.color_theme}
-              onChange={(key) => update('color_theme', key)}
-            />
-          </section>
-
-          <section>
-            <label className="block text-[11px] font-bold text-fg-subtle uppercase tracking-wider mb-2">
-              Pattern
-            </label>
-            <PatternPicker
-              value={draft.pattern}
-              colorThemeKey={draft.color_theme}
-              onChange={(key) => update('pattern', key)}
-            />
-          </section>
-
-          <section>
-            <label className="block text-[11px] font-bold text-fg-subtle uppercase tracking-wider mb-2">
-              Icon
-            </label>
-            <IconPicker
-              value={draft.icon}
-              colorThemeKey={draft.color_theme}
-              previewLetter={previewLetter}
-              onChange={(key) => update('icon', key)}
-            />
-          </section>
-
-        </div>
-
         <div
-          className="px-5 pt-4 border-t border-line bg-surface shrink-0 space-y-2"
-          style={{ paddingBottom: 'max(1rem, env(safe-area-inset-bottom, 0px))' }}
+          className="w-full md:max-w-lg bg-surface border border-line-strong rounded-3xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh] animate-in zoom-in-95 duration-200"
+          onClick={e => e.stopPropagation()}
         >
-          <button
-            type="button"
-            onClick={handleReset}
-            disabled={saving || !hasChanges}
-            className="w-full flex items-center justify-center gap-1.5 py-2.5 rounded-xl text-xs font-semibold text-fg-muted hover:text-fg hover:bg-surface-2 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
-            style={{ minHeight: 44 }}
-          >
-            <RotateCcw className="w-3.5 h-3.5" />
-            Reset to default
-          </button>
-
-          <div className="flex gap-2">
+          <div className="flex items-center justify-between px-5 py-4 border-b border-line shrink-0">
+            <h2 className="text-base font-bold text-fg">
+              {isNew ? 'New account' : 'Edit account'}
+            </h2>
             <button
-              type="button"
               onClick={onClose}
               disabled={saving}
-              className="flex-1 py-3 rounded-xl text-sm font-semibold text-fg-muted bg-surface-2 hover:bg-surface-3 transition-colors disabled:opacity-50"
-              style={{ minHeight: 44 }}
+              className="inline-flex h-11 w-11 items-center justify-center rounded-full text-fg-subtle hover:text-fg hover:bg-surface-2 transition-colors disabled:opacity-50"
+              aria-label="Close editor"
             >
-              Cancel
-            </button>
-            <button
-              type="button"
-              onClick={handleSave}
-              disabled={saving}
-              className="flex-1 py-3 rounded-xl text-sm font-bold text-white bg-brand-solid hover:bg-brand-solid-hover transition-colors flex items-center justify-center gap-1.5 disabled:opacity-50"
-              style={{ minHeight: 44 }}
-            >
-              <Save className="w-4 h-4" />
-              {saving ? 'Saving…' : isNew ? 'Create' : 'Save'}
+              <X className="h-4 w-4" />
             </button>
           </div>
-        </div>
 
+          <div className="px-5 py-4 bg-surface-2 border-b border-line shrink-0">
+            <div className="max-w-[240px] mx-auto">
+              <AccountCard
+                account={previewAccount}
+                size="full"
+                showBalance
+                classificationLabel={previewClassLabel}
+              />
+            </div>
+          </div>
+
+          <div className="flex-1 overflow-y-auto overscroll-contain px-5 py-5 space-y-6">
+
+            <section>
+              <div className="flex items-center justify-between mb-2">
+                <label
+                  htmlFor="editor-name"
+                  className="block text-[11px] font-bold text-fg-subtle uppercase tracking-wider"
+                >
+                  Name
+                </label>
+                <span
+                  className={`text-[10px] font-medium ${
+                    draft.account_name.length > NAME_MAX ? 'text-danger' : 'text-fg-subtle'
+                  }`}
+                >
+                  {draft.account_name.length}/{NAME_MAX}
+                </span>
+              </div>
+              <input
+                id="editor-name"
+                ref={nameInputRef}
+                type="text"
+                value={draft.account_name}
+                onChange={e => update('account_name', e.target.value)}
+                maxLength={NAME_MAX + 5}
+                placeholder="e.g. Maybank"
+                className={`w-full bg-surface border ${
+                  error ? 'border-danger-border' : 'border-line-strong'
+                } rounded-xl py-3 px-3 text-sm text-fg placeholder:text-fg-subtle outline-none focus:border-brand transition-colors`}
+              />
+              {error && (
+                <p className="mt-1.5 text-[11px] text-danger font-medium flex items-center gap-1">
+                  <AlertCircle className="w-3 h-3" />
+                  {error}
+                </p>
+              )}
+            </section>
+
+            <section>
+              <label
+                htmlFor="editor-class"
+                className="block text-[11px] font-bold text-fg-subtle uppercase tracking-wider mb-2"
+              >
+                Type
+              </label>
+              <select
+                id="editor-class"
+                value={draft.classification}
+                onChange={e => update('classification', e.target.value)}
+                className="w-full bg-surface border border-line-strong rounded-xl py-3 px-3 text-sm text-fg outline-none focus:border-brand transition-colors"
+              >
+                {classifications.map(c => (
+                  <option key={c.id} value={c.key_name}>{c.label}</option>
+                ))}
+              </select>
+            </section>
+
+            <section>
+              <label
+                htmlFor="editor-balance"
+                className="block text-[11px] font-bold text-fg-subtle uppercase tracking-wider mb-2"
+              >
+                {isNew ? 'Current balance (RM)' : 'Opening balance (RM)'}
+              </label>
+              <input
+                id="editor-balance"
+                type="number"
+                step="0.01"
+                inputMode="decimal"
+                value={draft.starting_balance}
+                onChange={e => update('starting_balance', e.target.value)}
+                placeholder="0.00"
+                className="w-full bg-surface border border-line-strong rounded-xl py-3 px-3 text-sm text-fg placeholder:text-fg-subtle outline-none focus:border-brand transition-colors"
+              />
+            </section>
+
+            <section>
+              <div className="flex items-center justify-between mb-2">
+                <label className="block text-[11px] font-bold text-fg-subtle uppercase tracking-wider">
+                  Color
+                </label>
+                <button
+                  type="button"
+                  onClick={handleSurprise}
+                  className="inline-flex items-center gap-1 text-[11px] font-bold text-fg-muted hover:text-fg transition-colors px-2 py-1 rounded-lg hover:bg-surface-2"
+                >
+                  <Sparkles className="w-3 h-3" />
+                  Surprise me
+                </button>
+              </div>
+              <ColorPicker
+                value={draft.color_theme}
+                onChange={(key) => update('color_theme', key)}
+              />
+            </section>
+
+            <section>
+              <label className="block text-[11px] font-bold text-fg-subtle uppercase tracking-wider mb-2">
+                Pattern
+              </label>
+              <PatternPicker
+                value={draft.pattern}
+                colorThemeKey={draft.color_theme}
+                onChange={(key) => update('pattern', key)}
+              />
+            </section>
+
+            <section>
+              <label className="block text-[11px] font-bold text-fg-subtle uppercase tracking-wider mb-2">
+                Icon
+              </label>
+              <IconPicker
+                value={draft.icon}
+                colorThemeKey={draft.color_theme}
+                previewLetter={previewLetter}
+                onChange={(key) => update('icon', key)}
+              />
+            </section>
+
+          </div>
+
+          <div
+            className="px-5 pt-4 border-t border-line bg-surface shrink-0 space-y-2"
+            style={{ paddingBottom: 'max(1rem, env(safe-area-inset-bottom, 0px))' }}
+          >
+            <button
+              type="button"
+              onClick={handleReset}
+              disabled={saving || !hasChanges}
+              className="w-full flex items-center justify-center gap-1.5 py-2.5 rounded-xl text-xs font-semibold text-fg-muted hover:text-fg hover:bg-surface-2 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+              style={{ minHeight: 44 }}
+            >
+              <RotateCcw className="w-3.5 h-3.5" />
+              Reset to default
+            </button>
+
+            <div className="flex gap-2">
+              <button
+                type="button"
+                onClick={onClose}
+                disabled={saving}
+                className="flex-1 py-3 rounded-xl text-sm font-semibold text-fg-muted bg-surface-2 border border-line hover:bg-surface-3 transition-colors disabled:opacity-50"
+                style={{ minHeight: 44 }}
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={handleSave}
+                disabled={saving}
+                className="flex-1 py-3 rounded-xl text-sm font-bold text-white bg-brand-solid hover:bg-brand-solid-hover transition-colors flex items-center justify-center gap-1.5 disabled:opacity-50"
+                style={{ minHeight: 44 }}
+              >
+                <Save className="w-4 h-4" />
+                {saving ? 'Saving…' : isNew ? 'Create' : 'Save'}
+              </button>
+            </div>
+          </div>
+        </div>
       </div>
-    </div>
+
+      {showDiscardConfirm && (
+        <ConfirmSheet
+          destructive
+          title="Discard changes?"
+          message="You have unsaved changes. Are you sure you want to close this editor?"
+          confirmLabel="Discard"
+          cancelLabel="Keep Editing"
+          onConfirm={() => {
+            setShowDiscardConfirm(false)
+            onClose?.()
+          }}
+          onCancel={() => setShowDiscardConfirm(false)}
+        />
+      )}
+    </>
   )
+
+  if (typeof document === 'undefined') return content
+  return createPortal(content, document.body)
 }

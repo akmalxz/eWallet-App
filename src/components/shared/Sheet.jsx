@@ -2,6 +2,7 @@
 import { useEffect, useRef, useState, useCallback } from 'react'
 import { X } from 'lucide-react'
 import { useBodyScrollLock } from '../../hooks/useBodyScrollLock'
+import { ConfirmSheet } from './ConfirmSheet' // <-- Added import
 
 const FOCUSABLE =
   'a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])'
@@ -28,6 +29,9 @@ export const Sheet = ({
   const [entered, setEntered] = useState(false)
   const [hasMoreBelow, setHasMoreBelow] = useState(false)
   const [keyboardOpen, setKeyboardOpen] = useState(false)
+  
+  // NEW: State for the discard confirmation
+  const [showDiscardConfirm, setShowDiscardConfirm] = useState(false)
 
   const [dragY, setDragY] = useState(0)
   const [isDragging, setIsDragging] = useState(false)
@@ -73,6 +77,15 @@ export const Sheet = ({
     }
   }, [])
 
+  const attemptClose = useCallback(() => {
+    if (saving) return
+    if (hasUnsavedChanges) {
+      setShowDiscardConfirm(true)
+      return
+    }
+    onClose?.()
+  }, [saving, hasUnsavedChanges, onClose])
+
   useEffect(() => {
     const onKey = (e) => {
       if (e.key === 'Escape') {
@@ -99,16 +112,7 @@ export const Sheet = ({
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [saving, hasUnsavedChanges])
-
-  const attemptClose = () => {
-    if (saving) return
-    if (hasUnsavedChanges) {
-      if (!window.confirm('Discard unsaved changes?')) return
-    }
-    onClose?.()
-  }
+  }, [attemptClose])
 
   const handleOverlayClick = () => {
     if (suppressClickRef.current) return
@@ -201,67 +205,85 @@ export const Sheet = ({
     : undefined
 
   return (
-    <div
-      className="fixed inset-0 z-[130] flex items-end md:items-center justify-center bg-black/50 backdrop-blur-sm p-0 md:p-4 animate-in fade-in duration-200"
-      onClick={handleOverlayClick}
-      style={{ touchAction: 'none' }}
-    >
+    <>
       <div
-        ref={containerRef}
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby={title ? titleId : undefined}
-        className={`relative w-full ${maxWidth} bg-surface rounded-t-3xl md:rounded-3xl shadow-2xl overflow-hidden flex flex-col max-h-[92vh] md:max-h-[85vh] ${enterClass}`}
-        onClick={(e) => e.stopPropagation()}
-        style={dragStyle}
+        className="fixed inset-0 z-[130] flex items-end md:items-center justify-center bg-black/50 backdrop-blur-sm p-0 md:p-4 animate-in fade-in duration-200"
+        onClick={handleOverlayClick}
+        style={{ touchAction: 'none' }}
       >
-        {dismissible && (
-          <div
-            className="md:hidden flex justify-center pt-3 pb-2 shrink-0 touch-none select-none"
-            onPointerDown={handleDragStart}
-            onPointerMove={handleDragMove}
-            onPointerUp={handleDragEnd}
-            onPointerCancel={handleDragCancel}
-            style={{ minHeight: 28, cursor: canDrag ? 'grab' : 'default' }}
-            aria-hidden="true"
-          >
-            <div className="w-10 h-1 rounded-full bg-line-strong" />
-          </div>
-        )}
-
-        {title && (
-          <div className="flex items-center justify-between px-5 py-4 border-b border-line shrink-0">
-            <h3 id={titleId} className="text-base font-bold text-fg">
-              {title}
-            </h3>
-            <button
-              type="button"
-              onClick={attemptClose}
-              disabled={saving}
-              className="inline-flex h-11 w-11 items-center justify-center rounded-full text-fg-subtle hover:text-fg hover:bg-surface-2 transition-colors disabled:opacity-50"
-              aria-label="Close"
-            >
-              <X className="h-4 w-4" />
-            </button>
-          </div>
-        )}
-
         <div
-          ref={scrollRef}
-          className={`flex-1 overflow-y-auto overscroll-contain px-5 py-5 space-y-4 ${bodyClassName}`}
-          style={{ paddingBottom: 'calc(1.25rem + env(safe-area-inset-bottom, 0px))' }}
-          onScroll={checkScroll}
+          ref={containerRef}
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby={title ? titleId : undefined}
+          className={`relative w-full ${maxWidth} bg-surface rounded-t-3xl md:rounded-3xl shadow-2xl overflow-hidden flex flex-col max-h-[92vh] md:max-h-[85vh] border border-line-strong ${enterClass}`}
+          onClick={(e) => e.stopPropagation()}
+          style={dragStyle}
         >
-          {children}
-        </div>
+          {dismissible && (
+            <div
+              className="md:hidden flex justify-center pt-3 pb-2 shrink-0 touch-none select-none"
+              onPointerDown={handleDragStart}
+              onPointerMove={handleDragMove}
+              onPointerUp={handleDragEnd}
+              onPointerCancel={handleDragCancel}
+              style={{ minHeight: 28, cursor: canDrag ? 'grab' : 'default' }}
+              aria-hidden="true"
+            >
+              <div className="w-10 h-1 rounded-full bg-line-strong" />
+            </div>
+          )}
 
-        {hasMoreBelow && (
+          {title && (
+            <div className="flex items-center justify-between px-5 py-4 border-b border-line shrink-0">
+              <h3 id={titleId} className="text-base font-bold text-fg">
+                {title}
+              </h3>
+              <button
+                type="button"
+                onClick={attemptClose}
+                disabled={saving}
+                className="inline-flex h-11 w-11 items-center justify-center rounded-full text-fg-subtle hover:text-fg hover:bg-surface-2 transition-colors disabled:opacity-50"
+                aria-label="Close"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+          )}
+
           <div
-            className="pointer-events-none absolute left-0 right-0 bottom-0 h-10 bg-gradient-to-t from-surface via-surface/85 to-transparent"
-            aria-hidden="true"
-          />
-        )}
+            ref={scrollRef}
+            className={`flex-1 overflow-y-auto overscroll-contain px-5 py-5 space-y-4 ${bodyClassName}`}
+            style={{ paddingBottom: 'calc(1.25rem + env(safe-area-inset-bottom, 0px))' }}
+            onScroll={checkScroll}
+          >
+            {children}
+          </div>
+
+          {hasMoreBelow && (
+            <div
+              className="pointer-events-none absolute left-0 right-0 bottom-0 h-10 bg-gradient-to-t from-surface via-surface/85 to-transparent"
+              aria-hidden="true"
+            />
+          )}
+        </div>
       </div>
-    </div>
+
+      {/* NEW: Custom Discard Confirmation Modal */}
+      {showDiscardConfirm && (
+        <ConfirmSheet
+          destructive
+          title="Discard changes?"
+          message="You have unsaved changes. Are you sure you want to close this form? This action cannot be undone."
+          confirmLabel="Discard"
+          cancelLabel="Keep Editing"
+          onConfirm={() => {
+            setShowDiscardConfirm(false)
+            onClose?.()
+          }}
+          onCancel={() => setShowDiscardConfirm(false)}
+        />
+      )}
+    </>
   )
 }
