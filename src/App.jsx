@@ -5,7 +5,6 @@ import { AlertTriangle } from 'lucide-react'
 import { supabase, sessionExpired } from './lib/supabaseClient'
 import { trackEvent } from './lib/analytics'
 
-// Components
 import Auth from './components/Auth'
 import ResetPassword from './components/ResetPassword'
 import { ToastNotification } from './components/shared/Toast'
@@ -15,7 +14,6 @@ import { NavigationBar } from './components/layouts/NavigationBar'
 import { BurnRateHelpSheet } from './components/dashboard/BurnRateHelpSheet'
 import { ReceivablesBanner } from './components/dashboard/ReceivablesBanner'
 
-// Pages
 import { DashboardPage } from './pages/DashboardPage'
 import { LogItemPage } from './pages/LogItemPage'
 import { ProfilePage } from './pages/ProfilePage'
@@ -24,7 +22,6 @@ import { CommitmentsPage } from './pages/CommitmentsPage'
 import { NetworkPage } from './pages/NetworkPage'
 import { SplitBillPage } from './pages/SplitBillPage'
 
-// Hooks
 import { useAuth } from './hooks/useAuth'
 import { useTransactions } from './hooks/useTransactions'
 import { useCommitments } from './hooks/useCommitments'
@@ -35,7 +32,6 @@ import { useAccountActions } from './hooks/useAccountActions'
 import { useNotifications } from './hooks/useNotifications'
 import { useErrorMonitor } from './hooks/useErrorMonitor'
 
-// Utils
 import { CLASSIFICATIONS } from './utils/accounts/accountClassifications'
 
 const AnalyticsPage = lazy(() =>
@@ -43,14 +39,8 @@ const AnalyticsPage = lazy(() =>
 )
 
 export default function App() {
-  // ══════════════════════════════════════════════════════════
-  // AUTH
-  // ══════════════════════════════════════════════════════════
   const { user, profile, refreshProfile, isAuthenticated, isAuthLoading } = useAuth()
 
-  // ══════════════════════════════════════════════════════════
-  // STATE — declare ALL state before any effect that reads it
-  // ══════════════════════════════════════════════════════════
   const [isRecovery, setIsRecovery] = useState(false)
   const [toasts, setToasts] = useState([])
   const [currentView, setCurrentView] = useState('dashboard')
@@ -58,18 +48,12 @@ export default function App() {
   const [showBurnRateHelp, setShowBurnRateHelp] = useState(false)
   const [splitInitialTab, setSplitInitialTab] = useState('new')
 
-  // ══════════════════════════════════════════════════════════
-  // TOASTS
-  // ══════════════════════════════════════════════════════════
   const showToast = useCallback((message, type = 'info') => {
     const id = Date.now()
     setToasts((prev) => [...prev, { id, message, type }])
     setTimeout(() => setToasts((prev) => prev.filter((t) => t.id !== id)), 5000)
   }, [])
 
-  // ══════════════════════════════════════════════════════════
-  // AUTH STATE LISTENER (recovery + signin tracking)
-  // ══════════════════════════════════════════════════════════
   useEffect(() => {
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event) => {
       if (event === 'PASSWORD_RECOVERY') setIsRecovery(true)
@@ -78,30 +62,33 @@ export default function App() {
     return () => subscription.unsubscribe()
   }, [])
 
-  // ══════════════════════════════════════════════════════════
-  // DATA
-  // ══════════════════════════════════════════════════════════
   const {
     accounts, recentTransactions, setRecentTransactions,
     commitments, setCommitments,
     commitmentPayments, setCommitmentPayments,
-    monthlyExpenses,
-    pendingReceivables,
-    categories, isLoading, error, fetchAllData
+    monthlyExpenses, pendingReceivables,
+    categories, classifications, isLoading, error,
+    fetchInitialData,
+    fetchAccounts,
+    fetchCategories,
+    fetchRecentTransactions,
+    fetchCommitments,
+    fetchMonthlyData,
+    fetchReceivables
   } = useTransactions(user, showToast)
 
-  const commitmentsApi = useCommitments({
-    user,
-    commitments,
-    fetchAllData,
-    showToast
+  const commitmentsApi = useCommitments({ 
+    user, 
+    commitments, 
+    fetchCommitments, 
+    fetchRecentTransactions, 
+    fetchAccounts, 
+    fetchMonthlyData, 
+    showToast 
   })
 
   const notifications = useNotifications(user)
 
-  // ══════════════════════════════════════════════════════════
-  // ERROR MONITOR (admin only)
-  // ══════════════════════════════════════════════════════════
   useErrorMonitor(user, useCallback((err) => {
     showToast(
       `Error: ${(err.message || 'Unknown').slice(0, 80)}`,
@@ -109,11 +96,6 @@ export default function App() {
     )
   }, [showToast]))
 
-  // ══════════════════════════════════════════════════════════
-  // EFFECTS that read already-declared state
-  // ══════════════════════════════════════════════════════════
-
-  // Session expiry notification
   useEffect(() => {
     if (!isAuthenticated) return
     if (sessionExpired.consume()) {
@@ -121,29 +103,23 @@ export default function App() {
     }
   }, [isAuthenticated, showToast])
 
-  // Track view changes
   useEffect(() => {
     if (!isAuthenticated) return
     trackEvent('view_opened', { view: currentView })
   }, [currentView, isAuthenticated])
 
-  // Reset split tab when leaving split view
   useEffect(() => {
     if (currentView !== 'split') setSplitInitialTab('new')
   }, [currentView])
 
-  // Initial data load (once per session)
   const hasFetchedRef = useRef(false)
   useEffect(() => {
     if (isAuthenticated && user && !hasFetchedRef.current) {
       hasFetchedRef.current = true
-      fetchAllData()
+      fetchInitialData()
     }
-  }, [isAuthenticated, user, fetchAllData])
+  }, [isAuthenticated, user, fetchInitialData])
 
-  // ══════════════════════════════════════════════════════════
-  // COMPUTED
-  // ══════════════════════════════════════════════════════════
   const pendingReceivablesThisMonth = (pendingReceivables || [])
     .filter(r => r.isThisMonth)
     .reduce((s, r) => s + r.amount, 0)
@@ -152,16 +128,15 @@ export default function App() {
     .filter(r => r.isThisMonth)
     .length
 
-  // ══════════════════════════════════════════════════════════
-  // FEATURE HOOKS
-  // ══════════════════════════════════════════════════════════
   const ledgerApi = useLedgerMutations({
     user,
     showToast,
     setRecentTransactions,
     setCommitments,
     setCommitmentPayments,
-    fetchAllData
+    fetchRecentTransactions,
+    fetchAccounts,
+    fetchMonthlyData
   })
 
   const { mainCategories, getSubCategories } = useTransactionParser({
@@ -183,13 +158,10 @@ export default function App() {
     accounts,
     currentView,
     setCurrentView,
-    fetchAllData,
+    fetchAccounts,
     showToast
   })
 
-  // ══════════════════════════════════════════════════════════
-  // NAVIGATION HANDLERS
-  // ══════════════════════════════════════════════════════════
   const handleSeeTrends = useCallback((tab) => {
     const url = new URL(window.location.href)
     url.searchParams.set('at', tab || 'overview')
@@ -207,9 +179,6 @@ export default function App() {
     }
   }, [])
 
-  // ══════════════════════════════════════════════════════════
-  // RENDER — guard clauses
-  // ══════════════════════════════════════════════════════════
   if (isAuthLoading) return <LoadingSpinner message="Loading secure vault..." />
 
   if (isRecovery) {
@@ -244,7 +213,6 @@ export default function App() {
 
   return (
     <div className="app-shell min-h-dvh bg-page font-sans text-fg">
-      {/* Toast container */}
       <div
         className="fixed pt-5 z-[200] space-y-2 max-w-[calc(100vw-2rem)]"
         style={{
@@ -299,7 +267,6 @@ export default function App() {
             refreshProfile={refreshProfile}
             recentTransactions={recentTransactions}
             commitments={commitments}
-
             isLoading={isLoading}
             accounts={accountApi.sortedAccounts}
             activeAccounts={accountApi.activeAccounts}
@@ -326,7 +293,9 @@ export default function App() {
             accounts={accountApi.activeAccounts}
             mainCategories={mainCategories}
             getSubCategories={getSubCategories}
-            fetchAllData={fetchAllData}
+            fetchAccounts={fetchAccounts}
+            fetchRecentTransactions={fetchRecentTransactions}
+            fetchMonthlyData={fetchMonthlyData}
             showToast={showToast}
           />
         )}
@@ -337,7 +306,6 @@ export default function App() {
             accounts={accounts}
             mainCategories={mainCategories}
             getSubCategories={getSubCategories}
-            fetchAllData={fetchAllData}
             showToast={showToast}
             isLoading={isLoading}
             recentTransactions={recentTransactions}
@@ -405,7 +373,9 @@ export default function App() {
             getSubCategories={getSubCategories}
             classifications={CLASSIFICATIONS}
             commitments={commitments}
-            fetchAllData={fetchAllData}
+            fetchAccounts={fetchAccounts}
+            fetchCategories={fetchCategories}
+            fetchMonthlyData={fetchMonthlyData}
             showToast={showToast}
             selectedAccount={accountApi.selectedAccount}
             initialModal={accountApi.requestedModal}

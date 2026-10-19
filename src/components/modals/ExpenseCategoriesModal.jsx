@@ -9,7 +9,7 @@ export const ExpenseCategoriesModal = ({
   user,
   categories,
   closeModal,
-  fetchAllData,
+  fetchCategories,
   showToast
 }) => {
   const [newMainCategoryName, setNewMainCategoryName] = useState('')
@@ -56,7 +56,7 @@ export const ExpenseCategoriesModal = ({
       if (error) throw error
 
       showToast(`Imported ${categoriesToImport.length} new categories!`, 'success')
-      fetchAllData()
+      await fetchCategories()
     } catch (error) {
       showToast('Error importing categories: ' + error.message, 'error')
     } finally {
@@ -76,7 +76,7 @@ export const ExpenseCategoriesModal = ({
       if (error) throw error
       setNewMainCategoryName('')
       showToast('Category added!', 'success')
-      fetchAllData()
+      await fetchCategories()
     } catch (error) {
       showToast(error.message, 'error')
     } finally {
@@ -97,7 +97,7 @@ export const ExpenseCategoriesModal = ({
       setNewSubCategoryName('')
       setAddingSubToId(null)
       showToast('Subcategory added!', 'success')
-      fetchAllData()
+      await fetchCategories()
     } catch (error) {
       showToast(error.message, 'error')
     } finally {
@@ -118,7 +118,7 @@ export const ExpenseCategoriesModal = ({
       if (error) throw error
       showToast('Category deleted', 'success')
       setPendingDelete(null)
-      fetchAllData()
+      await fetchCategories()
     } catch (error) {
       showToast('Cannot delete category. It has transactions.', 'error')
     } finally {
@@ -142,7 +142,7 @@ export const ExpenseCategoriesModal = ({
         )
       }
       showToast('Category updated successfully', 'success')
-      await fetchAllData()
+      await fetchCategories()
     } catch (error) {
       showToast(error.message, 'error')
     } finally {
@@ -154,8 +154,8 @@ export const ExpenseCategoriesModal = ({
   return (
     <>
       <ModalWrapper title="Expense Setup" closeModal={closeModal}>
+        {/* ... [Keep the exact same JSX rendering as your original file] ... */}
         <div className="space-y-4">
-
           {expenseCategories.length === 0 && (
             <div className="text-center py-6 px-4 bg-surface-2/50 border border-dashed border-line-strong rounded-xl">
               <p className="text-sm font-bold text-fg">No categories yet</p>
@@ -221,7 +221,6 @@ export const ExpenseCategoriesModal = ({
             </form>
           )}
 
-          {/* Grouped category list */}
           {expenseCategories.length > 0 && (
             <div className="bg-surface border border-line rounded-2xl divide-y divide-line overflow-hidden">
               {expenseCategories.map((main) => (

@@ -7,7 +7,7 @@ export function useAccountActions({
   accounts,
   currentView,
   setCurrentView,
-  fetchAllData,
+  fetchAccounts, // <-- Changed
   showToast
 }) {
   const activeAccounts = useMemo(
@@ -27,14 +27,10 @@ export function useAccountActions({
   const [selectedAccount, setSelectedAccount] = useState(null)
   const [requestedModal, setRequestedModal] = useState(null)
 
-  // Clear the requested profile modal whenever we leave the profile view.
   useEffect(() => {
     if (currentView !== 'profile') setRequestedModal(null)
   }, [currentView])
 
-  // ------------------------------------------------------------------
-  // Routing helpers — move between views, sometimes pre-selecting a target
-  // ------------------------------------------------------------------
   const goToAddAccount = () => {
     setRequestedModal('banks')
     setCurrentView('profile')
@@ -51,9 +47,6 @@ export function useAccountActions({
     setCurrentView('profile')
   }
 
-  // ------------------------------------------------------------------
-  // Pin — only one account at a time
-  // ------------------------------------------------------------------
   const togglePin = async (account) => {
     try {
       if (!account.is_pinned) {
@@ -79,15 +72,12 @@ export function useAccountActions({
       }
 
       showToast(account.is_pinned ? 'Account unpinned' : 'Account pinned to top', 'success')
-      fetchAllData()
+      await fetchAccounts()
     } catch (err) {
       showToast('Error toggling pin: ' + err.message, 'error')
     }
   }
 
-  // ------------------------------------------------------------------
-  // Move — swap an account up/down in sort order
-  // ------------------------------------------------------------------
   const moveAccount = async (accountId, direction) => {
     if (!user) return
 
@@ -114,7 +104,7 @@ export function useAccountActions({
       )
       const failed = results.find((r) => r.error || !r.data || r.data.length === 0)
       if (failed) throw new Error('Reorder failed — no rows updated. Check RLS on accounts.')
-      fetchAllData()
+      await fetchAccounts()
     } catch (err) {
       showToast('Error reordering: ' + err.message, 'error')
     }

@@ -9,7 +9,7 @@ export const IncomeCategoriesModal = ({
   user,
   categories,
   closeModal,
-  fetchAllData,
+  fetchCategories,
   showToast
 }) => {
   const [newSubCategoryName, setNewSubCategoryName] = useState('')
@@ -37,7 +37,7 @@ export const IncomeCategoriesModal = ({
         .insert([{ user_id: user.id, name: nameToSave }])
       if (error) throw error
       showToast(`${nameToSave} category added!`, 'success')
-      fetchAllData()
+      await fetchCategories()
     } catch (error) {
       showToast(error.message, 'error')
     } finally {
@@ -58,7 +58,7 @@ export const IncomeCategoriesModal = ({
       setNewSubCategoryName('')
       setAddingSubToId(null)
       showToast('Subcategory added!', 'success')
-      fetchAllData()
+      await fetchCategories()
     } catch (error) {
       showToast(error.message, 'error')
     } finally {
@@ -81,7 +81,7 @@ export const IncomeCategoriesModal = ({
       if (error) throw error
       showToast('Category deleted', 'success')
       setPendingDelete(null)
-      fetchAllData()
+      await fetchCategories()
     } catch (error) {
       showToast('Cannot delete category. It has transactions.', 'error')
     } finally {
@@ -105,7 +105,7 @@ export const IncomeCategoriesModal = ({
         )
       }
       showToast('Category updated successfully', 'success')
-      await fetchAllData()
+      await fetchCategories()
     } catch (error) {
       showToast(error.message, 'error')
     } finally {
@@ -117,6 +117,7 @@ export const IncomeCategoriesModal = ({
   return (
     <>
       <ModalWrapper title="Income Setup" closeModal={closeModal}>
+        {/* ... [Keep the exact same JSX rendering as your original file] ... */}
         {!incomeCategory ? (
           <div className="text-center p-4">
             <p className="text-sm text-fg-muted mb-3">

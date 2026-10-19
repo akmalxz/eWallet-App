@@ -8,11 +8,11 @@ export function useLedgerMutations({
   setRecentTransactions,
   setCommitments,
   setCommitmentPayments,
-  fetchAllData
+  fetchRecentTransactions, // <-- Added
+  fetchAccounts,           // <-- Added
+  fetchMonthlyData         // <-- Added
 }) {
   const [isRefreshing, setIsRefreshing] = useState(false)
-  // Ref, not state — keeps refreshLedger's identity stable so the interval
-  // below doesn't restart on every refresh toggle.
   const busyRef = useRef(false)
 
   const refreshLedger = useCallback(async (showToastMessage = true) => {
@@ -20,6 +20,7 @@ export function useLedgerMutations({
     busyRef.current = true
     setIsRefreshing(true)
     try {
+      // We keep this local fetch because it's specifically refreshing the ledger view
       const [txResult, commResult, payResult] = await Promise.all([
         supabase
           .from('transactions')
@@ -48,8 +49,6 @@ export function useLedgerMutations({
     }
   }, [user, showToast, setRecentTransactions, setCommitments, setCommitmentPayments])
 
-  // Auto-refresh every 60s. Runs only when user or refreshLedger change,
-  // both of which are now rare.
   useEffect(() => {
     if (!user) return
     const id = setInterval(() => refreshLedger(false), 60000)
@@ -68,22 +67,31 @@ export function useLedgerMutations({
       const { error } = await supabase.from('transactions').update(updatePayload).eq('id', id)
       if (error) throw error
       showToast('Transaction approved successfully!', 'success')
-      fetchAllData()
+      
+      await Promise.all([
+        fetchRecentTransactions(),
+        fetchMonthlyData()
+      ])
     } catch (err) {
       showToast('Error approving transaction: ' + err.message, 'error')
     }
-  }, [showToast, fetchAllData])
+  }, [showToast, fetchRecentTransactions, fetchMonthlyData])
 
   const deleteTransaction = useCallback(async (id) => {
     try {
       const { error } = await supabase.from('transactions').delete().eq('id', id)
       if (error) throw error
       showToast('Transaction deleted successfully', 'success')
-      fetchAllData()
+      
+      await Promise.all([
+        fetchRecentTransactions(),
+        fetchAccounts(), // Deleting a transaction changes account balances
+        fetchMonthlyData()
+      ])
     } catch (err) {
       showToast('Error deleting transaction: ' + err.message, 'error')
     }
-  }, [showToast, fetchAllData])
+  }, [showToast, fetchRecentTransactions, fetchAccounts, fetchMonthlyData])
 
   const editTransaction = useCallback(async (id, updatedData) => {
     try {
@@ -108,11 +116,16 @@ export function useLedgerMutations({
       const { error } = await supabase.from('transactions').update(updatePayload).eq('id', id).select()
       if (error) throw error
       showToast('Transaction updated successfully!', 'success')
-      await fetchAllData()
+      
+      await Promise.all([
+        fetchRecentTransactions(),
+        fetchAccounts(),
+        fetchMonthlyData()
+      ])
     } catch (err) {
       showToast(`Error updating transaction: ${err.message || 'Unknown error'}`, 'error')
     }
-  }, [showToast, fetchAllData])
+  }, [showToast, fetchRecentTransactions, fetchAccounts, fetchMonthlyData])
 
   return {
     isRefreshing,

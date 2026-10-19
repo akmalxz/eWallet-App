@@ -21,9 +21,9 @@ const TYPE_ICON = {
 }
 
 const TYPE_COLOR = {
-  expense:  'text-fg-muted',
-  income:   'text-fg-muted',
-  transfer: 'text-fg-muted',
+  expense:  'text-muted',
+  income:   'text-muted',
+  transfer: 'text-muted',
 }
 
 const HEADER_LABEL = {
@@ -37,12 +37,14 @@ export function TransactionForm({
   accounts = [],
   mainCategories = [],
   getSubCategories,
-  fetchAllData,
+  fetchAccounts,            // <-- Added
+  fetchRecentTransactions,  // <-- Added
+  fetchMonthlyData,         // <-- Added
   showToast,
-  onSuccess,
-  onCancel,
+  onSuccess,                 
+  onCancel,                  
   submitLabel = 'Log Transaction',
-  initialAccountId,
+  initialAccountId,          
 }) {
   const [txType, setTxType] = useState('expense')
   const [amount, setAmount] = useState('')
@@ -57,22 +59,18 @@ export function TransactionForm({
   const amountRef = useRef(null)
   const descriptionRef = useRef(null)
 
-  // Autofocus amount on mount
   useEffect(() => {
     amountRef.current?.focus()
   }, [])
 
-  // Sync defaults when accounts change
   useEffect(() => {
     if (!accounts.length) return
     const defaultSource = initialAccountId || accounts[0].id
-    const defaultDest =
-      accounts.length > 1 ? accounts[1].id : accounts[0].id
+    const defaultDest = accounts.length > 1 ? accounts[1].id : accounts[0].id
     setSource(prev => prev || defaultSource)
     setDest(prev => prev || defaultDest)
   }, [accounts, initialAccountId])
 
-  // Reset category + errors when type changes
   useEffect(() => {
     setCategory('uncategorized')
     setErrors({})
@@ -142,18 +140,23 @@ export function TransactionForm({
 
       showToast('Transaction logged successfully!', 'success')
 
-      // Reset (keep date + type so logging several in a row is fast)
       setAmount('')
       setDescription('')
       setCategory('uncategorized')
       setErrors({})
       
-      // Scroll to top so the keyboard doesn't hide the reset form
       window.scrollTo({ top: 0, behavior: 'smooth' })
       amountRef.current?.focus()
 
       if (onSuccess) onSuccess(payload.description)
-      if (fetchAllData) fetchAllData()
+      
+      // Refresh only what's needed
+      await Promise.all([
+        fetchRecentTransactions(),
+        fetchAccounts(),
+        fetchMonthlyData()
+      ])
+      
     } catch (err) {
       showToast('Error saving transaction: ' + err.message, 'error')
     } finally {
@@ -214,7 +217,6 @@ export function TransactionForm({
 
   return (
     <div>
-      {/* Header: dynamic icon + label */}
       <div className="flex items-center gap-4 mb-5">
         <div className={`p-2.5 rounded-xl bg-surface-2 ${typeColor}`}>
           <TypeIcon className="w-5 h-5" />
@@ -222,7 +224,6 @@ export function TransactionForm({
         <span className="font-bold text-base text-fg">{HEADER_LABEL[txType]}</span>
       </div>
 
-      {/* Type selector */}
       <div className="mb-6">
         <SlidingSegmentedControl
           items={TX_TYPE_ITEMS}
@@ -232,8 +233,6 @@ export function TransactionForm({
       </div>
 
       <form onSubmit={handleSubmit} className="space-y-4">
-        
-        {/* Date + Amount + Category */}
         <div className={`grid gap-3 ${
           showCategory ? 'grid-cols-1 sm:grid-cols-3' : 'grid-cols-1 sm:grid-cols-2'
         }`}>
@@ -258,10 +257,7 @@ export function TransactionForm({
               Amount
             </label>
             <div className="relative">
-              <span
-                className="absolute left-3 top-1/2 -translate-y-1/2 text-fg-subtle text-sm font-medium pointer-events-none"
-                aria-hidden="true"
-              >
+              <span className="absolute left-3 top-1/2 -translate-y-1/2 text-fg-subtle text-sm font-medium pointer-events-none">
                 RM
               </span>
               <input
@@ -321,7 +317,6 @@ export function TransactionForm({
           )}
         </div>
 
-        {/* Description */}
         <div>
           <label htmlFor="tx-desc" className="block text-xs font-bold text-fg-subtle uppercase mb-1">
             Description
@@ -354,7 +349,6 @@ export function TransactionForm({
           )}
         </div>
 
-        {/* Account pickers */}
         {txType !== 'transfer' ? (
           <div>
             <label htmlFor="tx-source" className="block text-xs font-bold text-fg-subtle uppercase mb-1">
@@ -366,7 +360,7 @@ export function TransactionForm({
                 name="tx-source"
                 value={source}
                 onChange={(e) => setSource(e.target.value)}
-                className="w-full h-[46px] bg-surface border border-line-strong rounded-xl py-2 pl-3 pr-10 outline-none focus:border-brand focus:ring-2 focus:ring-brand/30 text-sm text-fg transition-all appearance-none"
+                className="w-full h-[46px] bg-surface border border-line-strong rounded-xl py-2 pl-3 pr-10 outline-none focus:border-brand focus:ring-2 focus:ring-brand/30 text-fg transition-all appearance-none"
               >
                 {accounts.map(a => (
                   <option key={a.id} value={a.id}>{a.account_name}</option>
@@ -390,7 +384,7 @@ export function TransactionForm({
                     errors.source
                       ? 'border-danger-border focus:border-danger'
                       : 'border-line-strong focus:border-brand'
-                  } rounded-xl py-2 pl-3 pr-10 text-sm text-fg outline-none focus:ring-2 focus:ring-brand/30 transition-all appearance-none`}
+                  } rounded-xl py-2 pl-3 pr-10 text-fg outline-none focus:ring-2 focus:ring-brand/30 transition-all appearance-none`}
                 >
                   {accounts.map(a => (
                     <option key={a.id} value={a.id}>{a.account_name}</option>
@@ -412,7 +406,7 @@ export function TransactionForm({
                     errors.dest
                       ? 'border-danger-border focus:border-danger'
                       : 'border-line-strong focus:border-brand'
-                  } rounded-xl py-2 pl-3 pr-10 text-sm text-fg outline-none focus:ring-2 focus:ring-brand/30 transition-all appearance-none`}
+                  } rounded-xl py-2 pl-3 pr-10 text-fg outline-none focus:ring-2 focus:ring-brand/30 transition-all appearance-none`}
                 >
                   {accounts.map(a => (
                     <option key={a.id} value={a.id}>{a.account_name}</option>
@@ -424,7 +418,6 @@ export function TransactionForm({
           </div>
         )}
 
-        {/* Submit row */}
         {onCancel ? (
           <div className="flex gap-3 pt-2">
             <button

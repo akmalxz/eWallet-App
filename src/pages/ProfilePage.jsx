@@ -6,7 +6,6 @@ import {
   ChevronRight, Zap, Info
 } from 'lucide-react'
 
-// Modals
 import { BankAccountsModal } from '../components/modals/BankAccountsModal'
 import { IncomeCategoriesModal } from '../components/modals/IncomeCategoriesModal'
 import { ExpenseCategoriesModal } from '../components/modals/ExpenseCategoriesModal'
@@ -16,15 +15,7 @@ import { AvatarPickerModal } from '../components/modals/AvatarPickerModal'
 import { AppFooter } from '../components/shared/AppFooter'
 import { Avatar } from '../components/shared/Avatar'
 
-
-const SetupButton = ({
-  id,
-  title,
-  icon: Icon,
-  activeModal,
-  openModal,
-  onPress
-}) => {
+const SetupButton = ({ id, title, icon: Icon, activeModal, openModal, onPress }) => {
   const isThisActive = activeModal === id
   const handleClick = () => {
     if (onPress) onPress()
@@ -64,7 +55,6 @@ const SetupButton = ({
   )
 }
 
-
 export function ProfilePage({
   user,
   profile,
@@ -75,10 +65,12 @@ export function ProfilePage({
   getSubCategories,
   classifications,
   commitments = [],
-  fetchAllData,
   showToast,
   initialModal = null,
-  onNavigate
+  onNavigate,
+  fetchAccounts,
+  fetchCategories,
+  fetchMonthlyData,
 }) {
   const [activeModal, setActiveModal] = useState(initialModal)
 
@@ -98,16 +90,13 @@ export function ProfilePage({
   return (
     <div className="max-w-xl mx-auto animate-enter pb-12">
 
-      {/* PROFILE HEADER — flat row with divider below */}
       <div className="flex items-center gap-4 pb-6 mb-6 border-b border-line">
-
         <Avatar
           profile={profile}
           size="lg"
           onClick={() => openModal('avatar')}
           showEditBadge
         />
-
         <div className="flex-1 min-w-0">
           <h2 className="text-lg font-bold text-fg truncate">
             {displayName}
@@ -116,7 +105,6 @@ export function ProfilePage({
             {user?.email}
           </p>
         </div>
-
         <button
           onClick={() => supabase.auth.signOut()}
           className="inline-flex h-11 w-11 items-center justify-center rounded-xl bg-danger-soft text-danger transition-colors hover:bg-danger/20 shrink-0"
@@ -124,82 +112,23 @@ export function ProfilePage({
         >
           <LogOut className="h-5 w-5" />
         </button>
-
       </div>
 
-      {/* SETTINGS — single grouped list */}
       <div className="bg-surface border border-line rounded-2xl divide-y divide-line overflow-hidden">
-
-        <SetupButton
-          id="personal_details"
-          title="Personal Information"
-          icon={Info}
-          activeModal={activeModal}
-          openModal={openModal}
-        />
-
-        <SetupButton
-          id="banks"
-          title="Bank Accounts"
-          icon={Building2}
-          activeModal={activeModal}
-          openModal={openModal}
-        />
-
-        <SetupButton
-          id="income"
-          title="Income Categories"
-          icon={TrendingUp}
-          activeModal={activeModal}
-          openModal={openModal}
-        />
-
-        <SetupButton
-          id="expense"
-          title="Expense Categories"
-          icon={TrendingDown}
-          activeModal={activeModal}
-          openModal={openModal}
-        />
-
-        <SetupButton
-          id="commitments"
-          title="Bills"
-          icon={Layers}
-          activeModal={activeModal}
-          openModal={openModal}
-          onPress={() => onNavigate?.('commitments')}
-        />
-
-        <SetupButton
-          id="api"
-          title="Automation & Shortcuts"
-          icon={Zap}
-          activeModal={activeModal}
-          openModal={handleOpenApiModal}
-        />
-
+        <SetupButton id="personal_details" title="Personal Information" icon={Info} activeModal={activeModal} openModal={openModal} />
+        <SetupButton id="banks" title="Bank Accounts" icon={Building2} activeModal={activeModal} openModal={openModal} />
+        <SetupButton id="income" title="Income Categories" icon={TrendingUp} activeModal={activeModal} openModal={openModal} />
+        <SetupButton id="expense" title="Expense Categories" icon={TrendingDown} activeModal={activeModal} openModal={openModal} />
+        <SetupButton id="commitments" title="Bills" icon={Layers} activeModal={activeModal} openModal={openModal} onPress={() => onNavigate?.('commitments')} />
+        <SetupButton id="api" title="Automation & Shortcuts" icon={Zap} activeModal={activeModal} openModal={handleOpenApiModal} />
       </div>
 
-      {/* MODALS */}
       {activeModal === 'avatar' && (
-        <AvatarPickerModal
-          user={user}
-          profile={profile}
-          closeModal={closeModal}
-          showToast={showToast}
-          refreshProfile={refreshProfile}
-        />
+        <AvatarPickerModal user={user} profile={profile} closeModal={closeModal} showToast={showToast} refreshProfile={refreshProfile} />
       )}
 
       {activeModal === 'personal_details' && (
-        <PersonalDetailsModal
-          user={user}
-          profile={profile}
-          closeModal={closeModal}
-          showToast={showToast}
-          refreshProfile={refreshProfile}
-        />
+        <PersonalDetailsModal user={user} profile={profile} closeModal={closeModal} showToast={showToast} refreshProfile={refreshProfile} />
       )}
 
       {activeModal === 'banks' && (
@@ -208,7 +137,8 @@ export function ProfilePage({
           accounts={accounts}
           classifications={classifications}
           closeModal={closeModal}
-          fetchAllData={fetchAllData}
+          fetchAccounts={fetchAccounts}
+          fetchMonthlyData={fetchMonthlyData}
           showToast={showToast}
         />
       )}
@@ -218,7 +148,7 @@ export function ProfilePage({
           user={user}
           categories={categories}
           closeModal={closeModal}
-          fetchAllData={fetchAllData}
+          fetchCategories={fetchCategories}
           showToast={showToast}
         />
       )}
@@ -228,21 +158,16 @@ export function ProfilePage({
           user={user}
           categories={categories}
           closeModal={closeModal}
-          fetchAllData={fetchAllData}
+          fetchCategories={fetchCategories}
           showToast={showToast}
         />
       )}
 
       {activeModal === 'api' && (
-        <AutomationModal
-          user={user}
-          closeModal={closeModal}
-          showToast={showToast}
-        />
+        <AutomationModal user={user} closeModal={closeModal} showToast={showToast} />
       )}
 
       <AppFooter user={user} showToast={showToast} />
-
     </div>
   )
 }

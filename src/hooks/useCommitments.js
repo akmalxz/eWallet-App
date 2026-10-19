@@ -2,7 +2,15 @@
 import { useState, useRef, useCallback } from 'react'
 import { supabase } from '../lib/supabaseClient'
 
-export const useCommitments = ({ user, commitments = [], fetchAllData, showToast }) => {
+export const useCommitments = ({ 
+  user, 
+  commitments = [], 
+  fetchCommitments, // <-- Added
+  fetchRecentTransactions, // <-- Added
+  fetchAccounts, // <-- Added
+  fetchMonthlyData, // <-- Added
+  showToast 
+}) => {
   const [saving, setSaving] = useState(false)
   const savingRef = useRef(false)
 
@@ -17,6 +25,16 @@ export const useCommitments = ({ user, commitments = [], fetchAllData, showToast
       setSaving(false)
     }
   }, [])
+
+  // Helper to reduce repetition
+  const refreshRelatedData = async () => {
+    await Promise.all([
+      fetchCommitments(),
+      fetchRecentTransactions(),
+      fetchAccounts(),
+      fetchMonthlyData()
+    ])
+  }
 
   const addCommitment = useCallback(
     (payload) =>
@@ -41,14 +59,14 @@ export const useCommitments = ({ user, commitments = [], fetchAllData, showToast
             payload.kind === 'bnpl' ? 'BNPL plan added' : 'Bill added',
             'success'
           )
-          await fetchAllData()
+          await refreshRelatedData()
           return { success: true }
         } catch (err) {
           showToast('Error: ' + err.message, 'error')
           return { success: false, error: err.message }
         }
       }),
-    [guard, user, fetchAllData, showToast]
+    [guard, user, showToast, fetchCommitments, fetchRecentTransactions, fetchAccounts, fetchMonthlyData]
   )
 
   const updateCommitment = useCallback(
@@ -71,14 +89,14 @@ export const useCommitments = ({ user, commitments = [], fetchAllData, showToast
           if (error) throw error
           if (!data || data.length === 0) throw new Error('No rows updated — check RLS.')
           showToast('Bill updated', 'success')
-          await fetchAllData()
+          await refreshRelatedData()
           return { success: true }
         } catch (err) {
           showToast('Error: ' + err.message, 'error')
           return { success: false, error: err.message }
         }
       }),
-    [guard, fetchAllData, showToast]
+    [guard, showToast, fetchCommitments, fetchRecentTransactions, fetchAccounts, fetchMonthlyData]
   )
 
   const deleteCommitment = useCallback(
@@ -88,14 +106,14 @@ export const useCommitments = ({ user, commitments = [], fetchAllData, showToast
           const { error } = await supabase.from('commitments').delete().eq('id', id)
           if (error) throw error
           showToast('Bill deleted', 'success')
-          await fetchAllData()
+          await refreshRelatedData()
           return { success: true }
         } catch (err) {
           showToast('Error: ' + err.message, 'error')
           return { success: false, error: err.message }
         }
       }),
-    [guard, fetchAllData, showToast]
+    [guard, showToast, fetchCommitments, fetchRecentTransactions, fetchAccounts, fetchMonthlyData]
   )
 
   const setActive = useCallback(
@@ -108,14 +126,14 @@ export const useCommitments = ({ user, commitments = [], fetchAllData, showToast
             .eq('id', id)
           if (error) throw error
           showToast(isActive ? 'Bill reactivated' : 'Bill paused', 'success')
-          await fetchAllData()
+          await refreshRelatedData()
           return { success: true }
         } catch (err) {
           showToast('Error: ' + err.message, 'error')
           return { success: false, error: err.message }
         }
       }),
-    [guard, fetchAllData, showToast]
+    [guard, showToast, fetchCommitments, fetchRecentTransactions, fetchAccounts, fetchMonthlyData]
   )
 
   const pauseCommitment = useCallback((id) => setActive(id, false), [setActive])
@@ -135,14 +153,14 @@ export const useCommitments = ({ user, commitments = [], fetchAllData, showToast
           if (rpcError) throw rpcError
           const c = commitments.find((x) => x.id === commitmentId)
           showToast(`${c?.name || 'Bill'} marked as paid`, 'success')
-          await fetchAllData()
+          await refreshRelatedData()
           return { success: true }
         } catch (err) {
           showToast('Error: ' + err.message, 'error')
           return { success: false, error: err.message }
         }
       }),
-    [guard, commitments, fetchAllData, showToast]
+    [guard, commitments, showToast, fetchCommitments, fetchRecentTransactions, fetchAccounts, fetchMonthlyData]
   )
 
   const skip = useCallback(
@@ -157,14 +175,14 @@ export const useCommitments = ({ user, commitments = [], fetchAllData, showToast
           if (rpcError) throw rpcError
           const c = commitments.find((x) => x.id === commitmentId)
           showToast(`${c?.name || 'Bill'} skipped for this month`, 'success')
-          await fetchAllData()
+          await refreshRelatedData()
           return { success: true }
         } catch (err) {
           showToast('Error: ' + err.message, 'error')
           return { success: false, error: err.message }
         }
       }),
-    [guard, commitments, fetchAllData, showToast]
+    [guard, commitments, showToast, fetchCommitments, fetchRecentTransactions, fetchAccounts, fetchMonthlyData]
   )
 
   const undo = useCallback(
@@ -186,14 +204,14 @@ export const useCommitments = ({ user, commitments = [], fetchAllData, showToast
           } else if (data === 'skip_removed') {
             showToast(`${name} unskipped`, 'success')
           }
-          await fetchAllData()
+          await refreshRelatedData()
           return { success: true }
         } catch (err) {
           showToast('Error undoing: ' + err.message, 'error')
           return { success: false, error: err.message }
         }
       }),
-    [guard, commitments, fetchAllData, showToast]
+    [guard, commitments, showToast, fetchCommitments, fetchRecentTransactions, fetchAccounts, fetchMonthlyData]
   )
 
   return {

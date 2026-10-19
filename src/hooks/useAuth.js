@@ -1,5 +1,5 @@
 // src/hooks/useAuth.js
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react' // Added useRef
 import { supabase } from '../lib/supabaseClient'
 
 export const useAuth = () => {
@@ -8,25 +8,18 @@ export const useAuth = () => {
   const [isAuthenticated, setIsAuthenticated] = useState(false)
   const [isAuthLoading, setIsAuthLoading] = useState(true)
 
-  // ----------------------------------------------------------
-  // Fetch profile (safe helper)
-  //
-  // NOTE: this column list must stay in sync with the profiles
-  // table. If you add a new column and forget to add it here,
-  // it'll silently be undefined in the app. The three avatar_*
-  // columns were added for the avatar customization feature.
-  //
-  // Uses .maybeSingle() so a missing profile doesn't throw 406.
-  // The handle_new_user() DB trigger normally creates the row on
-  // signup; if it hasn't fired yet (or the user predates the
-  // trigger), profile stays null and the UI degrades gracefully
-  // (e.g. displayName falls back to the email prefix).
-  // ----------------------------------------------------------
-  const fetchProfile = useCallback(async (userId) => {
+  // Guard against double-fetching on mount (StrictMode + Auth listeners)
+  const fetchedProfileIdRef = useRef(null)
+
+  const fetchProfile = useCallback(async (userId, force = false) => {
     if (!userId) {
       setProfile(null)
+      fetchedProfileIdRef.current = null
       return
     }
+
+    // If we already fetched this user's profile and aren't forcing a refresh, skip.
+    if (!force && fetchedProfileIdRef.current === userId) return
 
     try {
       const { data, error } = await supabase
@@ -37,23 +30,18 @@ export const useAuth = () => {
 
       if (error) throw error
       setProfile(data || null)
+      fetchedProfileIdRef.current = userId
     } catch (error) {
       console.error('Error fetching user profile:', error.message)
       setProfile(null)
     }
   }, [])
 
-  // ----------------------------------------------------------
-  // Public refresh function for consumers (e.g. after edit)
-  // ----------------------------------------------------------
   const refreshProfile = useCallback(async () => {
     if (!user?.id) return
-    await fetchProfile(user.id)
+    await fetchProfile(user.id, true) // Force fetch on manual refresh
   }, [user?.id, fetchProfile])
 
-  // ----------------------------------------------------------
-  // Session + auth state listener
-  // ----------------------------------------------------------
   useEffect(() => {
     // 1. Initial session check
     supabase.auth.getSession().then(({ data: { session } }) => {
@@ -77,6 +65,7 @@ export const useAuth = () => {
           setUser(null)
           setProfile(null)
           setIsAuthenticated(false)
+          fetchedProfileIdRef.current = null // Clear on logout
         }
         setIsAuthLoading(false)
       }

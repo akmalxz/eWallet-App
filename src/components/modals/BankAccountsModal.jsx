@@ -18,7 +18,8 @@ export const BankAccountsModal = ({
   accounts,
   classifications,
   closeModal,
-  fetchAllData,
+  fetchAccounts, // <-- Changed
+  fetchMonthlyData, // <-- Changed
   showToast
 }) => {
   const [editorAccount, setEditorAccount] = useState(undefined)
@@ -26,7 +27,7 @@ export const BankAccountsModal = ({
   const [pendingDelete, setPendingDelete] = useState(null)
   const [pendingArchive, setPendingArchive] = useState(null)
   const [moveWarning, setMoveWarning] = useState(null)
-  const [moveTargets, setMoveTargets] = useState({}) // commitmentId → accountId
+  const [moveTargets, setMoveTargets] = useState({})
 
   const [showArchived, setShowArchived] = useState(false)
   const [saving, setSaving] = useState(false)
@@ -42,12 +43,9 @@ export const BankAccountsModal = ({
 
   const handleEditorSaved = async () => {
     closeEditor()
-    await fetchAllData()
+    await Promise.all([fetchAccounts(), fetchMonthlyData()])
   }
 
-  // ----------------------------------------------------------
-  // Remove flow
-  // ----------------------------------------------------------
   const handleRemoveClick = async (acc) => {
     const [txRes, cmtRes, activeBillsRes] = await Promise.all([
       supabase
@@ -58,7 +56,6 @@ export const BankAccountsModal = ({
         .from('commitments')
         .select('id', { count: 'exact', head: true })
         .eq('account_id', acc.id),
-      // Fetch the full rows so we can show a Move sheet
       supabase
         .from('commitments')
         .select('id, name, amount, due_day_of_month, account_id')
@@ -71,13 +68,11 @@ export const BankAccountsModal = ({
     const cmtCount = cmtRes.count || 0
     const activeBills = activeBillsRes.data || []
 
-    // No history → safe to delete
     if (txCount === 0 && cmtCount === 0) {
       setPendingDelete(acc)
       return
     }
 
-    // Active bills → offer to move them
     if (activeBills.length > 0) {
       const defaultTarget =
         accounts.find((a) => a.id !== acc.id && !a.is_archived)?.id || ''
@@ -90,7 +85,6 @@ export const BankAccountsModal = ({
       return
     }
 
-    // Has history but no active bills → just archive
     setPendingArchive({ ...acc, txCount, cmtCount })
   }
 
@@ -111,7 +105,7 @@ export const BankAccountsModal = ({
 
       showToast('Account deleted', 'success')
       setPendingDelete(null)
-      fetchAllData()
+      await fetchAccounts()
     } catch (error) {
       showToast('Error deleting account: ' + error.message, 'error')
     } finally {
@@ -139,7 +133,7 @@ export const BankAccountsModal = ({
       await archiveAccount(pendingArchive.id)
       showToast('Account archived', 'success')
       setPendingArchive(null)
-      fetchAllData()
+      await fetchAccounts()
     } catch (error) {
       showToast('Error archiving account: ' + error.message, 'error')
     } finally {
@@ -147,22 +141,16 @@ export const BankAccountsModal = ({
     }
   }
 
-  // ----------------------------------------------------------
-  // Move bills + archive
-  // ----------------------------------------------------------
   const handleMoveAndArchive = async () => {
     if (!moveWarning) return
-
     const { account, bills } = moveWarning
 
-    // Every bill needs a target account
     const missing = bills.find((b) => !moveTargets[b.id])
     if (missing) {
       showToast(`Choose a destination for "${missing.name}"`, 'warning')
       return
     }
 
-    // Guard: destination can't be the account being archived
     const toSelf = bills.find((b) => moveTargets[b.id] === account.id)
     if (toSelf) {
       showToast(`"${toSelf.name}" can't stay on the account being archived`, 'warning')
@@ -171,7 +159,6 @@ export const BankAccountsModal = ({
 
     setSaving(true)
     try {
-      // Group bills by destination so we can batch updates
       const byTarget = new Map()
       for (const bill of bills) {
         const target = moveTargets[bill.id]
@@ -195,7 +182,7 @@ export const BankAccountsModal = ({
       )
       setMoveWarning(null)
       setMoveTargets({})
-      fetchAllData()
+      await Promise.all([fetchAccounts(), fetchMonthlyData()])
     } catch (error) {
       showToast('Error moving bills: ' + error.message, 'error')
     } finally {
@@ -214,7 +201,7 @@ export const BankAccountsModal = ({
       )
       setMoveWarning(null)
       setMoveTargets({})
-      fetchAllData()
+      await fetchAccounts()
     } catch (error) {
       showToast('Error archiving account: ' + error.message, 'error')
     } finally {
@@ -237,7 +224,7 @@ export const BankAccountsModal = ({
       }
 
       showToast('Account restored', 'success')
-      fetchAllData()
+      await fetchAccounts()
     } catch (error) {
       showToast('Error restoring account: ' + error.message, 'error')
     } finally {
@@ -245,18 +232,15 @@ export const BankAccountsModal = ({
     }
   }
 
-  // Destination options for the Move sheet — never the account being archived
   const moveDestinations = moveWarning
     ? accounts.filter((a) => a.id !== moveWarning.account.id && !a.is_archived)
     : []
 
-  // ----------------------------------------------------------
-  // Render
-  // ----------------------------------------------------------
   return (
     <>
       <ModalWrapper title="Bank Accounts" closeModal={closeModal}>
         <div className="space-y-3">
+          {/* ... [Keep all the rendering code exactly the same] ... */}
           {activeAccounts.length === 0 && archivedAccounts.length === 0 && (
             <div className="text-center py-8 px-4">
               <div className="w-14 h-14 bg-surface-2 rounded-2xl flex items-center justify-center mx-auto mb-3 text-fg-subtle">
@@ -421,14 +405,10 @@ export const BankAccountsModal = ({
           message={(() => {
             const parts = []
             if (pendingArchive.txCount > 0) {
-              parts.push(
-                `${pendingArchive.txCount} transaction${pendingArchive.txCount === 1 ? '' : 's'}`
-              )
+              parts.push(`${pendingArchive.txCount} transaction${pendingArchive.txCount === 1 ? '' : 's'}`)
             }
             if (pendingArchive.cmtCount > 0) {
-              parts.push(
-                `${pendingArchive.cmtCount} bill${pendingArchive.cmtCount === 1 ? '' : 's'}`
-              )
+              parts.push(`${pendingArchive.cmtCount} bill${pendingArchive.cmtCount === 1 ? '' : 's'}`)
             }
             return `This account has ${parts.join(' and ')}. Archiving hides it from the dashboard and selectors, but keeps all its history and analytics intact.`
           })()}
@@ -450,6 +430,7 @@ export const BankAccountsModal = ({
           saving={saving}
           maxWidth="md:max-w-lg"
         >
+          {/* ... [Keep the Move sheet rendering exactly the same] ... */}
           <p className="text-xs text-fg-muted leading-relaxed">
             This account has{' '}
             <strong className="text-fg">

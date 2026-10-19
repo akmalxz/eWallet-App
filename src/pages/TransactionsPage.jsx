@@ -1,6 +1,6 @@
 // src/pages/TransactionsPage.jsx
-import { useState } from 'react'
-import { ScanText, AlertTriangle, Check, RefreshCw, X, CheckCircle2 } from 'lucide-react'
+import { useState, useMemo } from 'react'
+import { ScanText, AlertTriangle, Check, RefreshCw, X, CheckCircle2, ChevronDown } from 'lucide-react'
 import { ActionLedger } from '../components/dashboard/ActionLedger'
 import { ConfirmSheet } from '../components/shared/ConfirmSheet'
 import { formatMYR } from '../utils/formatters'
@@ -16,7 +16,6 @@ const sortNewestFirst = (a, b) => {
 
 const PageSkeleton = () => (
   <div className="space-y-8">
-    {/* OCR section skeleton — flat, no card wrapper */}
     <div className="space-y-4">
       <div className="flex items-center gap-3">
         <div className="w-10 h-10 bg-surface-2 rounded-xl animate-pulse" />
@@ -24,8 +23,6 @@ const PageSkeleton = () => (
       </div>
       <div className="h-16 bg-surface-2/50 rounded-2xl animate-pulse" />
     </div>
-
-    {/* Ledger skeleton — mirrors the grouped list */}
     <div className="space-y-4">
       <div className="flex items-center gap-3">
         <div className="w-10 h-10 bg-surface-3 rounded-xl animate-pulse" />
@@ -45,12 +42,84 @@ const PageSkeleton = () => (
   </div>
 )
 
+// Extracted component to fix the document.getElementById anti-pattern
+function PendingOCRRow({ tx, mainCategories, getSubCategories, onApprove, onDelete }) {
+  const [date, setDate] = useState(
+    new Date(tx.transaction_date || tx.created_at).toISOString().split('T')[0]
+  )
+  const [category, setCategory] = useState(tx.category || 'uncategorized')
+
+  return (
+    <div className="bg-warning-soft/30 p-4">
+      <div className="flex justify-between items-start mb-3">
+        <div className="pr-4">
+          <p className="text-sm font-bold text-warning-text leading-tight">{tx.description}</p>
+          <p className="text-xs text-warning-text/90 mt-1 flex items-center gap-1">
+            <AlertTriangle className="w-3 h-3" /> Pending Verification
+          </p>
+        </div>
+        <span className="text-sm font-bold text-fg whitespace-nowrap tabular-figures">
+          {formatMYR(tx.amount)}
+        </span>
+      </div>
+      
+      <div className="flex flex-col sm:flex-row gap-2">
+        <input
+          type="date"
+          value={date}
+          onChange={(e) => setDate(e.target.value)}
+          className="h-[46px] bg-surface border border-warning-border rounded-xl px-3 text-sm text-fg outline-none focus:border-warning focus:ring-2 focus:ring-warning/30 appearance-none"
+        />
+        
+        <div className="relative flex-1">
+          <select
+            value={category}
+            onChange={(e) => setCategory(e.target.value)}
+            className="w-full h-[46px] bg-surface border border-warning-border rounded-xl pl-3 pr-10 text-sm text-fg outline-none focus:border-warning focus:ring-2 focus:ring-warning/30 appearance-none"
+          >
+            <option value="uncategorized">Select Category...</option>
+            {mainCategories.map((main) => (
+              <optgroup key={main.id} label={main.name}>
+                {getSubCategories(main.id).map((sub) => (
+                  <option key={sub.id} value={`${main.name} > ${sub.name}`}>{sub.name}</option>
+                ))}
+                {getSubCategories(main.id).length === 0 && (
+                  <option value={main.name}>{main.name} (General)</option>
+                )}
+              </optgroup>
+            ))}
+          </select>
+          <ChevronDown className="w-4 h-4 text-fg-muted absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+        </div>
+
+        <div className="flex items-center gap-1.5 flex-1 sm:flex-none">
+          <button
+            onClick={() => onApprove(tx.id, category, date)}
+            className="flex-1 sm:w-12 bg-warning-solid hover:bg-warning-solid-hover text-white p-2 rounded-xl transition-colors shadow-sm flex items-center justify-center"
+            style={{ minHeight: 46 }}
+            aria-label="Approve transaction"
+          >
+            <Check className="w-4 h-4" />
+          </button>
+          <button
+            onClick={() => onDelete(tx)}
+            className="flex-1 sm:w-12 bg-surface hover:bg-danger-soft text-danger border border-danger-border p-2 rounded-xl transition-colors shadow-sm flex items-center justify-center"
+            style={{ minHeight: 46 }}
+            aria-label="Delete scan"
+          >
+            <X className="w-4 h-4" />
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 export function TransactionsPage({
   user,
   accounts,
   mainCategories,
   getSubCategories,
-  fetchAllData,
   showToast,
   recentTransactions,
   handleApproveTransaction,
@@ -63,8 +132,16 @@ export function TransactionsPage({
 }) {
   const [pendingDelete, setPendingDelete] = useState(null)
 
-  const pendingTransactions = (recentTransactions?.filter((tx) => tx.needs_review) || []).sort(sortNewestFirst)
-  const verifiedTransactions = (recentTransactions?.filter((tx) => !tx.needs_review) || []).sort(sortNewestFirst)
+  // Memoize these arrays so they don't re-sort on every render (e.g., when a modal opens)
+  const pendingTransactions = useMemo(
+    () => (recentTransactions?.filter((tx) => tx.needs_review) || []).sort(sortNewestFirst),
+    [recentTransactions]
+  )
+  
+  const verifiedTransactions = useMemo(
+    () => (recentTransactions?.filter((tx) => !tx.needs_review) || []).sort(sortNewestFirst),
+    [recentTransactions]
+  )
 
   const showSkeleton = isLoading && (recentTransactions?.length || 0) === 0
 
@@ -80,7 +157,7 @@ export function TransactionsPage({
         <PageSkeleton />
       ) : (
         <>
-          {/* OCR VERIFICATION — flat section, no card wrapper */}
+          {/* OCR VERIFICATION — flat section */}
           <section className="space-y-4">
             <div className="flex items-center gap-3">
               <div className={`p-2.5 rounded-xl transition-all duration-300 ${
@@ -125,37 +202,14 @@ export function TransactionsPage({
             ) : (
               <div className="rounded-2xl border border-warning-border/50 overflow-hidden divide-y divide-warning-border/50">
                 {pendingTransactions.map((tx) => (
-                  <div key={tx.id} className="bg-warning-soft/30 p-4">
-                    <div className="flex justify-between items-start mb-3">
-                      <div className="pr-4">
-                        <p className="text-sm font-bold text-warning-text leading-tight">{tx.description}</p>
-                        <p className="text-xs text-warning-text/90 mt-1 flex items-center gap-1">
-                          <AlertTriangle className="w-3 h-3" /> Pending Verification
-                        </p>
-                      </div>
-                      <span className="text-sm font-bold text-fg whitespace-nowrap tabular-figures">{formatMYR(tx.amount)}</span>
-                    </div>
-                    <div className="flex flex-col sm:flex-row gap-2">
-                      <input type="date" id={`date-select-${tx.id}`} aria-label="Date" defaultValue={new Date(tx.transaction_date || tx.created_at).toISOString().split('T')[0]} className="bg-surface border border-warning-border text-xs rounded-xl px-2.5 py-1.5 text-fg outline-none focus:border-warning focus:ring-2 focus:ring-warning/30" />
-                      <select id={`cat-select-${tx.id}`} aria-label="Category" defaultValue={tx.category} className="flex-1 bg-surface border border-warning-border text-xs rounded-xl px-2 py-1.5 text-fg outline-none focus:border-warning focus:ring-2 focus:ring-warning/30">
-                        <option value="uncategorized">Select Category...</option>
-                        {mainCategories.map((main) => (
-                          <optgroup key={main.id} label={main.name}>
-                            {getSubCategories(main.id).map((sub) => (
-                              <option key={sub.id} value={`${main.name} > ${sub.name}`}>{sub.name}</option>
-                            ))}
-                            {getSubCategories(main.id).length === 0 && (
-                              <option value={main.name}>{main.name} (General)</option>
-                            )}
-                          </optgroup>
-                        ))}
-                      </select>
-                      <div className="flex items-center gap-1.5 flex-1">
-                        <button onClick={() => handleApproveTransaction(tx.id, document.getElementById(`cat-select-${tx.id}`).value, document.getElementById(`date-select-${tx.id}`).value)} className="flex-1 bg-warning-solid hover:bg-warning-solid-hover text-white p-2 rounded-xl transition-colors shadow-sm flex items-center justify-center" style={{ minHeight: 44 }}><Check className="w-4 h-4" /></button>
-                        <button onClick={() => setPendingDelete(tx)} className="flex-1 bg-surface hover:bg-danger-soft text-danger border border-danger-border p-2 rounded-xl transition-colors shadow-sm flex items-center justify-center" style={{ minHeight: 44 }}><X className="w-4 h-4" /></button>
-                      </div>
-                    </div>
-                  </div>
+                  <PendingOCRRow
+                    key={tx.id}
+                    tx={tx}
+                    mainCategories={mainCategories}
+                    getSubCategories={getSubCategories}
+                    onApprove={handleApproveTransaction}
+                    onDelete={setPendingDelete}
+                  />
                 ))}
               </div>
             )}

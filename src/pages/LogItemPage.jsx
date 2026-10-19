@@ -8,7 +8,9 @@ export function LogItemPage({
   onAddAccount,
   mainCategories,
   getSubCategories,
-  fetchAllData,
+  fetchAccounts,           // <-- Added
+  fetchRecentTransactions, // <-- Added
+  fetchMonthlyData,        // <-- Added
   showToast
 }) {
   if (!accounts || accounts.length === 0) {
@@ -49,13 +51,14 @@ export function LogItemPage({
         <p className="text-xs text-fg-subtle mt-1">Record a new income, expense, or transfer</p>
       </div>
 
-      {/* Form sits directly on the page — no card wrapper */}
       <TransactionForm
         user={user}
         accounts={accounts}
         mainCategories={mainCategories}
         getSubCategories={getSubCategories}
-        fetchAllData={fetchAllData}
+        fetchAccounts={fetchAccounts}
+        fetchRecentTransactions={fetchRecentTransactions}
+        fetchMonthlyData={fetchMonthlyData}
         showToast={showToast}
       />
     </div>
