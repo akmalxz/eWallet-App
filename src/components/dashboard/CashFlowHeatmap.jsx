@@ -1,7 +1,13 @@
 // src/components/dashboard/CashFlowHeatmap.jsx
 import { useState, useMemo } from 'react'
-import { TrendingUp, TrendingDown, Plus, ArrowRight, PieChart, ChevronDown, ChevronUp } from 'lucide-react'
-import { PieChart as RechartsPie, Pie, Cell, ResponsiveContainer } from 'recharts'
+import { TrendingUp, TrendingDown, Plus, ArrowRight, PieChart, ChevronDown, ChevronUp, X } from 'lucide-react'
+import { 
+  PieChart as RechartsPie, 
+  Pie, 
+  Cell, 
+  ResponsiveContainer, 
+  Tooltip as RechartsTooltip 
+} from 'recharts'
 import { formatMYR } from '../../utils/formatters'
 import { useChartTheme } from '../../hooks/useChartTheme'
 import { useTheme } from '../../hooks/useTheme'
@@ -144,7 +150,7 @@ export const CashFlowHeatmap = ({
   onSeeTrends
 }) => {
   const theme = useChartTheme()
-  const { resolved } = useTheme()   // 'light' or 'dark'
+  const { resolved } = useTheme()
   const isDark = resolved === 'dark'
 
   const [activeName, setActiveName] = useState(null)
@@ -155,7 +161,6 @@ export const CashFlowHeatmap = ({
     [cashFlowData]
   )
 
-  // Assign stable colors by name — never by index
   const coloredData = useMemo(
     () => cashFlowData.map((row) => ({
       ...row,
@@ -171,6 +176,9 @@ export const CashFlowHeatmap = ({
 
   const activeItem = activeName ? coloredData.find(i => i.name === activeName) : null
   const handleSelect = (name) => setActiveName(prev => (prev === name ? null : name))
+  
+  // Find the active index for Recharts to expand the slice
+  const activeIndex = activeName ? donutData.findIndex(d => d.name === activeName) : -1
 
   return (
     <div className="relative flex flex-col h-full pt-3">
@@ -206,10 +214,14 @@ export const CashFlowHeatmap = ({
           </div>
 
           <div className="flex flex-col md:flex-row items-start gap-5 md:gap-6">
-            <div className="relative w-44 h-44 md:w-48 md:h-48 shrink-0 flex items-center justify-center md:sticky md:top-4">
+            
+            {/* Centered on mobile, left-aligned on desktop */}
+            <div className="relative w-44 h-44 md:w-48 md:h-48 shrink-0 flex items-center justify-center md:sticky md:top-4 mx-auto md:mx-0">
               <ResponsiveContainer width="100%" height="100%">
                 <RechartsPie>
                   <Pie
+                    activeIndex={activeIndex >= 0 ? activeIndex : undefined}
+                    activeShape={{ outerRadius: 84 }} // Pops out the selected slice
                     data={donutData}
                     cx="50%"
                     cy="50%"
@@ -218,6 +230,7 @@ export const CashFlowHeatmap = ({
                     paddingAngle={2}
                     dataKey="value"
                     onClick={(entry) => handleSelect(entry.name)}
+                    className="cursor-pointer outline-none"
                   >
                     {donutData.map((entry, idx) => {
                       const isActive = activeName === entry.name
@@ -228,30 +241,51 @@ export const CashFlowHeatmap = ({
                           fill={entry.color}
                           stroke="var(--surface)"
                           strokeWidth={2}
-                          className="outline-none transition-opacity duration-200 cursor-pointer"
+                          className="outline-none transition-opacity duration-200"
                           opacity={dim ? 0.35 : 1}
                         />
                       )
                     })}
                   </Pie>
+
+                  {/* Tooltip on hover */}
+                  <RechartsTooltip
+                    content={({ active, payload }) => {
+                      if (!active || !payload?.length) return null
+                      const data = payload[0].payload
+                      return (
+                        <div className="bg-surface border border-line rounded-xl shadow-lg p-2.5 text-xs z-50">
+                          <p className="font-bold text-fg mb-0.5">{data.name}</p>
+                          <p className="text-fg-muted tabular-figures">{formatMYR(data.value)}</p>
+                        </div>
+                      )
+                    }}
+                  />
                 </RechartsPie>
               </ResponsiveContainer>
 
-              <button
-                onClick={() => setActiveName(null)}
-                className="absolute inset-0 flex flex-col items-center justify-center text-center p-4 cursor-pointer"
-                aria-label="Clear selection"
-              >
+              {/* Center Text - Now pointer-events-none so slices are clickable */}
+              <div className="absolute inset-0 flex flex-col items-center justify-center text-center p-4 pointer-events-none">
                 <p className="text-[10px] font-bold text-fg-subtle uppercase tracking-wider truncate w-24">
                   {activeItem ? activeItem.name : 'Outflow'}
                 </p>
                 <p className="text-sm font-black text-fg tracking-tight truncate w-28 mt-0.5 tabular-figures">
                   <AnimatedNumber value={activeItem ? activeItem.value : totalExpenses} format={compactMYR} />
                 </p>
-                <p className="text-[10px] font-bold text-brand mt-0.5 tabular-figures">
-                  {activeItem ? `${((activeItem.value / totalExpenses) * 100).toFixed(1)}%` : `${coloredData.length} categories`}
-                </p>
-              </button>
+                
+                {activeItem ? (
+                  <button
+                    onClick={() => setActiveName(null)}
+                    className="pointer-events-auto flex items-center gap-1 mt-1 text-[10px] font-bold text-brand hover:text-brand-hover bg-brand-soft/50 px-2 py-0.5 rounded-md transition-colors"
+                  >
+                    <X className="w-3 h-3" /> Clear
+                  </button>
+                ) : (
+                  <p className="text-[10px] font-bold text-brand mt-0.5 tabular-figures">
+                    {coloredData.length} categories
+                  </p>
+                )}
+              </div>
             </div>
 
             <div className="flex-1 w-full">
