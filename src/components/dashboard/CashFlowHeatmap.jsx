@@ -154,6 +154,7 @@ export const CashFlowHeatmap = ({
   const isDark = resolved === 'dark'
 
   const [activeName, setActiveName] = useState(null)
+  const [isHovering, setIsHovering] = useState(false)
   const [showAll, setShowAll] = useState(false)
 
   const totalExpenses = useMemo(
@@ -177,7 +178,6 @@ export const CashFlowHeatmap = ({
   const activeItem = activeName ? coloredData.find(i => i.name === activeName) : null
   const handleSelect = (name) => setActiveName(prev => (prev === name ? null : name))
   
-  // Find the active index for Recharts to expand the slice
   const activeIndex = activeName ? donutData.findIndex(d => d.name === activeName) : -1
 
   return (
@@ -215,13 +215,12 @@ export const CashFlowHeatmap = ({
 
           <div className="flex flex-col md:flex-row items-start gap-5 md:gap-6">
             
-            {/* Centered on mobile, left-aligned on desktop */}
             <div className="relative w-44 h-44 md:w-48 md:h-48 shrink-0 flex items-center justify-center md:sticky md:top-4 mx-auto md:mx-0">
               <ResponsiveContainer width="100%" height="100%">
                 <RechartsPie>
                   <Pie
                     activeIndex={activeIndex >= 0 ? activeIndex : undefined}
-                    activeShape={{ outerRadius: 84 }} // Pops out the selected slice
+                    activeShape={{ outerRadius: 84 }}
                     data={donutData}
                     cx="50%"
                     cy="50%"
@@ -230,6 +229,8 @@ export const CashFlowHeatmap = ({
                     paddingAngle={2}
                     dataKey="value"
                     onClick={(entry) => handleSelect(entry.name)}
+                    onMouseEnter={() => setIsHovering(true)}
+                    onMouseLeave={() => setIsHovering(false)}
                     className="cursor-pointer outline-none"
                   >
                     {donutData.map((entry, idx) => {
@@ -248,15 +249,18 @@ export const CashFlowHeatmap = ({
                     })}
                   </Pie>
 
-                  {/* Tooltip on hover */}
                   <RechartsTooltip
+                    offset={15} // Pushes tooltip slightly away from cursor
                     content={({ active, payload }) => {
                       if (!active || !payload?.length) return null
                       const data = payload[0].payload
                       return (
-                        <div className="bg-surface border border-line rounded-xl shadow-lg p-2.5 text-xs z-50">
-                          <p className="font-bold text-fg mb-0.5">{data.name}</p>
-                          <p className="text-fg-muted tabular-figures">{formatMYR(data.value)}</p>
+                        <div className="bg-surface border border-line rounded-xl shadow-xl p-3 text-xs z-50 pointer-events-none">
+                          <p className="font-bold text-fg mb-1 flex items-center gap-2">
+                            <span className="w-2 h-2 rounded-full" style={{ backgroundColor: data.color }} />
+                            {data.name}
+                          </p>
+                          <p className="text-fg-muted tabular-figures text-sm font-black">{formatMYR(data.value)}</p>
                         </div>
                       )
                     }}
@@ -264,8 +268,12 @@ export const CashFlowHeatmap = ({
                 </RechartsPie>
               </ResponsiveContainer>
 
-              {/* Center Text - Now pointer-events-none so slices are clickable */}
-              <div className="absolute inset-0 flex flex-col items-center justify-center text-center p-4 pointer-events-none">
+              {/* Center Text fades out on hover to prevent tooltip glitch */}
+              <div 
+                className={`absolute inset-0 flex flex-col items-center justify-center text-center p-4 pointer-events-none transition-opacity duration-200 ${
+                  isHovering ? 'opacity-0' : 'opacity-100'
+                }`}
+              >
                 <p className="text-[10px] font-bold text-fg-subtle uppercase tracking-wider truncate w-24">
                   {activeItem ? activeItem.name : 'Outflow'}
                 </p>
