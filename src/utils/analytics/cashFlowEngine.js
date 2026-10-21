@@ -3,21 +3,17 @@ import { toMYDate, monthKey, getDayOfMonthMY } from '../dateHelpers'
 import { rollUpToMain } from './categoryColors'
 import { resolveAccountScope } from '../accounts/accountScope'
 
-const TOP_N = 5
-const MIN_SHARE = 0.03
-
 /**
  * Cash flow breakdown for the dashboard heatmap.
  *
  * Returns rows shaped for CashFlowHeatmap:
- *   { name, value, comparison, txns, isOther? }
+ *   { name, value, comparison, txns }
  * where `comparison` is null, or { diff, pct, isNew }.
  *
  * Color is intentionally NOT included — the caller assigns it from the
  * active theme palette so light/dark modes can differ.
  *
  * - Current-month spend per main category, sorted desc.
- * - Top 5 (with a 3% minimum share), remainder rolled up as "Other".
  * - `comparison` compares against the same day-range of last month.
  * - `txns` carries the underlying transactions for drill-down.
  */
@@ -65,6 +61,7 @@ export const computeCashFlow = ({
   const grandTotal = Object.values(thisByCat).reduce((s, v) => s + v, 0)
   if (grandTotal === 0) return []
 
+  // Return ALL categories, sorted descending.
   const rows = Object.entries(thisByCat)
     .map(([name, value]) => {
       const last = lastByCat[name] || 0
@@ -79,28 +76,5 @@ export const computeCashFlow = ({
     })
     .sort((a, b) => b.value - a.value)
 
-  const top = rows
-    .slice(0, TOP_N)
-    .filter(r => (r.value / grandTotal) >= MIN_SHARE)
-  const rest = rows.filter(r => !top.includes(r))
-
-  if (rest.length > 0) {
-    const otherTotal = rest.reduce((s, r) => s + r.value, 0)
-    const otherLast = rest.reduce((s, r) => s + (lastByCat[r.name] || 0), 0)
-    const otherTxns = rest.flatMap(r => r.txns)
-    let comparison = null
-    if (otherLast > 0) {
-      const diff = otherTotal - otherLast
-      comparison = { diff, pct: (diff / otherLast) * 100, isNew: false }
-    }
-    top.push({
-      name: 'Other',
-      value: otherTotal,
-      comparison,
-      isOther: true,
-      txns: otherTxns
-    })
-  }
-
-  return top
+  return rows
 }
