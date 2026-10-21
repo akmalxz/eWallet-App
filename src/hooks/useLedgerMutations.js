@@ -26,8 +26,7 @@ export function useLedgerMutations({
           .from('transactions')
           .select('*')
           .order('needs_review', { ascending: false })
-          .order('transaction_date', { ascending: false })
-          .limit(30),
+          .order('transaction_date', { ascending: false }),
         supabase.from('commitments').select('*'),
         supabase
           .from('commitments_payments')

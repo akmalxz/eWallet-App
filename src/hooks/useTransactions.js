@@ -54,7 +54,6 @@ export const useTransactions = (user, showToast) => {
       .order('needs_review', { ascending: false })
       .order('transaction_date', { ascending: false })
       .order('created_at', { ascending: false })
-      .limit(50) // <-- Crucial: Don't fetch all history, just what's needed for Ledger
     if (!error && data) setRecentTransactions(data)
   }, [user])
 
