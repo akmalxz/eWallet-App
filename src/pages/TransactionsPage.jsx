@@ -1,5 +1,5 @@
 // src/pages/TransactionsPage.jsx
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useEffect, useRef } from 'react'
 import { ScanText, AlertTriangle, Check, RefreshCw, X, CheckCircle2, ChevronDown } from 'lucide-react'
 import { ActionLedger } from '../components/dashboard/ActionLedger'
 import { ConfirmSheet } from '../components/shared/ConfirmSheet'
@@ -42,7 +42,6 @@ const PageSkeleton = () => (
   </div>
 )
 
-// Extracted component to fix the document.getElementById anti-pattern
 function PendingOCRRow({ tx, mainCategories, getSubCategories, onApprove, onDelete }) {
   const [date, setDate] = useState(
     new Date(tx.transaction_date || tx.created_at).toISOString().split('T')[0]
@@ -128,11 +127,59 @@ export function TransactionsPage({
   onRefresh,
   isRefreshing,
   onAddTransaction,
-  isLoading = false
+  isLoading = false,
+  fetchRecentTransactions
 }) {
   const [pendingDelete, setPendingDelete] = useState(null)
+  
+  // Pagination & Search State
+  const [searchQuery, setSearchQuery] = useState('')
+  const [debouncedQuery, setDebouncedQuery] = useState('')
+  const [page, setPage] = useState(1)
+  const [hasMore, setHasMore] = useState(true)
+  const [isLoadingMore, setIsLoadingMore] = useState(false)
+  
+  const isInitialMount = useRef(true)
 
-  // Memoize these arrays so they don't re-sort on every render (e.g., when a modal opens)
+  // Debounce search
+  useEffect(() => {
+    const t = setTimeout(() => setDebouncedQuery(searchQuery), 300)
+    return () => clearTimeout(t)
+  }, [searchQuery])
+
+  // Fetch when search changes (skip initial mount to avoid duplicate fetch)
+  useEffect(() => {
+    if (isInitialMount.current) {
+      isInitialMount.current = false
+      return
+    }
+    
+    let isMounted = true
+    const doFetch = async () => {
+      const res = await fetchRecentTransactions({ limit: 50, offset: 0, search: debouncedQuery })
+      if (isMounted) {
+        setHasMore(res.hasMore)
+        setPage(1)
+      }
+    }
+    doFetch()
+    
+    return () => { isMounted = false }
+  }, [debouncedQuery, fetchRecentTransactions])
+
+  const handleLoadMore = async () => {
+    setIsLoadingMore(true)
+    const res = await fetchRecentTransactions({ 
+      limit: 50, 
+      offset: page * 50, 
+      search: debouncedQuery, 
+      append: true 
+    })
+    setHasMore(res.hasMore)
+    setPage(p => p + 1)
+    setIsLoadingMore(false)
+  }
+
   const pendingTransactions = useMemo(
     () => (recentTransactions?.filter((tx) => tx.needs_review) || []).sort(sortNewestFirst),
     [recentTransactions]
@@ -157,7 +204,6 @@ export function TransactionsPage({
         <PageSkeleton />
       ) : (
         <>
-          {/* OCR VERIFICATION — flat section */}
           <section className="space-y-4">
             <div className="flex items-center gap-3">
               <div className={`p-2.5 rounded-xl transition-all duration-300 ${
@@ -215,7 +261,6 @@ export function TransactionsPage({
             )}
           </section>
 
-          {/* LEDGER */}
           <div className="animate-enter delay-75">
             <ActionLedger
               recentTransactions={verifiedTransactions}
@@ -228,6 +273,11 @@ export function TransactionsPage({
               isRefreshing={isRefreshing}
               accounts={accounts}
               onAddTransaction={onAddTransaction}
+              searchQuery={searchQuery}
+              onSearchChange={setSearchQuery}
+              hasMore={hasMore}
+              onLoadMore={handleLoadMore}
+              isLoadingMore={isLoadingMore}
             />
           </div>
         </>

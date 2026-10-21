@@ -21,9 +21,9 @@ const TYPE_ICON = {
 }
 
 const TYPE_COLOR = {
-  expense:  'text-muted',
-  income:   'text-muted',
-  transfer: 'text-muted',
+  expense:  'text-fg-muted',
+  income:   'text-fg-muted',
+  transfer: 'text-fg-muted',
 }
 
 const HEADER_LABEL = {
@@ -37,9 +37,9 @@ export function TransactionForm({
   accounts = [],
   mainCategories = [],
   getSubCategories,
-  fetchAccounts,            // <-- Added
-  fetchRecentTransactions,  // <-- Added
-  fetchMonthlyData,         // <-- Added
+  fetchAccounts,
+  fetchRecentTransactions,
+  fetchMonthlyData,
   showToast,
   onSuccess,                 
   onCancel,                  
@@ -63,12 +63,28 @@ export function TransactionForm({
     amountRef.current?.focus()
   }, [])
 
+  // Sync defaults when accounts change OR when a specific account is passed from the dashboard
   useEffect(() => {
     if (!accounts.length) return
-    const defaultSource = initialAccountId || accounts[0].id
-    const defaultDest = accounts.length > 1 ? accounts[1].id : accounts[0].id
-    setSource(prev => prev || defaultSource)
-    setDest(prev => prev || defaultDest)
+    
+    // If a specific account was clicked on the dashboard, force the source to be that account.
+    if (initialAccountId) {
+      setSource(initialAccountId)
+    } else {
+      // Otherwise, keep the currently selected source if it still exists in the accounts list.
+      // If it doesn't (e.g. account was deleted), fallback to the first account.
+      setSource(prev => {
+        const isValid = accounts.some(a => a.id === prev)
+        return isValid ? prev : accounts[0].id
+      })
+    }
+
+    // Ensure the destination (for transfers) is also a valid account.
+    setDest(prev => {
+      const isValid = accounts.some(a => a.id === prev)
+      if (isValid && prev !== initialAccountId) return prev
+      return accounts.length > 1 ? accounts[1].id : accounts[0].id
+    })
   }, [accounts, initialAccountId])
 
   useEffect(() => {
@@ -150,7 +166,6 @@ export function TransactionForm({
 
       if (onSuccess) onSuccess(payload.description)
       
-      // Refresh only what's needed
       await Promise.all([
         fetchRecentTransactions(),
         fetchAccounts(),

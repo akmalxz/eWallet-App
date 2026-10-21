@@ -297,6 +297,7 @@ export default function App() {
             fetchRecentTransactions={fetchRecentTransactions}
             fetchMonthlyData={fetchMonthlyData}
             showToast={showToast}
+            initialAccountId={accountApi.selectedAccount?.id}
           />
         )}
 
@@ -315,6 +316,7 @@ export default function App() {
             onRefresh={() => ledgerApi.refreshLedger(true)}
             isRefreshing={ledgerApi.isRefreshing}
             onAddTransaction={() => setCurrentView('log')}
+            fetchRecentTransactions={fetchRecentTransactions}
           />
         )}
 

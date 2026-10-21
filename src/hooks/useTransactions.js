@@ -15,10 +15,6 @@ export const useTransactions = (user, showToast) => {
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState(null)
 
-  // ---------------------------------------------------------
-  // TARGETED FETCHERS
-  // ---------------------------------------------------------
-
   const fetchAccounts = useCallback(async () => {
     if (!user) return
     const { data, error } = await supabase
@@ -45,16 +41,32 @@ export const useTransactions = (user, showToast) => {
     if (!error && data) setCategories(data)
   }, [user])
 
-  const fetchRecentTransactions = useCallback(async () => {
-    if (!user) return
-    const { data, error } = await supabase
+  const fetchRecentTransactions = useCallback(async (options = {}) => {
+    const { limit = 50, offset = 0, search = '', append = false } = options
+    if (!user) return { hasMore: false }
+
+    let query = supabase
       .from('transactions')
       .select('id, amount, source_account_id, destination_account_id, category, transaction_date, description, needs_review, created_at, metadata')
       .eq('user_id', user.id)
+
+    if (search) {
+      // Escape single quotes for Postgres ilike
+      const safeSearch = search.replace(/'/g, "''")
+      query = query.or(`description.ilike.%${safeSearch}%,category.ilike.%${safeSearch}%`)
+    }
+
+    const { data, error } = await query
       .order('needs_review', { ascending: false })
       .order('transaction_date', { ascending: false })
       .order('created_at', { ascending: false })
-    if (!error && data) setRecentTransactions(data)
+      .range(offset, offset + limit - 1)
+
+    if (!error && data) {
+      setRecentTransactions(prev => append ? [...prev, ...data] : data)
+      return { hasMore: data.length === limit, data }
+    }
+    return { hasMore: false, data: [] }
   }, [user])
 
   const fetchCommitments = useCallback(async () => {
@@ -138,11 +150,6 @@ export const useTransactions = (user, showToast) => {
     }
   }, [user?.id])
 
-  // ---------------------------------------------------------
-  // ORCHESTRATORS
-  // ---------------------------------------------------------
-
-  // The new boot sequence (Fast, lean)
   const fetchInitialData = useCallback(async () => {
     if (!user) {
       setIsLoading(false)
@@ -153,11 +160,10 @@ export const useTransactions = (user, showToast) => {
     setError(null)
 
     try {
-      // We run these in parallel, but no longer seeding inside the fetch
       await Promise.all([
         fetchAccounts(),
         fetchCategories(),
-        fetchRecentTransactions(),
+        fetchRecentTransactions({ limit: 50, offset: 0 }),
         fetchCommitments(),
         fetchMonthlyData(),
         fetchReceivables()
@@ -170,7 +176,6 @@ export const useTransactions = (user, showToast) => {
     }
   }, [user, showToast, fetchAccounts, fetchCategories, fetchRecentTransactions, fetchCommitments, fetchMonthlyData, fetchReceivables])
 
-  // Receivables listener
   useEffect(() => {
     if (!user?.id) return
     const handler = () => fetchReceivables()
@@ -189,7 +194,6 @@ export const useTransactions = (user, showToast) => {
     classifications,
     isLoading,
     error,
-    // State setters (needed by useLedgerMutations)
     setAccounts,
     setRecentTransactions,
     setCommitments,

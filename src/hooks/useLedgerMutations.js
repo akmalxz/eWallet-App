@@ -8,9 +8,9 @@ export function useLedgerMutations({
   setRecentTransactions,
   setCommitments,
   setCommitmentPayments,
-  fetchRecentTransactions, // <-- Added
-  fetchAccounts,           // <-- Added
-  fetchMonthlyData         // <-- Added
+  fetchRecentTransactions,
+  fetchAccounts,
+  fetchMonthlyData
 }) {
   const [isRefreshing, setIsRefreshing] = useState(false)
   const busyRef = useRef(false)
@@ -20,23 +20,17 @@ export function useLedgerMutations({
     busyRef.current = true
     setIsRefreshing(true)
     try {
-      // We keep this local fetch because it's specifically refreshing the ledger view
       const [txResult, commResult, payResult] = await Promise.all([
-        supabase
-          .from('transactions')
-          .select('*')
-          .order('needs_review', { ascending: false })
-          .order('transaction_date', { ascending: false }),
+        fetchRecentTransactions({ limit: 50, offset: 0, append: false }), // Fetch first page
         supabase.from('commitments').select('*'),
         supabase
           .from('commitments_payments')
           .select('id, commitment_id, period_year, period_month, status, transaction_id, created_at')
           .gte('period_year', new Date().getFullYear() - 1)
       ])
-      if (txResult.error) throw txResult.error
       if (commResult.error) throw commResult.error
       if (payResult.error) throw payResult.error
-      setRecentTransactions(txResult.data || [])
+      
       setCommitments(commResult.data || [])
       setCommitmentPayments(payResult.data || [])
       if (showToastMessage) showToast('Ledger refreshed successfully!', 'success')
@@ -46,7 +40,7 @@ export function useLedgerMutations({
       busyRef.current = false
       setIsRefreshing(false)
     }
-  }, [user, showToast, setRecentTransactions, setCommitments, setCommitmentPayments])
+  }, [user, showToast, setCommitments, setCommitmentPayments, fetchRecentTransactions])
 
   useEffect(() => {
     if (!user) return
@@ -68,7 +62,7 @@ export function useLedgerMutations({
       showToast('Transaction approved successfully!', 'success')
       
       await Promise.all([
-        fetchRecentTransactions(),
+        fetchRecentTransactions({ limit: 50, offset: 0, append: false }),
         fetchMonthlyData()
       ])
     } catch (err) {
@@ -83,8 +77,8 @@ export function useLedgerMutations({
       showToast('Transaction deleted successfully', 'success')
       
       await Promise.all([
-        fetchRecentTransactions(),
-        fetchAccounts(), // Deleting a transaction changes account balances
+        fetchRecentTransactions({ limit: 50, offset: 0, append: false }),
+        fetchAccounts(),
         fetchMonthlyData()
       ])
     } catch (err) {
@@ -117,7 +111,7 @@ export function useLedgerMutations({
       showToast('Transaction updated successfully!', 'success')
       
       await Promise.all([
-        fetchRecentTransactions(),
+        fetchRecentTransactions({ limit: 50, offset: 0, append: false }),
         fetchAccounts(),
         fetchMonthlyData()
       ])

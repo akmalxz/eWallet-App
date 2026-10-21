@@ -2,7 +2,7 @@
 import { useState, useMemo } from 'react'
 import {
   ArrowDownRight, ArrowUpRight, RefreshCw,
-  Trash2, Edit2, Plus, Inbox, Calendar, ChevronDown, ChevronUp, Search, X
+  Trash2, Edit2, Plus, Inbox, Calendar, ChevronDown, ChevronUp, Search, X, Loader2
 } from 'lucide-react'
 import { formatMYR } from '../../utils/formatters'
 import { toMYDate, dayKey } from '../../utils/dateHelpers'
@@ -66,31 +66,24 @@ export const ActionLedger = ({
   onRefresh,
   isRefreshing,
   accounts,
-  onAddTransaction
+  onAddTransaction,
+  searchQuery,
+  onSearchChange,
+  hasMore,
+  onLoadMore,
+  isLoadingMore
 }) => {
   const [editingId, setEditingId] = useState(null)
   const [expandedGroups, setExpandedGroups] = useState({})
   const [pendingDelete, setPendingDelete] = useState(null)
-  const [searchQuery, setSearchQuery] = useState('')
-
-  const filteredTransactions = useMemo(() => {
-    if (!recentTransactions) return []
-    if (!searchQuery.trim()) return recentTransactions
-    const q = searchQuery.toLowerCase()
-    return recentTransactions.filter(tx => 
-      (tx.description || '').toLowerCase().includes(q) ||
-      (tx.category || '').toLowerCase().includes(q) ||
-      String(tx.amount).includes(q)
-    )
-  }, [recentTransactions, searchQuery])
 
   const groupedTransactions = useMemo(() => {
-    if (filteredTransactions.length === 0) return []
+    if (!recentTransactions || recentTransactions.length === 0) return []
     const todayKey = dayKey(new Date())
     const yesterdayKey = dayKey(new Date(Date.now() - 24 * 60 * 60 * 1000))
     const groups = {}
 
-    filteredTransactions.forEach((tx) => {
+    recentTransactions.forEach((tx) => {
       const dateKey = dayKey(tx.transaction_date || tx.created_at)
       const label = formatGroupLabel(dateKey, todayKey, yesterdayKey)
       if (!groups[dateKey]) {
@@ -100,7 +93,7 @@ export const ActionLedger = ({
     })
 
     return Object.values(groups).sort((a, b) => b.date.localeCompare(a.date))
-  }, [filteredTransactions])
+  }, [recentTransactions])
 
   const toggleGroup = (dateKey) => {
     setExpandedGroups((prev) => ({ ...prev, [dateKey]: !prev[dateKey] }))
@@ -121,17 +114,19 @@ export const ActionLedger = ({
         <div className="w-14 h-14 bg-surface-2 border border-line rounded-2xl flex items-center justify-center mb-4 text-fg-subtle">
           <Inbox className="w-6 h-6" />
         </div>
-        <p className="text-sm font-bold text-fg">No Transactions Yet</p>
+        <p className="text-sm font-bold text-fg">No Transactions Found</p>
         <p className="text-xs text-fg-subtle text-center mt-1 max-w-xs leading-relaxed">
-          Record a fast entry with the platform omnibar tools or choose the transaction button below.
+          {searchQuery ? 'Try a different search term.' : 'Record a fast entry with the platform omnibar tools or choose the transaction button below.'}
         </p>
-        <button
-          onClick={onAddTransaction}
-          className="mt-4 inline-flex items-center justify-center gap-2 px-4 py-2.5 bg-brand-solid hover:bg-brand-solid-hover text-white text-xs font-bold rounded-xl shadow-sm transition-all"
-          style={{ minHeight: 44 }}
-        >
-          <Plus className="w-4 h-4" /> Log Transaction
-        </button>
+        {!searchQuery && (
+          <button
+            onClick={onAddTransaction}
+            className="mt-4 inline-flex items-center justify-center gap-2 px-4 py-2.5 bg-brand-solid hover:bg-brand-solid-hover text-white text-xs font-bold rounded-xl shadow-sm transition-all"
+            style={{ minHeight: 44 }}
+          >
+            <Plus className="w-4 h-4" /> Log Transaction
+          </button>
+        )}
       </section>
     )
   }
@@ -144,7 +139,7 @@ export const ActionLedger = ({
           <h2 className="text-base font-bold text-fg tracking-tight flex items-center gap-2">
             Action Ledger
             <span className="text-[10px] font-bold uppercase tracking-wider text-fg-subtle bg-surface-2 px-2 py-0.5 rounded-md">
-              {filteredTransactions.length}
+              {recentTransactions.length}
             </span>
           </h2>
 
@@ -153,14 +148,14 @@ export const ActionLedger = ({
               <Search className="w-3.5 h-3.5 text-fg-subtle absolute left-3 top-1/2 -translate-y-1/2" />
               <input
                 type="text"
-                placeholder="Search transactions..."
+                placeholder="Search all transactions..."
                 value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
+                onChange={(e) => onSearchChange(e.target.value)}
                 className="w-full bg-surface-2 border border-line rounded-xl py-2 pl-9 pr-8 text-xs text-fg placeholder:text-fg-subtle outline-none focus:border-brand focus:ring-2 focus:ring-brand/20 transition-all"
               />
               {searchQuery && (
                 <button
-                  onClick={() => setSearchQuery('')}
+                  onClick={() => onSearchChange('')}
                   className="absolute right-2 top-1/2 -translate-y-1/2 p-1 text-fg-subtle hover:text-fg"
                 >
                   <X className="w-3 h-3" />
@@ -185,7 +180,7 @@ export const ActionLedger = ({
 
         {/* SCROLLABLE LIST CONTAINER */}
         <div className="bg-surface border border-line rounded-2xl overflow-hidden flex flex-col flex-1 max-h-[60vh]">
-          <div className="overflow-y-auto overscroll-contain scrollbar-thin">
+          <div className="overflow-y-auto overscroll-contain scrollbar-thin flex-1">
             {groupedTransactions.length === 0 ? (
               <div className="p-8 text-center text-fg-subtle">
                 <Search className="w-6 h-6 mx-auto mb-2 opacity-50" />
@@ -263,7 +258,7 @@ export const ActionLedger = ({
                               {!isEditingThis && (
                                 <div
                                   id={`tx-${globalIndex}`}
-                                  className="flex items-center justify-between gap-3 px-4 py-3 hover:bg-surface-2 transition-all group"
+                                  className="flex items-center justify-between gap-3 px-4 py-3 hover:bg-surface-2 transition-all"
                                 >
                                   {/* LEFT: Description & Meta */}
                                   <div className="flex flex-col gap-1 min-w-0 flex-1">
@@ -310,22 +305,22 @@ export const ActionLedger = ({
                                       {isIncome ? '+' : isTransfer ? '' : '-'}{formatMYR(tx.amount)}
                                     </span>
                                     
-                                    {/* Actions aligned right under amount, tightly packed */}
-                                    <div className="ml-auto flex items-center justify-end gap-0 opacity-100 md:opacity-0 md:group-hover:opacity-100 focus-within:opacity-100 transition-opacity">
+                                    {/* Actions aligned right under amount, ALWAYS VISIBLE */}
+                                    <div className="ml-auto flex items-center justify-end gap-1 opacity-100 transition-opacity">
                                       <button
                                         onClick={() => beginEdit(tx.id)}
-                                        className="w-6 h-6 flex items-center justify-center text-fg-subtle hover:text-fg hover:bg-surface-3 rounded-md transition-all"
+                                        className="w-7 h-7 flex items-center justify-center text-fg-subtle hover:text-fg hover:bg-surface-3 rounded-md transition-all"
                                         aria-label="Edit transaction"
                                       >
-                                        <Edit2 className="w-3 h-3" />
+                                        <Edit2 className="w-3.5 h-3.5" />
                                       </button>
 
                                       <button
                                         onClick={() => setPendingDelete(tx)}
-                                        className="w-6 h-6 flex items-center justify-center text-fg-subtle hover:text-danger hover:bg-danger-soft rounded-md transition-all"
+                                        className="w-7 h-7 flex items-center justify-center text-fg-subtle hover:text-danger hover:bg-danger-soft rounded-md transition-all"
                                         aria-label="Delete transaction"
                                       >
-                                        <Trash2 className="w-3 h-3" />
+                                        <Trash2 className="w-3.5 h-3.5" />
                                       </button>
                                     </div>
 
@@ -343,6 +338,21 @@ export const ActionLedger = ({
               })
             )}
           </div>
+
+          {/* LOAD MORE BUTTON */}
+          {hasMore && (
+            <div className="p-3 border-t border-line bg-surface flex justify-center shrink-0">
+              <button
+                onClick={onLoadMore}
+                disabled={isLoadingMore}
+                className="inline-flex items-center gap-2 px-6 py-2.5 rounded-xl text-xs font-bold text-fg bg-surface-2 border border-line hover:bg-surface-3 transition-colors disabled:opacity-50"
+                style={{ minHeight: 44 }}
+              >
+                {isLoadingMore ? <Loader2 className="w-4 h-4 animate-spin" /> : null}
+                {isLoadingMore ? 'Loading more...' : 'Load More Transactions'}
+              </button>
+            </div>
+          )}
         </div>
       </section>
 

@@ -8,10 +8,11 @@ export function LogItemPage({
   onAddAccount,
   mainCategories,
   getSubCategories,
-  fetchAccounts,           // <-- Added
-  fetchRecentTransactions, // <-- Added
-  fetchMonthlyData,        // <-- Added
-  showToast
+  fetchAccounts,
+  fetchRecentTransactions,
+  fetchMonthlyData,
+  showToast,
+  initialAccountId
 }) {
   if (!accounts || accounts.length === 0) {
     return (
@@ -60,6 +61,7 @@ export function LogItemPage({
         fetchRecentTransactions={fetchRecentTransactions}
         fetchMonthlyData={fetchMonthlyData}
         showToast={showToast}
+        initialAccountId={initialAccountId}
       />
     </div>
   )

@@ -7,7 +7,7 @@ export function useAccountActions({
   accounts,
   currentView,
   setCurrentView,
-  fetchAccounts, // <-- Changed
+  fetchAccounts,
   showToast
 }) {
   const activeAccounts = useMemo(
@@ -29,6 +29,9 @@ export function useAccountActions({
 
   useEffect(() => {
     if (currentView !== 'profile') setRequestedModal(null)
+    // If we navigate away from the log page, clear the specific account selection.
+    // This ensures clicking the nav "Log" button defaults back to accounts[0].
+    if (currentView !== 'log') setSelectedAccount(null)
   }, [currentView])
 
   const goToAddAccount = () => {
