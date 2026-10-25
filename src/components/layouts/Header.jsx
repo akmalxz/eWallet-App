@@ -95,7 +95,7 @@ export const Header = ({
         visual padding.
       */}
       <header
-        className="sticky top-0 z-20 bg-page border-b-0 md:border-b border-line/40 header-safe-top"
+        className="sticky top-0 z-20 bg-page header-safe-top"
         style={{
           paddingBottom: '0.5rem',
           paddingLeft: 'max(0.75rem, env(safe-area-inset-left, 0px))',

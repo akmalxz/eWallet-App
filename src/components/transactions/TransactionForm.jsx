@@ -65,7 +65,7 @@ export function TransactionForm({
   useEffect(() => {
     const timer = setTimeout(() => {
       amountRef.current?.focus({ preventScroll: true })
-    }, 200)
+    }, 100)
     
     return () => clearTimeout(timer)
   }, [])
