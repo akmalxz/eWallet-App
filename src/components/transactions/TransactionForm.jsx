@@ -63,11 +63,9 @@ export function TransactionForm({
   const displayAmount = rawAmount ? (Number(rawAmount) / 100).toFixed(2) : ''
 
   useEffect(() => {
-    const timer = setTimeout(() => {
-      amountRef.current?.focus({ preventScroll: true })
-    }, 100)
-    
-    return () => clearTimeout(timer)
+    if (amountRef.current) {
+      amountRef.current.focus()
+    }
   }, [])
 
   useEffect(() => {
