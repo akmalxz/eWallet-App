@@ -47,7 +47,7 @@ export function TransactionForm({
   initialAccountId,          
 }) {
   const [txType, setTxType] = useState('expense')
-  const [amount, setAmount] = useState('')
+  const [rawAmount, setRawAmount] = useState('')
   const [description, setDescription] = useState('')
   const [category, setCategory] = useState('uncategorized')
   const [txDate, setTxDate] = useState(new Date().toISOString().split('T')[0])
@@ -59,32 +59,19 @@ export function TransactionForm({
   const amountRef = useRef(null)
   const descriptionRef = useRef(null)
 
+  // Format raw digits (e.g., "1234") into "12.34"
+  const displayAmount = rawAmount ? (Number(rawAmount) / 100).toFixed(2) : ''
+
   useEffect(() => {
     amountRef.current?.focus()
   }, [])
 
-  // Sync defaults when accounts change OR when a specific account is passed from the dashboard
   useEffect(() => {
     if (!accounts.length) return
-    
-    // If a specific account was clicked on the dashboard, force the source to be that account.
-    if (initialAccountId) {
-      setSource(initialAccountId)
-    } else {
-      // Otherwise, keep the currently selected source if it still exists in the accounts list.
-      // If it doesn't (e.g. account was deleted), fallback to the first account.
-      setSource(prev => {
-        const isValid = accounts.some(a => a.id === prev)
-        return isValid ? prev : accounts[0].id
-      })
-    }
-
-    // Ensure the destination (for transfers) is also a valid account.
-    setDest(prev => {
-      const isValid = accounts.some(a => a.id === prev)
-      if (isValid && prev !== initialAccountId) return prev
-      return accounts.length > 1 ? accounts[1].id : accounts[0].id
-    })
+    const defaultSource = initialAccountId || accounts[0].id
+    const defaultDest = accounts.length > 1 ? accounts[1].id : accounts[0].id
+    setSource(prev => prev || defaultSource)
+    setDest(prev => prev || defaultDest)
   }, [accounts, initialAccountId])
 
   useEffect(() => {
@@ -113,12 +100,22 @@ export function TransactionForm({
     })
   }
 
+  const handleAmountChange = (e) => {
+    // Strip all non-digit characters (e.g., if they type a dot or comma)
+    const digits = e.target.value.replace(/\D/g, '')
+    // Prevent absurdly large numbers (over ~10 million)
+    if (digits.length <= 10) {
+      setRawAmount(digits)
+      clearError('amount')
+    }
+  }
+
   const handleSubmit = async (e) => {
     e.preventDefault()
 
     const draft = {
       txType,
-      amount,
+      amount: displayAmount,
       description,
       category,
       sourceAccount: source,
@@ -136,13 +133,13 @@ export function TransactionForm({
 
     setSaving(true)
     try {
-      const amountNum = parseFloat(amount)
+      const amountNum = Number(rawAmount) / 100
       const finalCategory = txType === 'transfer' ? 'Transfer' : category
 
       const payload = {
         user_id: user.id,
         description: description.trim() || 'Manual Entry',
-        amount: Math.abs(amountNum),
+        amount: amountNum,
         category: finalCategory,
         transaction_date: new Date(`${txDate}T12:00:00`).toISOString(),
         source_account_id: txType === 'income' ? null : source,
@@ -156,7 +153,7 @@ export function TransactionForm({
 
       showToast('Transaction logged successfully!', 'success')
 
-      setAmount('')
+      setRawAmount('')
       setDescription('')
       setCategory('uncategorized')
       setErrors({})
@@ -279,18 +276,16 @@ export function TransactionForm({
                 ref={amountRef}
                 id="tx-amount"
                 name="tx-amount"
-                type="number"
-                step="0.01"
-                min="0.01"
-                inputMode="decimal"
+                type="text"
+                inputMode="numeric"
                 required
-                value={amount}
-                onChange={(e) => { setAmount(e.target.value); clearError('amount') }}
+                value={displayAmount}
+                onChange={handleAmountChange}
                 className={`w-full h-[46px] bg-surface border ${
                   errors.amount
                     ? 'border-danger-border focus:border-danger'
                     : 'border-line-strong focus:border-brand'
-                } rounded-xl py-2 pl-9 pr-3 text-sm text-fg placeholder:text-fg-subtle outline-none focus:ring-2 focus:ring-brand/30 transition-all`}
+                } rounded-xl py-2 pl-9 pr-3 text-sm font-bold text-fg placeholder:text-fg-subtle placeholder:font-normal outline-none focus:ring-2 focus:ring-brand/30 transition-all tabular-figures`}
                 placeholder="0.00"
               />
             </div>

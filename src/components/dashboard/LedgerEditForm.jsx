@@ -8,10 +8,13 @@ const initialFormState = (tx) => {
     ? new Date(raw).toISOString().split('T')[0]
     : new Date().toISOString().split('T')[0]
 
+  // Store the raw digits (e.g., 12.34 -> "1234")
+  const rawAmount = tx.amount ? String(Math.round(Number(tx.amount) * 100)) : ''
+
   return {
     description: tx.description || '',
     category: tx.category || '',
-    amount: tx.amount || '',
+    rawAmount: rawAmount,
     transaction_date: dateStr,
     source_account_id: tx.source_account_id || '',
     destination_account_id: tx.destination_account_id || ''
@@ -33,9 +36,18 @@ export const LedgerEditForm = ({
   const isExpense  = data.source_account_id && !data.destination_account_id
   const isTransfer = data.source_account_id && data.destination_account_id
 
+  const displayAmount = data.rawAmount ? (Number(data.rawAmount) / 100).toFixed(2) : ''
+
   const setField = (key, value) => {
     setData((prev) => ({ ...prev, [key]: value }))
     setErrors((prev) => ({ ...prev, [key]: '' }))
+  }
+
+  const handleAmountChange = (e) => {
+    const digits = e.target.value.replace(/\D/g, '')
+    if (digits.length <= 10) {
+      setField('rawAmount', digits)
+    }
   }
 
   const applyType = (type) => {
@@ -66,8 +78,8 @@ export const LedgerEditForm = ({
       next.category = 'Please select a category'
     }
 
-    const amountNum = parseFloat(data.amount)
-    if (!data.amount || isNaN(amountNum) || amountNum <= 0) {
+    const amountNum = Number(data.rawAmount)
+    if (!data.rawAmount || isNaN(amountNum) || amountNum <= 0) {
       next.amount = 'Please enter a valid amount greater than 0'
     }
 
@@ -83,11 +95,11 @@ export const LedgerEditForm = ({
 
   const handleSave = () => {
     if (!validate()) return
-    const amountNum = parseFloat(data.amount)
+    const amountNum = Number(data.rawAmount) / 100
     onSave({
       description: data.description.trim(),
       category: data.category,
-      amount: Math.abs(amountNum),
+      amount: amountNum,
       transaction_date: data.transaction_date,
       source_account_id: data.source_account_id || null,
       destination_account_id: data.destination_account_id || null,
@@ -135,17 +147,16 @@ export const LedgerEditForm = ({
             Amount (RM)
           </label>
           <input
-            type="number"
-            step="0.01"
-            min="0.01"
-            value={data.amount}
-            onChange={(e) => setField('amount', e.target.value)}
+            type="text"
+            inputMode="numeric"
+            value={displayAmount}
+            onChange={handleAmountChange}
             onKeyDown={handleKeyDown}
             className={`w-full h-[46px] bg-surface border ${
               errors.amount
                 ? 'border-danger-border focus:border-danger'
                 : 'border-line-strong focus:border-brand'
-            } rounded-xl px-3 text-sm text-fg placeholder:text-fg-subtle outline-none focus:ring-2 focus:ring-brand/30 transition-all tabular-figures`}
+            } rounded-xl px-3 text-sm font-bold text-fg placeholder:text-fg-subtle placeholder:font-normal outline-none focus:ring-2 focus:ring-brand/30 transition-all tabular-figures`}
             placeholder="0.00"
           />
           {errors.amount && (
