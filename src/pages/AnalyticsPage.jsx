@@ -6,13 +6,16 @@ import { AccountSelect, EmptyState } from '../components/analytics/AnalyticsShar
 import { HeadlineInsights } from '../components/analytics/HeadlineInsights'
 import { MainTrendChart } from '../components/analytics/MainTrendChart'
 import { PatternViews } from '../components/analytics/PatternViews'
-import { CategoryMovement } from '../components/analytics/CategoryMovement'
 import { IncomeVsExpense } from '../components/analytics/IncomeVsExpense'
-import { SpendingStructure } from '../components/analytics/SpendingStructure' // <-- Added
-import { periodStart } from '../utils/analytics/dateRange' // <-- Added
+import { SpendingStructure } from '../components/analytics/SpendingStructure'
+import { SmallLeaks } from '../components/analytics/SmallLeaks' // <-- Added
+import { TopCategories } from '../components/analytics/TopCategories' // <-- Added
+import { periodStart } from '../utils/analytics/dateRange'
 import { toMYDate } from '../utils/dateHelpers'
 import { AccountSelector } from '../components/shared/AccountSelector'
 import { SlidingSegmentedControl } from '../components/shared/SlidingSegmentedControl'
+
+// ... (Keep constants PERIOD_ITEMS, TAB_ITEMS, MODE_ITEMS, getInitialParam, AnalyticsSkeleton exactly the same)
 
 const PERIOD_ITEMS = [
   { id: 3, label: '3M' },
@@ -119,7 +122,6 @@ export function AnalyticsPage({
   const spendingSource =
     mode === 'everyday' ? filteredEverydayExpenses : filteredExpenses
 
-  // FIXED: Use the timezone-safe periodStart helper instead of setMonth()
   const cutoff = useMemo(() => periodStart(period), [period])
 
   const periodScopedExpenses = useMemo(() => {
@@ -292,7 +294,16 @@ export function AnalyticsPage({
               )}
 
               {tab === 'categories' && (
-                <CategoryMovement expenses={periodScopedExpenses} periodMonths={period} />
+                <>
+                  {/* Small Leaks uses Everyday expenses to find daily habits */}
+                  <SmallLeaks 
+                    expenses={periodScopedEveryday} 
+                    periodMonths={period} 
+                    accounts={accounts} 
+                  />
+                  {/* Top Categories respects the user's All/Everyday toggle */}
+                  <TopCategories expenses={periodScopedExpenses} accounts={accounts} />
+                </>
               )}
 
               {tab === 'income' && (
