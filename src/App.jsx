@@ -377,6 +377,7 @@ export default function App() {
             commitments={commitments}
             fetchAccounts={fetchAccounts}
             fetchCategories={fetchCategories}
+            fetchRecentTransactions={fetchRecentTransactions}
             fetchMonthlyData={fetchMonthlyData}
             showToast={showToast}
             selectedAccount={accountApi.selectedAccount}

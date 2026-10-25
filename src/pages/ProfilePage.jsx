@@ -70,6 +70,7 @@ export function ProfilePage({
   onNavigate,
   fetchAccounts,
   fetchCategories,
+  fetchRecentTransactions, // <-- Added
   fetchMonthlyData,
 }) {
   const [activeModal, setActiveModal] = useState(initialModal)
@@ -149,6 +150,8 @@ export function ProfilePage({
           categories={categories}
           closeModal={closeModal}
           fetchCategories={fetchCategories}
+          fetchRecentTransactions={fetchRecentTransactions} // <-- Passed down
+          fetchMonthlyData={fetchMonthlyData}               // <-- Passed down
           showToast={showToast}
         />
       )}
@@ -159,6 +162,8 @@ export function ProfilePage({
           categories={categories}
           closeModal={closeModal}
           fetchCategories={fetchCategories}
+          fetchRecentTransactions={fetchRecentTransactions} // <-- Passed down
+          fetchMonthlyData={fetchMonthlyData}               // <-- Passed down
           showToast={showToast}
         />
       )}

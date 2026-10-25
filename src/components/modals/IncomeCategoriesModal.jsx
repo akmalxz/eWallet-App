@@ -10,6 +10,8 @@ export const IncomeCategoriesModal = ({
   categories,
   closeModal,
   fetchCategories,
+  fetchRecentTransactions, // <-- Added
+  fetchMonthlyData,        // <-- Added
   showToast
 }) => {
   const [newSubCategoryName, setNewSubCategoryName] = useState('')
@@ -19,8 +21,7 @@ export const IncomeCategoriesModal = ({
   const [editValue, setEditValue] = useState('')
   const [pendingDelete, setPendingDelete] = useState(null)
 
-  const getSubCategories = (parentId) =>
-    categories.filter((c) => c.parent_id === parentId)
+  const getSubCategories = (parentId) => categories.filter((c) => c.parent_id === parentId)
 
   const incomeCategory = categories
     .filter((c) => !c.parent_id)
@@ -51,9 +52,7 @@ export const IncomeCategoriesModal = ({
     try {
       const { error } = await supabase
         .from('categories')
-        .insert([
-          { user_id: user.id, name: newSubCategoryName.trim(), parent_id: parentId }
-        ])
+        .insert([{ user_id: user.id, name: newSubCategoryName.trim(), parent_id: parentId }])
       if (error) throw error
       setNewSubCategoryName('')
       setAddingSubToId(null)
@@ -74,16 +73,33 @@ export const IncomeCategoriesModal = ({
     if (!pendingDelete) return
     setSaving(true)
     try {
-      const { error } = await supabase
-        .from('categories')
-        .delete()
-        .eq('id', pendingDelete.id)
+      const category = categories.find(c => c.id === pendingDelete.id)
+      const isSub = !!category?.parent_id
+      let fullName = pendingDelete.name
+
+      if (isSub) {
+        const parent = categories.find(c => c.id === category.parent_id)
+        fullName = `${parent.name} > ${pendingDelete.name}`
+      }
+
+      // Move transactions to Uncategorized
+      if (isSub) {
+        await supabase.from('transactions').update({ category: 'Uncategorized' }).eq('category', fullName)
+      } else {
+        await supabase.from('transactions').update({ category: 'Uncategorized' }).or(`category.eq."${fullName}",category.like."${fullName} > %"`)
+      }
+
+      const { error } = await supabase.from('categories').delete().eq('id', pendingDelete.id)
       if (error) throw error
-      showToast('Category deleted', 'success')
+
+      showToast('Category deleted and transactions moved to Uncategorized', 'success')
       setPendingDelete(null)
+      
       await fetchCategories()
+      if (fetchRecentTransactions) await fetchRecentTransactions({ limit: 50, offset: 0, append: false })
+      if (fetchMonthlyData) await fetchMonthlyData()
     } catch (error) {
-      showToast('Cannot delete category. It has transactions.', 'error')
+      showToast('Cannot delete category: ' + error.message, 'error')
     } finally {
       setSaving(false)
     }
@@ -92,20 +108,46 @@ export const IncomeCategoriesModal = ({
   const handleUpdateCategory = async (id) => {
     if (!editValue.trim()) return setEditingItemId(null)
     setSaving(true)
+    
     try {
-      const { data, error } = await supabase
-        .from('categories')
-        .update({ name: editValue.trim() })
-        .eq('id', id)
-        .select()
-      if (error) throw error
-      if (!data || data.length === 0) {
-        throw new Error(
-          'Update failed — no rows affected. Your RLS policy may not allow UPDATE on categories.'
-        )
+      const category = categories.find(c => c.id === id)
+      const oldName = category.name
+      const newName = editValue.trim()
+      const isSub = !!category.parent_id
+      
+      let oldFullName = oldName
+      let newFullName = newName
+
+      if (isSub) {
+        const parent = categories.find(c => c.id === category.parent_id)
+        oldFullName = `${parent.name} > ${oldName}`
+        newFullName = `${parent.name} > ${newName}`
       }
-      showToast('Category updated successfully', 'success')
+
+      // 1. Update category
+      const { error: catError } = await supabase
+        .from('categories')
+        .update({ name: newName })
+        .eq('id', id)
+      if (catError) throw catError
+
+      // 2. Cascade to transactions
+      if (isSub) {
+        await supabase.from('transactions').update({ category: newFullName }).eq('category', oldFullName)
+      } else {
+        await supabase.from('transactions').update({ category: newName }).eq('category', oldName)
+        const subs = getSubCategories(id)
+        for (const sub of subs) {
+          await supabase.from('transactions').update({ category: `${newName} > ${sub.name}` }).eq('category', `${oldName} > ${sub.name}`)
+        }
+      }
+
+      showToast('Category updated everywhere', 'success')
+      
       await fetchCategories()
+      if (fetchRecentTransactions) await fetchRecentTransactions({ limit: 50, offset: 0, append: false })
+      if (fetchMonthlyData) await fetchMonthlyData()
+      
     } catch (error) {
       showToast(error.message, 'error')
     } finally {
@@ -117,7 +159,6 @@ export const IncomeCategoriesModal = ({
   return (
     <>
       <ModalWrapper title="Income Setup" closeModal={closeModal}>
-        {/* ... [Keep the exact same JSX rendering as your original file] ... */}
         {!incomeCategory ? (
           <div className="text-center p-4">
             <p className="text-sm text-fg-muted mb-3">
@@ -135,9 +176,7 @@ export const IncomeCategoriesModal = ({
           <div className="space-y-3">
             <button
               onClick={() => {
-                setAddingSubToId(
-                  addingSubToId === incomeCategory.id ? null : incomeCategory.id
-                )
+                setAddingSubToId(addingSubToId === incomeCategory.id ? null : incomeCategory.id)
                 setNewSubCategoryName('')
                 setEditingItemId(null)
               }}
@@ -149,11 +188,7 @@ export const IncomeCategoriesModal = ({
               aria-label="Add income stream"
               style={{ minHeight: 44 }}
             >
-              {addingSubToId === incomeCategory.id ? (
-                <X className="w-3.5 h-3.5" />
-              ) : (
-                <Plus className="w-3.5 h-3.5" />
-              )}
+              {addingSubToId === incomeCategory.id ? <X className="w-3.5 h-3.5" /> : <Plus className="w-3.5 h-3.5" />}
               {addingSubToId === incomeCategory.id ? 'Cancel' : 'Add New Income Category'}
             </button>
 
@@ -170,7 +205,7 @@ export const IncomeCategoriesModal = ({
                   value={newSubCategoryName}
                   onChange={(e) => setNewSubCategoryName(e.target.value)}
                   placeholder="e.g. Salary, Side Hustle"
-                  className="flex-1 bg-surface border border-line rounded-lg px-3 py-2 text-sm text-fg placeholder:text-fg-subtle outline-none focus:border-brand"
+                  className="flex-1 bg-surface border border-line-strong rounded-lg px-3 py-2 text-sm text-fg placeholder:text-fg-subtle outline-none focus:border-brand"
                 />
                 <button
                   onClick={() => handleAddSubCategory(incomeCategory.id)}
@@ -185,10 +220,7 @@ export const IncomeCategoriesModal = ({
             {getSubCategories(incomeCategory.id).length > 0 && (
               <div className="bg-surface border border-line rounded-2xl divide-y divide-line overflow-hidden">
                 {getSubCategories(incomeCategory.id).map((sub) => (
-                  <div
-                    key={sub.id}
-                    className="px-3 py-2 min-h-[48px] flex items-center"
-                  >
+                  <div key={sub.id} className="px-3 py-2 min-h-[48px] flex items-center">
                     {editingItemId === sub.id ? (
                       <div className="flex gap-2 w-full">
                         <input
@@ -197,7 +229,7 @@ export const IncomeCategoriesModal = ({
                           type="text"
                           value={editValue}
                           onChange={(e) => setEditValue(e.target.value)}
-                          className="flex-1 bg-surface border border-line rounded-md px-2 py-1 text-sm text-fg outline-none focus:border-brand"
+                          className="flex-1 bg-surface border border-line-strong rounded-md px-2 py-1 text-sm text-fg outline-none focus:border-brand"
                         />
                         <div className="flex flex-col gap-1 shrink-0">
                           <button
@@ -257,7 +289,7 @@ export const IncomeCategoriesModal = ({
           destructive
           saving={saving}
           title={`Delete "${pendingDelete.name}"?`}
-          message="Subcategories will also be deleted. This can't be undone."
+          message="Subcategories will also be deleted. Any transactions using this category will be moved to 'Uncategorized'."
           confirmLabel="Delete"
           onConfirm={confirmDeleteCategory}
           onCancel={() => setPendingDelete(null)}

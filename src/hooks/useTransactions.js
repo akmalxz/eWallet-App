@@ -206,6 +206,7 @@ export const useTransactions = (user, showToast) => {
     setError,
     fetchInitialData,
     fetchAccounts,
+    fetchCategories,
     fetchRecentTransactions,
     fetchCommitments,
     fetchMonthlyData,

@@ -1,6 +1,6 @@
 // src/components/dashboard/CashFlowHeatmap.jsx
 import { useState, useMemo } from 'react'
-import { TrendingUp, TrendingDown, Plus, ArrowRight, PieChart, ChevronDown, ChevronUp, X } from 'lucide-react'
+import { TrendingUp, TrendingDown, Plus, ArrowRight, PieChart, ChevronDown, ChevronLeft, X } from 'lucide-react'
 import { 
   PieChart as RechartsPie, 
   Pie, 
@@ -25,9 +25,9 @@ const compactMYR = (n) => {
 const MOBILE_LIMIT = 6
 
 // ============================================================
-// SUB-CATEGORY DRILLDOWN
+// SUB-CATEGORY DRILLDOWN (Now acts as a full view swap)
 // ============================================================
-function SubCategoryDrilldown({ title, total, txns, accounts, onClose }) {
+function SubCategoryDrilldown({ title, total, txns, accounts, onBack }) {
   const [expandedSub, setExpandedSub] = useState(null)
 
   const groups = useMemo(() => {
@@ -44,26 +44,19 @@ function SubCategoryDrilldown({ title, total, txns, accounts, onClose }) {
   }, [txns])
 
   return (
-    <div className="mt-4 bg-surface border border-line rounded-2xl overflow-hidden animate-fadeIn">
-      <div className="flex items-start justify-between px-4 py-4 border-b border-line bg-surface-2/30">
-        <div>
-          <p className="text-[10px] font-bold text-fg-subtle uppercase tracking-wider">
-            {title} Breakdown
-          </p>
-          <p className="text-base font-black text-fg mt-0.5 tabular-figures">
-            {formatMYR(total)}
-          </p>
-        </div>
+    <div className="animate-fadeIn flex flex-col h-full">
+      <div className="flex items-center gap-2 mb-4">
         <button
-          onClick={onClose}
-          className="inline-flex h-8 w-8 items-center justify-center rounded-lg text-fg-subtle hover:text-fg hover:bg-surface-2 transition-colors"
-          aria-label="Close drill-down"
+          onClick={onBack}
+          className="flex items-center gap-1 text-xs font-bold text-fg-muted hover:text-fg transition-colors bg-surface-2 px-3 py-2 rounded-lg"
         >
-          <ChevronUp className="h-4 w-4" />
+          <ChevronLeft className="w-4 h-4" /> Back
         </button>
+        <h3 className="text-sm font-bold text-fg ml-auto truncate pr-2">{title}</h3>
+        <p className="text-base font-black text-fg tabular-figures shrink-0">{formatMYR(total)}</p>
       </div>
 
-      <div className="divide-y divide-line">
+      <div className="bg-surface border border-line rounded-2xl divide-y divide-line overflow-hidden flex-1 overflow-y-auto scrollbar-thin">
         {groups.map((group) => {
           const isExpanded = expandedSub === group.name
           const pct = (group.total / total) * 100
@@ -72,7 +65,7 @@ function SubCategoryDrilldown({ title, total, txns, accounts, onClose }) {
             <div key={group.name}>
               <button
                 onClick={() => setExpandedSub(isExpanded ? null : group.name)}
-                className="w-full flex items-center justify-between px-4 py-3 hover:bg-surface-2 transition-colors"
+                className="w-full flex items-center justify-between px-4 py-3.5 hover:bg-surface-2 transition-colors"
               >
                 <div className="flex items-center gap-2">
                   <ChevronDown className={`w-3.5 h-3.5 text-fg-subtle transition-transform ${isExpanded ? 'rotate-180' : ''}`} />
@@ -155,7 +148,6 @@ export const CashFlowHeatmap = ({
 
   const [activeName, setActiveName] = useState(null)
   const [isHovering, setIsHovering] = useState(false)
-  const [showAll, setShowAll] = useState(false)
 
   const totalExpenses = useMemo(
     () => cashFlowData.reduce((sum, item) => sum + (item.value || 0), 0),
@@ -170,14 +162,28 @@ export const CashFlowHeatmap = ({
     [cashFlowData, isDark]
   )
 
-  const donutData = useMemo(() => coloredData.slice(0, MOBILE_LIMIT), [coloredData])
-  const listData = useMemo(() => showAll ? coloredData : coloredData.slice(0, MOBILE_LIMIT), [coloredData, showAll])
-
   if (isLoading) return <CashFlowHeatmapSkeleton />
 
   const activeItem = activeName ? coloredData.find(i => i.name === activeName) : null
   const handleSelect = (name) => setActiveName(prev => (prev === name ? null : name))
   
+  // If a category is active, show the full-page drilldown instead of the chart
+  if (activeItem) {
+    return (
+      <div className="relative flex flex-col h-full pt-3">
+        <div className="absolute top-0 left-0 right-0 h-1 bg-brand rounded-full" />
+        <SubCategoryDrilldown
+          title={activeItem.name}
+          total={activeItem.value}
+          txns={activeItem.txns}
+          accounts={accounts}
+          onBack={() => setActiveName(null)}
+        />
+      </div>
+    )
+  }
+
+  const donutData = coloredData.slice(0, MOBILE_LIMIT)
   const activeIndex = activeName ? donutData.findIndex(d => d.name === activeName) : -1
 
   return (
@@ -215,6 +221,7 @@ export const CashFlowHeatmap = ({
 
           <div className="flex flex-col md:flex-row items-start gap-5 md:gap-6">
             
+            {/* Donut Chart */}
             <div className="relative w-44 h-44 md:w-48 md:h-48 shrink-0 flex items-center justify-center md:sticky md:top-4 mx-auto md:mx-0">
               <ResponsiveContainer width="100%" height="100%">
                 <RechartsPie>
@@ -250,17 +257,17 @@ export const CashFlowHeatmap = ({
                   </Pie>
 
                   <RechartsTooltip
-                    offset={15} // Pushes tooltip slightly away from cursor
+                    offset={15}
                     content={({ active, payload }) => {
                       if (!active || !payload?.length) return null
                       const data = payload[0].payload
                       return (
-                        <div className="bg-surface border border-line rounded-xl shadow-xl p-3 text-xs z-50 pointer-events-none">
-                          <p className="font-bold text-fg mb-1 flex items-center gap-2">
+                        <div className="bg-surface border border-line rounded-xl shadow-xl p-2.5 text-xs z-50 pointer-events-none">
+                          <p className="font-bold text-fg mb-0.5 flex items-center gap-1.5">
                             <span className="w-2 h-2 rounded-full" style={{ backgroundColor: data.color }} />
                             {data.name}
                           </p>
-                          <p className="text-fg-muted tabular-figures text-sm font-black">{formatMYR(data.value)}</p>
+                          <p className="text-fg-muted tabular-figures font-black">{formatMYR(data.value)}</p>
                         </div>
                       )
                     }}
@@ -268,54 +275,42 @@ export const CashFlowHeatmap = ({
                 </RechartsPie>
               </ResponsiveContainer>
 
-              {/* Center Text fades out on hover to prevent tooltip glitch */}
+              {/* Center Text */}
               <div 
                 className={`absolute inset-0 flex flex-col items-center justify-center text-center p-4 pointer-events-none transition-opacity duration-200 ${
                   isHovering ? 'opacity-0' : 'opacity-100'
                 }`}
               >
                 <p className="text-[10px] font-bold text-fg-subtle uppercase tracking-wider truncate w-24">
-                  {activeItem ? activeItem.name : 'Outflow'}
+                  Outflow
                 </p>
                 <p className="text-sm font-black text-fg tracking-tight truncate w-28 mt-0.5 tabular-figures">
-                  <AnimatedNumber value={activeItem ? activeItem.value : totalExpenses} format={compactMYR} />
+                  <AnimatedNumber value={totalExpenses} format={compactMYR} />
                 </p>
-                
-                {activeItem ? (
-                  <button
-                    onClick={() => setActiveName(null)}
-                    className="pointer-events-auto flex items-center gap-1 mt-1 text-[10px] font-bold text-brand hover:text-brand-hover bg-brand-soft/50 px-2 py-0.5 rounded-md transition-colors"
-                  >
-                    <X className="w-3 h-3" /> Clear
-                  </button>
-                ) : (
-                  <p className="text-[10px] font-bold text-brand mt-0.5 tabular-figures">
-                    {coloredData.length} categories
-                  </p>
-                )}
+                <p className="text-[10px] font-bold text-brand mt-0.5 tabular-figures">
+                  {coloredData.length} categories
+                </p>
               </div>
             </div>
 
+            {/* Scrollable List */}
             <div className="flex-1 w-full">
-              <div className="space-y-1.5">
-                {listData.map((item) => {
+              <div className="space-y-1.5 max-h-64 overflow-y-auto scrollbar-thin pr-1 -mr-1">
+                {coloredData.map((item) => {
                   const pct = ((item.value / totalExpenses) * 100).toFixed(1)
-                  const isActive = activeName === item.name
                   const cmp = item.comparison
 
                   return (
                     <button
                       key={item.name}
                       onClick={() => handleSelect(item.name)}
-                      className={`w-full text-left flex items-center justify-between p-2.5 rounded-xl border transition-all ${
-                        isActive ? 'bg-surface-2 border-line shadow-sm' : 'bg-transparent border-transparent hover:border-line hover:bg-surface-2/40'
-                      }`}
+                      className="w-full text-left flex items-center justify-between p-2.5 rounded-xl border border-transparent hover:border-line hover:bg-surface-2/40 transition-all"
                       style={{ minHeight: 44 }}
                     >
                       <div className="flex items-center gap-2.5 min-w-0 flex-1">
                         <div className="w-3 h-3 rounded-md shrink-0" style={{ backgroundColor: item.color }} />
                         <div className="min-w-0 flex-1">
-                          <span className={`text-xs font-semibold truncate text-fg-muted block ${isActive ? 'text-fg font-bold' : ''}`}>
+                          <span className="text-xs font-semibold truncate text-fg-muted block">
                             {item.name}
                           </span>
                           {cmp && (
@@ -344,28 +339,8 @@ export const CashFlowHeatmap = ({
                   )
                 })}
               </div>
-
-              {coloredData.length > MOBILE_LIMIT && (
-                <button
-                  onClick={() => setShowAll(s => !s)}
-                  className="w-full mt-2 py-2 text-xs font-bold text-fg-muted hover:text-fg transition-colors"
-                  style={{ minHeight: 44 }}
-                >
-                  {showAll ? 'Show less' : `Show ${coloredData.length - MOBILE_LIMIT} more categories`}
-                </button>
-              )}
             </div>
           </div>
-
-          {activeItem && activeItem.txns && activeItem.txns.length > 0 && (
-            <SubCategoryDrilldown
-              title={activeItem.name}
-              total={activeItem.value}
-              txns={activeItem.txns}
-              accounts={accounts}
-              onClose={() => setActiveName(null)}
-            />
-          )}
         </>
       )}
 

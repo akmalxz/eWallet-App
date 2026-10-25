@@ -10,23 +10,12 @@ import { CRITICAL_RUNWAY_DAYS, NEAR_PAYDAY_DAYS } from '../../utils/analytics/bu
 import { EmptyState } from '../analytics/AnalyticsShared'
 import { AnimatedNumber } from '../shared/AnimatedNumber'
 
-const compactMYR = (n) => {
-  const abs = Math.abs(n || 0)
-  if (abs >= 1000000) return `RM ${(n / 1000000).toFixed(1)}M`
-  if (abs >= 1000) return `RM ${(n / 1000).toFixed(1)}k`
-  return formatMYR(n)
-}
-
 const formatDate = (d) =>
   d?.toLocaleDateString('en-MY', { day: 'numeric', month: 'short' })
 
-// ============================================================
-// LOADING SKELETON — matches the new visual hierarchy
-// ============================================================
 const BurnRateWidgetSkeleton = () => (
   <div className="relative flex flex-col h-full">
     <div className="absolute top-0 left-0 right-0 h-1 rounded-full bg-line-strong" />
-
     <div className="flex justify-between items-start mb-4 gap-3 pt-4">
       <div className="min-w-0 space-y-1.5">
         <div className="h-4 w-24 bg-surface-3 rounded-full animate-pulse" />
@@ -34,14 +23,10 @@ const BurnRateWidgetSkeleton = () => (
       </div>
       <div className="h-8 w-20 bg-surface-2 rounded-lg animate-pulse" />
     </div>
-
-    {/* Hero skeleton */}
     <div className="mb-5 space-y-2">
       <div className="h-3 w-16 bg-surface-2 rounded-full animate-pulse" />
       <div className="h-10 w-48 bg-surface-3 rounded-xl animate-pulse" />
     </div>
-
-    {/* Secondary skeleton */}
     <div className="grid grid-cols-2 gap-4 mb-5 border-y border-line py-3">
       <div className="space-y-2">
         <div className="h-2.5 w-14 bg-surface-2 rounded-full animate-pulse" />
@@ -52,7 +37,6 @@ const BurnRateWidgetSkeleton = () => (
         <div className="h-5 w-20 bg-surface-3 rounded-full animate-pulse" />
       </div>
     </div>
-
     <div className="h-3 bg-surface-2 rounded-full animate-pulse mb-3" />
     <div className="h-3 w-2/3 bg-surface-2 rounded-full animate-pulse" />
   </div>
@@ -79,7 +63,6 @@ export const BurnRateWidget = ({ velocityStats, isLoading = false, onSeeTrends, 
     scopeLabel = 'Account',
     payday,
     isPaydayToday = false,
-
     balance = 0,
     billsBeforePayday = 0,
     freeMoney = 0,
@@ -92,23 +75,17 @@ export const BurnRateWidget = ({ velocityStats, isLoading = false, onSeeTrends, 
     daysToPayday = 0,
     daysPassed = 0,
     monthLength = 30,
-
     runoutDate = null,
     runsOutBeforePayday = false,
     expectedBalanceAtPayday = 0,
-
     spendingTrend = 0,
-
     reviewCount = 0,
     billCount = 0,
-
     status = 'no_data',
     shortfall = 0
   } = velocityStats || {}
 
-  if (isLoading) {
-    return <BurnRateWidgetSkeleton />
-  }
+  if (isLoading) return <BurnRateWidgetSkeleton />
 
   const hasEverydayData = everydaySpentThisMonth > 0 && dailyAverage > 0
   const isInfiniteRunway = runwayDays === 9999 || runwayDays > 365
@@ -133,37 +110,13 @@ export const BurnRateWidget = ({ velocityStats, isLoading = false, onSeeTrends, 
   })()
 
   const StatusIcon = statusBadge.icon
+  const accent = status === 'no_data' ? 'bg-line-strong' : (status === 'bills_exceed_balance' || status === 'at_risk') ? 'bg-danger' : status === 'tight' ? 'bg-warning' : 'bg-success'
 
-  const accent = (() => {
-    if (status === 'no_data') return 'bg-line-strong'
-    if (status === 'bills_exceed_balance' || status === 'at_risk') return 'bg-danger'
-    if (status === 'tight') return 'bg-warning'
-    return 'bg-success'
-  })()
-
-  const runwayPercent = daysToPayday > 0
-    ? Math.min(100, (runwayDays / daysToPayday) * 100)
-    : 100
-
-  const markerColor = (() => {
-    if (!runsOutBeforePayday) return COLORS.down
-    if (runwayDays < CRITICAL_RUNWAY_DAYS) return COLORS.up
-    const daysAfterRunout = daysToPayday - runwayDays
-    if (daysAfterRunout <= NEAR_PAYDAY_DAYS) return '#f59e0b'
-    return COLORS.up
-  })()
+  const runwayPercent = daysToPayday > 0 ? Math.min(100, (runwayDays / daysToPayday) * 100) : 100
 
   const barFillColor = (() => {
-    if (!runsOutBeforePayday) {
-      return 'linear-gradient(to right, #10b981, #059669)'
-    }
-    if (runwayDays < CRITICAL_RUNWAY_DAYS) {
-      return 'linear-gradient(to right, #ef4444, #f43f5e)'
-    }
-    const daysAfterRunout = daysToPayday - runwayDays
-    if (daysAfterRunout <= NEAR_PAYDAY_DAYS) {
-      return 'linear-gradient(to right, #f59e0b, #f97316)'
-    }
+    if (!runsOutBeforePayday) return 'linear-gradient(to right, #10b981, #059669)'
+    if (runwayDays < CRITICAL_RUNWAY_DAYS) return 'linear-gradient(to right, #ef4444, #f43f5e)'
     return 'linear-gradient(to right, #f59e0b, #f97316)'
   })()
 
@@ -207,7 +160,6 @@ export const BurnRateWidget = ({ velocityStats, isLoading = false, onSeeTrends, 
     <div className="relative flex flex-col h-full">
       <div className={`absolute top-0 left-0 right-0 h-1 rounded-full ${accent}`} />
 
-      {/* Header */}
       <div className="flex justify-between items-start mb-4 gap-3 pt-4">
         <div className="min-w-0">
           <h2 className="text-sm font-bold text-fg tracking-tight">Burn Rate</h2>
@@ -225,7 +177,7 @@ export const BurnRateWidget = ({ velocityStats, isLoading = false, onSeeTrends, 
           </button>
           {statusBadge.label && (
             <div 
-              key={status} // <-- Forces re-render of animation when status changes
+              key={status}
               className={`px-2.5 py-1.5 rounded-lg text-[10px] font-bold tracking-wider flex items-center gap-1.5 border shadow-sm animate-attention ${statusBadge.color}`}
             >
               <StatusIcon className="w-3.5 h-3.5" />
@@ -235,7 +187,6 @@ export const BurnRateWidget = ({ velocityStats, isLoading = false, onSeeTrends, 
         </div>
       </div>
 
-      {/* Payday today special state */}
       {status === 'payday_today' ? (
         <div className="flex flex-col items-center justify-center p-6 bg-success-soft border border-success-border rounded-2xl mb-4">
           <div className="w-12 h-12 bg-success/15 rounded-full flex items-center justify-center text-success mb-3">
@@ -248,7 +199,6 @@ export const BurnRateWidget = ({ velocityStats, isLoading = false, onSeeTrends, 
         </div>
       ) : (
         <>
-          {/* HERO: Free Money */}
           <div className="mb-5">
             <p className="text-[11px] text-fg-subtle uppercase font-bold tracking-wider mb-1">Free money</p>
             <div className={`text-4xl font-black tracking-tighter tabular-figures ${freeMoneyNegative ? 'text-danger' : 'text-fg'}`}>
@@ -257,13 +207,19 @@ export const BurnRateWidget = ({ velocityStats, isLoading = false, onSeeTrends, 
             <p className="text-[11px] text-fg-muted mt-1">Available to spend before payday.</p>
           </div>
 
-          {/* SECONDARY: Daily Avg & Runway */}
           <div className="grid grid-cols-2 gap-4 mb-5 border-y border-line py-3">
             <div>
               <p className="text-[10px] text-fg-subtle uppercase font-bold tracking-wider mb-0.5">Daily avg</p>
-              <p className="text-lg font-bold text-fg tabular-figures">
-                {hasEverydayData ? <AnimatedNumber value={dailyAverage} format={formatMYR} /> : '—'}
-              </p>
+              <div className="flex items-baseline gap-1.5">
+                <p className="text-lg font-bold text-fg tabular-figures">
+                  {hasEverydayData ? <AnimatedNumber value={dailyAverage} format={formatMYR} /> : '—'}
+                </p>
+                {hasEverydayData && Math.abs(spendingTrend) > 5 && (
+                  <span className={`text-[10px] font-bold ${spendingTrend > 0 ? 'text-danger' : 'text-success'}`}>
+                    {spendingTrend > 0 ? '↑' : '↓'} {Math.abs(spendingTrend).toFixed(0)}%
+                  </span>
+                )}
+              </div>
             </div>
             <div>
               <p className="text-[10px] text-fg-subtle uppercase font-bold tracking-wider mb-0.5">Runway</p>
@@ -274,21 +230,6 @@ export const BurnRateWidget = ({ velocityStats, isLoading = false, onSeeTrends, 
               </p>
             </div>
           </div>
-
-          {hasEverydayData && Math.abs(spendingTrend) > 5 && (
-            <div className="flex items-center gap-2 text-xs mb-4 px-1">
-              <div className={`flex items-center justify-center shrink-0 ${spendingTrend > 0 ? 'text-danger' : 'text-success'}`}>
-                {spendingTrend > 0 ? <TrendingUp className="w-3.5 h-3.5" /> : <TrendingDown className="w-3.5 h-3.5" />}
-              </div>
-              <span className="text-fg-muted font-medium">
-                Spending is{' '}
-                <span className={`font-bold ${spendingTrend > 0 ? 'text-danger' : 'text-success'}`}>
-                  {Math.abs(spendingTrend).toFixed(0)}% {spendingTrend > 0 ? 'higher' : 'lower'}
-                </span>{' '}
-                than last month.
-              </span>
-            </div>
-          )}
 
           {hasEverydayData ? (
             <div className="mb-3">
@@ -303,12 +244,7 @@ export const BurnRateWidget = ({ velocityStats, isLoading = false, onSeeTrends, 
                 {runsOutBeforePayday && (
                   <div
                     className="absolute -top-1 w-1 h-5 rounded-full shadow-md transition-all duration-1000"
-                    style={{
-                      left: `calc(${runwayPercent}% - 2px)`,
-                      backgroundColor: markerColor
-                    }}
-                    aria-label={`Projected runout in ${runwayDays} days`}
-                    title={runoutDate ? `Runs out ${formatDate(runoutDate)}` : ''}
+                    style={{ left: `calc(${runwayPercent}% - 2px)`, backgroundColor: COLORS.up }}
                   />
                 )}
               </div>
@@ -320,9 +256,7 @@ export const BurnRateWidget = ({ velocityStats, isLoading = false, onSeeTrends, 
 
               {runsOutBeforePayday && runoutDate ? (
                 <p className="text-xs text-fg-muted mt-3 leading-relaxed">
-                  At this pace, your money runs out on{' '}
-                  <strong className="text-fg">{formatDate(runoutDate)}</strong>,
-                  {' '}{daysToPayday - runwayDays} day{daysToPayday - runwayDays === 1 ? '' : 's'} before payday.
+                  At this pace, your money runs out on <strong className="text-fg">{formatDate(runoutDate)}</strong>, {daysToPayday - runwayDays} day{daysToPayday - runwayDays === 1 ? '' : 's'} before payday.
                 </p>
               ) : (
                 <p className="text-xs text-success mt-3 leading-relaxed font-medium">
@@ -331,7 +265,7 @@ export const BurnRateWidget = ({ velocityStats, isLoading = false, onSeeTrends, 
               )}
             </div>
           ) : (
-            <div className="bg-surface-2/50 border-2 border-line-strong border-dashed rounded-2xl mt-2">
+            <div className="bg-surface-2/30 border border-line rounded-2xl mt-2 py-4">
               <EmptyState
                 icon={Coffee}
                 title="No everyday spending yet"
@@ -371,88 +305,64 @@ export const BurnRateWidget = ({ velocityStats, isLoading = false, onSeeTrends, 
           }`}
         >
           <div className="overflow-hidden space-y-3">
-            <div className="bg-surface-2/60 p-3.5 rounded-xl border border-line">
-              <p className="text-[11px] text-fg-subtle uppercase font-bold tracking-wider">Balance</p>
-              <p className="text-sm font-black text-fg mt-1 tabular-figures">{formatMYR(balance)}</p>
-            </div>
-
-            <div className="bg-surface-2/60 p-3.5 rounded-xl border border-line">
-              <div className="flex items-center justify-between mb-1">
-                <p className="text-[11px] text-fg-subtle uppercase font-bold tracking-wider">Bills before payday</p>
-                {billCount > 0 && (
-                  <span className="text-[10px] font-bold text-fg-subtle">
-                    {billCount} bill{billCount === 1 ? '' : 's'}
-                  </span>
-                )}
+            
+            {/* The Equation */}
+            <div className="bg-surface-2/60 p-3.5 rounded-xl border border-line flex items-center justify-between gap-2">
+              <div className="text-center flex-1">
+                <p className="text-[10px] text-fg-subtle uppercase font-bold tracking-wider">Balance</p>
+                <p className="text-xs font-black text-fg mt-1 tabular-figures">{formatMYR(balance)}</p>
               </div>
-              <p className="text-sm font-black text-fg tabular-figures">− {formatMYR(billsBeforePayday)}</p>
+              <span className="text-fg-subtle font-bold">−</span>
+              <div className="text-center flex-1">
+                <p className="text-[10px] text-fg-subtle uppercase font-bold tracking-wider">Bills ({billCount})</p>
+                <p className="text-xs font-black text-fg mt-1 tabular-figures">{formatMYR(billsBeforePayday)}</p>
+              </div>
+              <span className="text-fg-subtle font-bold">=</span>
+              <div className="text-center flex-1">
+                <p className="text-[10px] text-brand uppercase font-bold tracking-wider">Free</p>
+                <p className={`text-xs font-black mt-1 tabular-figures ${freeMoneyNegative ? 'text-danger' : 'text-brand'}`}>
+                  {formatMYR(freeMoney)}
+                </p>
+              </div>
             </div>
 
-            <div className="bg-surface-2/60 p-3.5 rounded-xl border border-line">
-              <p className="text-[11px] text-fg-subtle uppercase font-bold tracking-wider">Free money</p>
-              <p className={`text-base font-black mt-1 tabular-figures ${freeMoneyNegative ? 'text-danger' : 'text-fg'}`}>
-                {formatMYR(freeMoney)}
-              </p>
-              <p className="text-[10px] text-fg-subtle mt-1">
-                Balance minus unpaid bills before payday.
-              </p>
-            </div>
-
-            <div className="bg-surface-2/60 p-3.5 rounded-xl border border-line">
-              <p className="text-[11px] text-fg-subtle uppercase font-bold tracking-wider">Safe daily spend</p>
-              <p className="text-sm font-black text-fg mt-1 tabular-figures">
-                {safeDailySpend > 0 ? formatMYR(safeDailySpend) : '—'}
-              </p>
-              <p className="text-[10px] text-fg-subtle mt-1">
-                Free money divided by {daysToPayday} day{daysToPayday === 1 ? '' : 's'} to payday.
-              </p>
+            {/* Side-by-side daily spend comparison */}
+            <div className="grid grid-cols-2 gap-3">
+              <div className="bg-surface-2/60 p-3.5 rounded-xl border border-line">
+                <p className="text-[10px] text-fg-subtle uppercase font-bold tracking-wider">Safe Daily Spend</p>
+                <p className="text-sm font-black text-fg mt-1 tabular-figures">
+                  {safeDailySpend > 0 ? formatMYR(safeDailySpend) : '—'}
+                </p>
+              </div>
+              <div className="bg-surface-2/60 p-3.5 rounded-xl border border-line">
+                <p className="text-[10px] text-fg-subtle uppercase font-bold tracking-wider">Your avg</p>
+                <p className={`text-sm font-black mt-1 tabular-figures ${
+                  safeDailySpend > 0 && dailyAverage > safeDailySpend ? 'text-danger' : 'text-success'
+                }`}>
+                  {formatMYR(dailyAverage)}
+                </p>
+              </div>
             </div>
 
             {receivablesOffset > 0 && (
-              <>
-                <div className="bg-surface-2/60 p-3.5 rounded-xl border border-line">
-                  <p className="text-[11px] text-fg-subtle uppercase font-bold tracking-wider">
-                    Spent this month
-                  </p>
-                  <p className="text-sm font-black text-fg mt-1 tabular-figures">
-                    {formatMYR(rawEverydaySpentThisMonth)}
-                  </p>
+              <div className="bg-success-soft p-3.5 rounded-xl border border-success-border flex items-center justify-between gap-3">
+                <div>
+                  <p className="text-[10px] text-success-text uppercase font-bold tracking-wider">Owed back to you</p>
+                  <p className="text-[10px] text-success-text/80 mt-0.5">Net spend: {formatMYR(everydaySpentThisMonth)}</p>
                 </div>
-
-                <div className="bg-success-soft p-3.5 rounded-xl border border-success-border">
-                  <p className="text-[11px] text-success-text uppercase font-bold tracking-wider">
-                    Owed back to you
-                  </p>
-                  <p className="text-sm font-black text-success-text mt-1 tabular-figures">
-                    − {formatMYR(receivablesOffset)}
-                  </p>
-                  <p className="text-[10px] text-success-text/80 mt-1 leading-relaxed">
-                    Net spend this month: {formatMYR(everydaySpentThisMonth)}.
-                  </p>
-                </div>
-              </>
+                <p className="text-sm font-black text-success-text tabular-figures">− {formatMYR(receivablesOffset)}</p>
+              </div>
             )}
-
-            <div className="bg-surface-2/60 p-3.5 rounded-xl border border-line">
-              <p className="text-[11px] text-fg-subtle uppercase font-bold tracking-wider">Your daily average</p>
-              <p className={`text-sm font-black mt-1 tabular-figures ${
-                safeDailySpend > 0 && dailyAverage > safeDailySpend ? 'text-danger' : 'text-success'
-              }`}>
-                {formatMYR(dailyAverage)}
-              </p>
-            </div>
 
             <div className="bg-surface-2/60 p-3.5 rounded-xl border border-line flex items-center justify-between gap-3">
               <div>
-                <p className="text-[11px] text-fg-subtle uppercase font-bold tracking-wider">Expected balance at payday</p>
+                <p className="text-[10px] text-fg-subtle uppercase font-bold tracking-wider">At payday</p>
                 <p className={`text-base font-black mt-0.5 tabular-figures ${expectedBalanceAtPayday < 0 ? 'text-danger' : 'text-fg'}`}>
                   {formatMYR(expectedBalanceAtPayday)}
                 </p>
               </div>
               <div className={`px-2.5 py-1 rounded-md text-[10px] font-bold tracking-wider shrink-0 border ${
-                expectedBalanceAtPayday < 0
-                  ? 'bg-danger-soft text-danger-text border-danger-border'
-                  : 'bg-success-soft text-success-text border-success-border'
+                expectedBalanceAtPayday < 0 ? 'bg-danger-soft text-danger-text border-danger-border' : 'bg-success-soft text-success-text border-success-border'
               }`}>
                 {expectedBalanceAtPayday < 0 ? 'Deficit' : 'Surplus'}
               </div>
@@ -464,23 +374,10 @@ export const BurnRateWidget = ({ velocityStats, isLoading = false, onSeeTrends, 
                 : advice.type === 'over' ? 'bg-warning-soft border-warning-border'
                 : 'bg-success-soft border-success-border'
               }`}>
-                {advice.type === 'good'
-                  ? <Check className="w-4 h-4 text-success shrink-0 mt-0.5" />
-                  : <AlertCircle className={`w-4 h-4 shrink-0 mt-0.5 ${
-                      advice.type === 'risk' ? 'text-danger' : 'text-warning'
-                    }`} />
-                }
+                {advice.type === 'good' ? <Check className="w-4 h-4 text-success shrink-0 mt-0.5" /> : <AlertCircle className={`w-4 h-4 shrink-0 mt-0.5 ${advice.type === 'risk' ? 'text-danger' : 'text-warning'}`} />}
                 <div>
-                  <p className={`text-xs font-bold ${
-                    advice.type === 'risk' ? 'text-danger-text'
-                    : advice.type === 'over' ? 'text-warning-text'
-                    : 'text-success-text'
-                  }`}>{advice.title}</p>
-                  <p className={`text-xs mt-0.5 leading-relaxed ${
-                    advice.type === 'risk' ? 'text-danger-text/90'
-                    : advice.type === 'over' ? 'text-warning-text/90'
-                    : 'text-success-text/90'
-                  }`}>{advice.body} {advice.action}</p>
+                  <p className={`text-xs font-bold ${advice.type === 'risk' ? 'text-danger-text' : advice.type === 'over' ? 'text-warning-text' : 'text-success-text'}`}>{advice.title}</p>
+                  <p className={`text-xs mt-0.5 leading-relaxed ${advice.type === 'risk' ? 'text-danger-text/90' : advice.type === 'over' ? 'text-warning-text/90' : 'text-success-text/90'}`}>{advice.body} {advice.action}</p>
                 </div>
               </div>
             )}
