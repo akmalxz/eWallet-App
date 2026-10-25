@@ -16,7 +16,7 @@ export function LogItemPage({
 }) {
   if (!accounts || accounts.length === 0) {
     return (
-      <div className="max-w-2xl mx-auto animate-enter pb-12">
+      <div className="max-w-2xl mx-auto pb-12">
         <div className="hidden md:block mb-5 px-1">
           <h1 className="text-xl font-bold text-fg tracking-tight">Manual Entry</h1>
           <p className="text-xs text-fg-subtle mt-1">Record a new income, expense, or transfer</p>
@@ -46,7 +46,7 @@ export function LogItemPage({
   }
 
   return (
-    <div className="max-w-2xl mx-auto animate-enter pb-12">
+    <div className="max-w-2xl mx-auto pb-12">
       <div className="hidden md:block mb-5 px-1">
         <h1 className="text-xl font-bold text-fg tracking-tight">Manual Entry</h1>
         <p className="text-xs text-fg-subtle mt-1">Record a new income, expense, or transfer</p>

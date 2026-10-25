@@ -15,8 +15,6 @@ const NAV_ITEMS = [
   { id: 'analytics',    icon: Activity,        label: 'Analytics' }
 ]
 
-// Views that conceptually live inside the "Home" tab.
-// Analytics is a top-level nav item now — no longer listed here.
 const DASHBOARD_SUBVIEWS = ['network', 'split']
 
 export const NavigationBar = ({ currentView, setCurrentView }) => {
@@ -26,9 +24,25 @@ export const NavigationBar = ({ currentView, setCurrentView }) => {
 
   const activeIndex = NAV_ITEMS.findIndex(item => item.id === navKey)
 
+  // FIX 1: Prevent scroll tearing by snapping instantly when changing pages
   const handleNavClick = (id) => {
-    window.scrollTo({ top: 0, behavior: 'smooth' })
+    if (id === navKey) {
+      window.scrollTo({ top: 0, behavior: 'smooth' })
+      return
+    }
+    
+    // Force keyboard to close
+    if (document.activeElement instanceof HTMLElement) {
+      document.activeElement.blur()
+    }
+
+    // Swap the page first
     setCurrentView(id)
+
+    // Wait one frame for React to mount the new page, THEN scroll to top
+    requestAnimationFrame(() => {
+      window.scrollTo(0, 0)
+    })
   }
 
   return (
@@ -107,7 +121,7 @@ export const NavigationBar = ({ currentView, setCurrentView }) => {
                 key={item.id}
                 onClick={() => handleNavClick(item.id)}
                 aria-label={item.label}
-                className="relative z-10 flex-1 h-full min-w-0 p-0 m-0 flex items-center justify-center"
+                className="relative z-10 flex-1 h-full min-w-0 p-0 m-0 flex items-center justify-center transition-transform duration-100 active:scale-90"
               >
                 <span className="flex items-center justify-center w-10 h-10 leading-none">
                   <Icon className={`block w-5 h-5 shrink-0 transition-colors duration-300 ${

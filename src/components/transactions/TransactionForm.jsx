@@ -63,10 +63,6 @@ export function TransactionForm({
   const displayAmount = rawAmount ? (Number(rawAmount) / 100).toFixed(2) : ''
 
   useEffect(() => {
-    amountRef.current?.focus()
-  }, [])
-
-  useEffect(() => {
     if (!accounts.length) return
     const defaultSource = initialAccountId || accounts[0].id
     const defaultDest = accounts.length > 1 ? accounts[1].id : accounts[0].id
