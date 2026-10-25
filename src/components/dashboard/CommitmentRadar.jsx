@@ -16,6 +16,7 @@ import { BillsCalendar } from '../commitments/BillsCalendar'
 import { BillRow } from './BillRow'
 import { PaidBillRow } from './PaidBillRow'
 import { AllBillsRow } from './AllBillsRow'
+import { Collapse } from '../shared/Collapse'
 
 // ============================================================
 // Radar
@@ -631,8 +632,8 @@ export const CommitmentRadar = ({
                     : <ChevronDown className="w-4 h-4 text-fg-subtle" />}
                 </button>
 
-                {showUpcoming && (
-                    <div className="mt-3 bg-surface border border-line rounded-2xl overflow-hidden divide-y divide-line">
+                <Collapse open={showUpcoming}>
+                  <div className="mt-3 bg-surface border border-line rounded-2xl overflow-hidden divide-y divide-line">
                     {otherPeriods.map((period) => (
                       <BillRow
                         key={`${period.commitmentId}-${period.periodYear}-${period.periodMonth}`}
@@ -655,9 +656,9 @@ export const CommitmentRadar = ({
                       />
                     ))}
                   </div>
-                )}
+                </Collapse>
               </div>
-            )}
+              )}
           </>
         )}
 
@@ -679,7 +680,7 @@ export const CommitmentRadar = ({
                 : <ChevronDown className="w-4 h-4 text-fg-subtle" />}
             </button>
 
-            {showPaid && (
+            <Collapse open={showPaid}>
               <div className="mt-3 space-y-1.5">
                 {otherPaidCommitments.map((comm) => (
                   <div
@@ -709,7 +710,7 @@ export const CommitmentRadar = ({
                   </div>
                 ))}
               </div>
-            )}
+            </Collapse>
           </div>
         )}
 
@@ -731,7 +732,7 @@ export const CommitmentRadar = ({
                 : <ChevronDown className="w-4 h-4 text-fg-subtle" />}
             </button>
 
-            {showSkipped && (
+            <Collapse open={showSkipped}>
               <div className="mt-3 space-y-1.5">
                 {skippedCommitments.map((comm) => (
                   <div
@@ -758,7 +759,7 @@ export const CommitmentRadar = ({
                   </div>
                 ))}
               </div>
-            )}
+            </Collapse>
           </div>
         )}
 
@@ -780,7 +781,7 @@ export const CommitmentRadar = ({
                 : <ChevronDown className="w-4 h-4 text-fg-subtle" />}
             </button>
 
-            {showAllBills && (
+            <Collapse open={showAllBills}>
               <div className="mt-3 animate-fadeIn">
                 <div className="px-1 pb-2 flex items-center justify-between gap-3 flex-wrap">
                   <p className="text-[11px] text-fg-subtle">
@@ -880,7 +881,7 @@ export const CommitmentRadar = ({
                   </div>
                 )}
               </div>
-            )}
+            </Collapse>
           </div>
         )}
 

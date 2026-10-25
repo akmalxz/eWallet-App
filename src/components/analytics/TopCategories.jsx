@@ -3,6 +3,7 @@ import { useMemo, useState } from 'react'
 import { ChevronDown, ChevronUp } from 'lucide-react'
 import { formatMYR } from '../../utils/formatters'
 import { useChartTheme } from '../../hooks/useChartTheme'
+import { Collapse } from '../shared/Collapse' // <-- Import
 
 export const TopCategories = ({ expenses, accounts = [] }) => {
   const theme = useChartTheme()
@@ -21,19 +22,16 @@ export const TopCategories = ({ expenses, accounts = [] }) => {
 
       all += amt
 
-      // Set up Main Category
       if (!map.has(main)) map.set(main, { total: 0, subs: new Map() })
       const mainObj = map.get(main)
       mainObj.total += amt
 
-      // Set up Sub Category
       if (!mainObj.subs.has(sub)) mainObj.subs.set(sub, { total: 0, txns: [] })
       const subObj = mainObj.subs.get(sub)
       subObj.total += amt
       subObj.txns.push(tx)
     })
 
-    // Sort and format
     const sorted = Array.from(map.entries())
       .map(([name, data]) => ({
         name,
@@ -43,7 +41,7 @@ export const TopCategories = ({ expenses, accounts = [] }) => {
           .sort((a, b) => b.total - a.total)
       }))
       .sort((a, b) => b.total - a.total)
-      .slice(0, 6) // Top 6 main categories
+      .slice(0, 6)
 
     return { topCategories: sorted, total: all }
   }, [expenses])
@@ -52,7 +50,7 @@ export const TopCategories = ({ expenses, accounts = [] }) => {
 
   const toggleMain = (name) => {
     setExpandedMain((prev) => (prev === name ? null : name))
-    setExpandedSub(null) // Close sub if changing main
+    setExpandedSub(null)
   }
 
   const toggleSub = (name) => {
@@ -104,7 +102,7 @@ export const TopCategories = ({ expenses, accounts = [] }) => {
               </button>
 
               {/* Sub Categories Accordion */}
-              {isExpanded && (
+              <Collapse open={isExpanded}>
                 <div className="bg-surface-2/30 border-t border-line divide-y divide-line/50">
                   {cat.subs.map((sub) => {
                     const isSubExpanded = expandedSub === sub.name
@@ -129,7 +127,7 @@ export const TopCategories = ({ expenses, accounts = [] }) => {
                         </button>
 
                         {/* Transactions inside Sub Category */}
-                        {isSubExpanded && (
+                        <Collapse open={isSubExpanded}>
                           <div className="bg-surface border-t border-line/50 divide-y divide-line/50">
                             {sub.txns.map((tx) => {
                               const account = accounts.find((a) => a.id === tx.source_account_id)
@@ -154,12 +152,12 @@ export const TopCategories = ({ expenses, accounts = [] }) => {
                               )
                             })}
                           </div>
-                        )}
+                        </Collapse>
                       </div>
                     )
                   })}
                 </div>
-              )}
+              </Collapse>
             </div>
           )
         })}

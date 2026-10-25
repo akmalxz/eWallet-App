@@ -472,3 +472,13 @@ html, body, #root {
     scroll-behavior: auto !important;
   }
 }
+
+/* ============================================
+   TACTILE FEEDBACK
+   Global "click" animation for native feel.
+   ============================================ */
+button:active:not(:disabled):not(.no-tap-scale),
+a:active:not(.no-tap-scale) {
+  transform: scale(0.97);
+  transition: transform 0.1s ease;
+}

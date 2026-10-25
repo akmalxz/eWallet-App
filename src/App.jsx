@@ -249,16 +249,17 @@ export default function App() {
       <NavigationBar currentView={currentView} setCurrentView={setCurrentView} />
 
       <main className="max-w-6xl mx-auto px-3 md:px-4 py-4 md:py-8">
-        {currentView === 'dashboard' && pendingReceivablesThisMonth > 0 && (
-          <ReceivablesBanner
-            amount={pendingReceivablesThisMonth}
-            count={pendingReceivablesCount}
-            onView={() => {
-              setSplitInitialTab('debts')
-              setCurrentView('split')
-            }}
-          />
-        )}
+        <div key={currentView} className="animate-enter">
+          {currentView === 'dashboard' && pendingReceivablesThisMonth > 0 && (
+            <ReceivablesBanner
+              amount={pendingReceivablesThisMonth}
+              count={pendingReceivablesCount}
+              onView={() => {
+                setSplitInitialTab('debts')
+                setCurrentView('split')
+              }}
+            />
+          )}
 
         {currentView === 'dashboard' && (
           <DashboardPage
@@ -399,6 +400,7 @@ export default function App() {
             />
           </Suspense>
         )}
+        </div>
       </main>
 
       {showBurnRateHelp && (

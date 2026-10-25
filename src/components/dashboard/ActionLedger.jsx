@@ -10,6 +10,7 @@ import { getColorTheme } from '../../utils/theme/themeRegistry'
 import { ConfirmSheet } from '../shared/ConfirmSheet'
 import { ModalWrapper } from '../modals/ModalWrapper'
 import { LedgerEditForm } from './LedgerEditForm'
+import { Collapse } from '../shared/Collapse' // <-- Import
 
 const formatGroupLabel = (dateKey, todayKey, yesterdayKey) => {
   if (dateKey === todayKey) return 'Today'
@@ -72,7 +73,7 @@ export const ActionLedger = ({
   onLoadMore,
   isLoadingMore
 }) => {
-  const [editingTx, setEditingTx] = useState(null) // <-- Changed to hold the tx object
+  const [editingTx, setEditingTx] = useState(null)
   const [expandedGroups, setExpandedGroups] = useState({})
   const [pendingDelete, setPendingDelete] = useState(null)
 
@@ -133,7 +134,6 @@ export const ActionLedger = ({
   return (
     <>
       <section className="flex flex-col flex-1">
-        {/* HEADER & SEARCH */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
           <h2 className="text-base font-bold text-fg tracking-tight flex items-center gap-2">
             Action Ledger
@@ -177,7 +177,6 @@ export const ActionLedger = ({
           </div>
         </div>
 
-        {/* SCROLLABLE LIST CONTAINER */}
         <div className="bg-surface border border-line rounded-2xl overflow-hidden flex flex-col flex-1 max-h-[60vh]">
           <div className="overflow-y-auto overscroll-contain scrollbar-thin flex-1">
             {groupedTransactions.length === 0 ? (
@@ -226,7 +225,7 @@ export const ActionLedger = ({
                     </div>
 
                     {/* GROUP ROWS */}
-                    {isExpanded && (
+                    <Collapse open={isExpanded}>
                       <div className="divide-y divide-line bg-surface-2/30">
                         {group.transactions.map((tx) => {
                           const isIncome = !tx.source_account_id && tx.destination_account_id
@@ -240,9 +239,8 @@ export const ActionLedger = ({
                             <div
                               key={tx.id}
                               id={`tx-${globalIndex}`}
-                              className="flex items-center justify-between gap-3 px-4 py-3 hover:bg-surface-2 transition-all"
+                              className="flex items-center justify-between gap-3 px-4 py-3 hover:bg-surface-2 transition-all animate-enter"
                             >
-                              {/* LEFT: Description & Meta */}
                               <div className="flex flex-col gap-1 min-w-0 flex-1">
                                 <p className="text-sm font-bold text-fg truncate">
                                   {tx.description}
@@ -278,7 +276,6 @@ export const ActionLedger = ({
                                 </div>
                               </div>
 
-                              {/* RIGHT: Amount & Actions */}
                               <div className="flex flex-col items-end gap-1 shrink-0">
                                 <span className={`text-sm font-bold tabular-figures whitespace-nowrap ${
                                   isIncome ? 'text-success' : isTransfer ? 'text-fg-muted' : 'text-fg'
@@ -308,14 +305,13 @@ export const ActionLedger = ({
                           )
                         })}
                       </div>
-                    )}
+                    </Collapse>
                   </div>
                 )
               })
             )}
           </div>
 
-          {/* LOAD MORE BUTTON */}
           {hasMore && (
             <div className="p-3 border-t border-line bg-surface flex justify-center shrink-0">
               <button
@@ -332,7 +328,6 @@ export const ActionLedger = ({
         </div>
       </section>
 
-      {/* EDIT MODAL */}
       {editingTx && (
         <ModalWrapper title="Edit Transaction" closeModal={endEdit}>
           <LedgerEditForm
@@ -349,7 +344,6 @@ export const ActionLedger = ({
         </ModalWrapper>
       )}
 
-      {/* DELETE CONFIRMATION */}
       {pendingDelete && (
         <ConfirmSheet
           destructive

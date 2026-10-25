@@ -169,23 +169,41 @@ export function AnalyticsPage({
           <p className="text-sm text-fg-muted mt-1">Deep dive into your financial trends.</p>
         </div>
         {showFilters && (
-          <div className="flex items-center gap-3 shrink-0">
-            <div className="w-56">
-              <SlidingSegmentedControl
-                items={PERIOD_ITEMS}
-                value={period}
-                onChange={setPeriod}
-              />
-            </div>
-            {showModeControl && (
-              <div className="w-56">
+          <div className="flex items-center shrink-0">
+            {/* DESKTOP: Animate grid-cols from [14rem_14rem] to [28rem_0fr] */}
+            <div
+              className={`grid transition-all duration-300 ease-in-out gap-3 ${
+                showModeControl
+                  ? 'grid-cols-[14rem_14rem]'
+                  : 'grid-cols-[28rem_0fr]'
+              }`}
+            >
+              <div className="min-w-0">
                 <SlidingSegmentedControl
-                  items={MODE_ITEMS}
-                  value={mode}
-                  onChange={setMode}
+                  items={PERIOD_ITEMS}
+                  value={period}
+                  onChange={setPeriod}
                 />
               </div>
-            )}
+              
+              {/* 
+                We use relative + absolute inner div so the control does not squish
+                when the grid column collapses to 0fr.
+              */}
+              <div
+                className={`relative min-w-0 overflow-hidden transition-opacity duration-300 ${
+                  showModeControl ? 'opacity-100' : 'opacity-0'
+                }`}
+              >
+                <div className="absolute inset-y-0 left-0 w-[14rem]">
+                  <SlidingSegmentedControl
+                    items={MODE_ITEMS}
+                    value={mode}
+                    onChange={setMode}
+                  />
+                </div>
+              </div>
+            </div>
           </div>
         )}
       </div>
@@ -240,26 +258,38 @@ export function AnalyticsPage({
           </div>
 
           <div className="md:hidden space-y-3">
-            {showModeControl ? (
-              <div className="grid grid-cols-2 gap-2">
+            {/* MOBILE: Animate grid-cols from [1fr_1fr] to [1fr_0fr] */}
+            <div
+              className={`grid transition-all duration-300 ease-in-out gap-2 ${
+                showModeControl ? 'grid-cols-[1fr_1fr]' : 'grid-cols-[1fr_0fr]'
+              }`}
+            >
+              <div className="min-w-0">
                 <SlidingSegmentedControl
                   items={PERIOD_ITEMS}
                   value={period}
                   onChange={setPeriod}
                 />
-                <SlidingSegmentedControl
-                  items={MODE_ITEMS}
-                  value={mode}
-                  onChange={setMode}
-                />
               </div>
-            ) : (
-              <SlidingSegmentedControl
-                items={PERIOD_ITEMS}
-                value={period}
-                onChange={setPeriod}
-              />
-            )}
+              
+              <div
+                className={`relative min-w-0 overflow-hidden transition-opacity duration-300 ${
+                  showModeControl ? 'opacity-100' : 'opacity-0'
+                }`}
+              >
+                {/* 
+                  Using w-[calc(50vw-1.5rem)] ensures the control is exactly half 
+                  the screen width (minus padding and gap) and prevents text squishing.
+                */}
+                <div className="absolute inset-y-0 left-0 w-[calc(50vw-1.5rem)]">
+                  <SlidingSegmentedControl
+                    items={MODE_ITEMS}
+                    value={mode}
+                    onChange={setMode}
+                  />
+                </div>
+              </div>
+            </div>
 
             <AccountSelector
               accounts={accounts}
@@ -274,7 +304,7 @@ export function AnalyticsPage({
           {loading ? (
             <AnalyticsSkeleton />
           ) : (
-            <>
+            <div key={tab} className="animate-enter space-y-8">
               {tab === 'overview' && (
                 <>
                   <HeadlineInsights
@@ -323,7 +353,7 @@ export function AnalyticsPage({
                   />
                 </>
               )}
-            </>
+            </div>
           )}
         </>
       )}

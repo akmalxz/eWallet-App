@@ -6,6 +6,7 @@ import {
 } from 'lucide-react'
 import { formatMYR } from '../../utils/formatters'
 import { getColorTheme, getIcon, getPattern } from '../../utils/theme/themeRegistry'
+import { AnimatedNumber } from './AnimatedNumber'
 
 // ---------------------------------------------------------------------------
 // Pattern SVG cache — one data URI per (patternKey, tone) combo.
@@ -205,11 +206,15 @@ export const AccountCard = memo(function AccountCard({
 
           <div className="mb-2">
             <p className="text-xs" style={{ color: textMuted }}>Balance</p>
-            <p
-              className="text-2xl font-bold tracking-tight break-all"
-              style={{ color: textColor }}
-            >
-              {showBalance ? formatMYR(data.balance || 0) : '••••••'}
+            <p className="text-2xl font-bold tracking-tight break-all" style={{ color: textColor }}>
+              {showBalance ? (
+                <AnimatedNumber 
+                  value={data.balance || 0} 
+                  format={formatMYR} 
+                />
+              ) : (
+                '••••••'
+              )}
             </p>
           </div>
         </div>
