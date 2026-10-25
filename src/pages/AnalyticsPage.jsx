@@ -2,20 +2,18 @@
 import { useState, useEffect, useMemo, useCallback } from 'react'
 import { BarChart3, PlusCircle, AlertCircle } from 'lucide-react'
 import { useAnalyticsData } from '../hooks/useAnalyticsData'
-import { AccountSelect, EmptyState } from '../components/analytics/AnalyticsShared'
+import { AccountSelect, EmptyState, PageInfo } from '../components/analytics/AnalyticsShared'
 import { HeadlineInsights } from '../components/analytics/HeadlineInsights'
 import { MainTrendChart } from '../components/analytics/MainTrendChart'
 import { PatternViews } from '../components/analytics/PatternViews'
 import { IncomeVsExpense } from '../components/analytics/IncomeVsExpense'
 import { SpendingStructure } from '../components/analytics/SpendingStructure'
-import { SmallLeaks } from '../components/analytics/SmallLeaks' // <-- Added
-import { TopCategories } from '../components/analytics/TopCategories' // <-- Added
+import { SmallLeaks } from '../components/analytics/SmallLeaks'
+import { TopCategories } from '../components/analytics/TopCategories'
 import { periodStart } from '../utils/analytics/dateRange'
 import { toMYDate } from '../utils/dateHelpers'
 import { AccountSelector } from '../components/shared/AccountSelector'
 import { SlidingSegmentedControl } from '../components/shared/SlidingSegmentedControl'
-
-// ... (Keep constants PERIOD_ITEMS, TAB_ITEMS, MODE_ITEMS, getInitialParam, AnalyticsSkeleton exactly the same)
 
 const PERIOD_ITEMS = [
   { id: 3, label: '3M' },
@@ -163,7 +161,7 @@ export function AnalyticsPage({
   }, [onLogTransaction, onBack])
 
   return (
-    <div className="max-w-4xl mx-auto animate-enter pb-12 space-y-6">
+    <div className="max-w-4xl mx-auto animate-enter pb-12 space-y-4">
 
       <div className="hidden md:flex md:items-center md:justify-between md:gap-4">
         <div className="min-w-0">
@@ -270,6 +268,9 @@ export function AnalyticsPage({
             />
           </div>
 
+          {/* INFO BUTTON */}
+          <PageInfo tab={tab} />
+
           {loading ? (
             <AnalyticsSkeleton />
           ) : (
@@ -295,13 +296,11 @@ export function AnalyticsPage({
 
               {tab === 'categories' && (
                 <>
-                  {/* Small Leaks uses Everyday expenses to find daily habits */}
                   <SmallLeaks 
                     expenses={periodScopedEveryday} 
                     periodMonths={period} 
                     accounts={accounts} 
                   />
-                  {/* Top Categories respects the user's All/Everyday toggle */}
                   <TopCategories expenses={periodScopedExpenses} accounts={accounts} />
                 </>
               )}

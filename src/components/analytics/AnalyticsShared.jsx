@@ -1,7 +1,113 @@
 // src/components/analytics/AnalyticsShared.jsx
-import { X, Inbox } from 'lucide-react'
+import { useState, useEffect, useId } from 'react'
+import { X, Inbox, Info } from 'lucide-react'
 import { formatMYR } from '../../utils/formatters'
 import { AccountCard } from '../shared/AccountCard'
+
+// ============================================================
+// PAGE INFO (What is this page?)
+// ============================================================
+const PAGE_INFO = {
+  overview: {
+    title: 'About Overview',
+    summary: 'A quick check-in on how your spending is going this month.',
+    points: [
+      { heading: 'Insights', text: 'Short sentences about your habits, such as which day you spend the most. They appear once you have about two weeks of data.' },
+      { heading: 'Spending Trend', text: 'How much you spent over time. The dashed line is the previous period for comparison. Tap a point to see the purchases behind it.' }
+    ]
+  },
+  trends: {
+    title: 'About Trends',
+    summary: 'Shows when you spend, and helps you build better habits.',
+    points: [
+      { heading: 'Low-Spend Streaks', text: 'We find your "typical" daily spend and set a goal to stay under half of that amount. The calendar shows a flame icon on days you hit the goal.' },
+      { heading: 'Grace Days', text: 'If you overspend or forget to log, you get one free pass (a snowflake icon) before your current streak resets. Use them wisely!' },
+      { heading: 'Spending by Day of Week', text: 'Solid bars are this week. Faded bars are your average over the selected period.' }
+    ]
+  },
+  categories: {
+    title: 'About Categories',
+    summary: 'Where your money goes, and where you can save.',
+    points: [
+      { heading: 'Small Spends That Add Up', text: 'Things you buy often, where each purchase is small but the total isn’t. Tap one to see every purchase.' },
+      { heading: 'Where Your Money Went', text: 'Your top spending categories ranked by total amount. Tap any category to drill down into its sub-categories and individual transactions.' }
+    ]
+  },
+  income: {
+    title: 'About Income',
+    summary: 'Shows how much of your pay you keep.',
+    points: [
+      { heading: 'Savings Rate', text: 'The share of your income left after spending. 20% means you kept RM 20 of every RM 100. Only finished months are counted.' },
+      { heading: 'Where Your Income Goes', text: 'Splits every RM 100 you earned into Bills, Everyday spending, and money kept. If bills take more than half, it leaves less room to adjust day to day.' }
+    ]
+  }
+}
+
+export const PageInfo = ({ tab }) => {
+  const [open, setOpen] = useState(false)
+  const panelId = useId()
+  const info = PAGE_INFO[tab]
+
+  // Close the panel automatically when switching tabs
+  useEffect(() => {
+    setOpen(false)
+  }, [tab])
+
+  // Close on Escape key
+  useEffect(() => {
+    if (!open) return
+    const onKey = (e) => {
+      if (e.key === 'Escape') setOpen(false)
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [open])
+
+  if (!info) return null
+
+  return (
+    <div className="pt-2 pb-1">
+      <button
+        type="button"
+        onClick={() => setOpen((o) => !o)}
+        aria-expanded={open}
+        aria-controls={panelId}
+        className="inline-flex items-center gap-1.5 text-xs font-bold text-fg-subtle hover:text-fg transition-colors rounded-lg"
+        style={{ minHeight: 32 }}
+      >
+        <Info className="w-3.5 h-3.5" />
+        {open ? 'Hide explanation' : 'What is this page?'}
+      </button>
+
+      {open && (
+        <div id={panelId} className="mt-2 bg-surface-2 border border-line rounded-xl p-4 animate-fadeIn">
+          <div className="flex items-start justify-between gap-3 mb-3">
+            <div>
+              <p className="text-sm font-bold text-fg">{info.title}</p>
+              <p className="text-xs text-fg-muted mt-0.5 leading-relaxed">{info.summary}</p>
+            </div>
+            <button
+              type="button"
+              onClick={() => setOpen(false)}
+              className="inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-lg text-fg-subtle hover:text-fg hover:bg-surface transition-colors"
+              aria-label="Close explanation"
+            >
+              <X className="h-4 w-4" />
+            </button>
+          </div>
+          
+          <ul className="space-y-2.5">
+            {info.points.map((p) => (
+              <li key={p.heading} className="text-xs text-fg-muted leading-relaxed">
+                <strong className="text-fg font-semibold">{p.heading}.</strong> {p.text}
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+    </div>
+  )
+}
 
 // ============================================================
 // TOOLTIP
@@ -190,8 +296,6 @@ export const EmptyState = ({
 // ============================================================
 // SKELETONS
 // ============================================================
-
-// Metric card placeholder — pulse-only, no card chrome.
 export const CardSkeleton = ({ lines = 2 }) => (
   <div className="animate-pulse py-3">
     <div className="h-2.5 w-20 bg-surface-2 rounded-full" />
@@ -204,7 +308,6 @@ export const CardSkeleton = ({ lines = 2 }) => (
   </div>
 )
 
-// Chart placeholder — flat pulse block.
 export const ChartSkeleton = ({ height = 280 }) => (
   <div
     className="bg-surface-2 rounded-2xl animate-pulse"
@@ -213,7 +316,6 @@ export const ChartSkeleton = ({ height = 280 }) => (
   />
 )
 
-// Row list skeleton — flat rows in a grouped container.
 export const ListSkeleton = ({ rows = 3, height = 56 }) => (
   <div
     className="bg-surface border border-line rounded-2xl divide-y divide-line overflow-hidden"

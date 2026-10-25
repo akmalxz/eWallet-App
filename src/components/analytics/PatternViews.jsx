@@ -1,10 +1,13 @@
 // src/components/analytics/PatternViews.jsx
-import { useState, useMemo } from 'react'
-import { BarChart3, ChevronLeft, ChevronRight } from 'lucide-react'
+import { useState, useMemo, useRef, useEffect } from 'react'
+import { 
+  BarChart3, ChevronLeft, ChevronRight, Flame, Zap, Award, 
+  CalendarCheck, MinusCircle, Snowflake, Lock
+} from 'lucide-react'
 import { formatMYR } from '../../utils/formatters'
 import {
   toMYDate, myWeekdayIndex, WEEKDAY_LABELS, daysInMonth,
-  startOfWeekMY
+  startOfWeekMY, dayKey
 } from '../../utils/dateHelpers'
 import { useChartTheme } from '../../hooks/useChartTheme'
 import { EmptyState, TransactionDrilldown } from './AnalyticsShared'
@@ -22,11 +25,12 @@ const weekdayFromShifted = (shiftedDate) => {
 }
 
 // ============================================================
-// Day-of-week bars
+// 1. Day-of-week bars
 // ============================================================
 const DayOfWeekBars = ({ expenses, accounts }) => {
   const theme = useChartTheme()
   const [selectedDay, setSelectedDay] = useState(null)
+  const drilldownRef = useRef(null)
 
   const data = useMemo(() => {
     if (expenses.length === 0) return null
@@ -79,11 +83,7 @@ const DayOfWeekBars = ({ expenses, accounts }) => {
     )
     const peakIdx = periodAverages.indexOf(Math.max(...periodAverages))
 
-    const maxValue = Math.max(
-      ...periodAverages,
-      ...thisWeekTotals,
-      1
-    )
+    const maxValue = Math.max(...periodAverages, ...thisWeekTotals, 1)
 
     return {
       periodAverages,
@@ -98,9 +98,16 @@ const DayOfWeekBars = ({ expenses, accounts }) => {
     }
   }, [expenses])
 
-  if (!data) {
-    return <EmptyState icon={BarChart3} title="No data yet" />
-  }
+  // Auto-scroll to drilldown when a day is selected
+  useEffect(() => {
+    if (selectedDay !== null && drilldownRef.current) {
+      setTimeout(() => {
+        drilldownRef.current?.scrollIntoView({ behavior: 'smooth', block: 'nearest' })
+      }, 100)
+    }
+  }, [selectedDay])
+
+  if (!data) return <EmptyState icon={BarChart3} title="No data yet" />
 
   const topCategory = selectedDay != null
     ? Object.entries(data.periodCategoryByDay[selectedDay]).sort((a, b) => b[1] - a[1])[0]
@@ -142,11 +149,7 @@ const DayOfWeekBars = ({ expenses, accounts }) => {
           const isToday = todayWeekday === i
 
           const tooltipAlign =
-            i === 0
-              ? 'left-0'
-              : i === data.periodAverages.length - 1
-                ? 'right-0'
-                : 'left-1/2 -translate-x-1/2'
+            i === 0 ? 'left-0' : i === data.periodAverages.length - 1 ? 'right-0' : 'left-1/2 -translate-x-1/2'
 
           return (
             <button
@@ -156,93 +159,30 @@ const DayOfWeekBars = ({ expenses, accounts }) => {
               aria-label={`${WEEKDAY_LABELS[i]}, ${formatMYR(weekVal)} this week, ${formatMYR(avg)} on average`}
               aria-pressed={isSelected}
             >
-              <div
-                className={`absolute bottom-full mb-2 z-20 pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity duration-150 bg-surface border border-line rounded-xl shadow-xl px-3 py-2 whitespace-nowrap ${tooltipAlign}`}
-                role="tooltip"
-              >
-                <p className="text-[10px] font-bold text-fg-subtle uppercase tracking-wider mb-1.5">
-                  {WEEKDAY_LABELS[i]}
-                </p>
-
+              <div className={`absolute bottom-full mb-2 z-20 pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity duration-150 bg-surface border border-line rounded-xl shadow-xl px-3 py-2 whitespace-nowrap ${tooltipAlign}`} role="tooltip">
+                <p className="text-[10px] font-bold text-fg-subtle uppercase tracking-wider mb-1.5">{WEEKDAY_LABELS[i]}</p>
                 <div className="flex items-center justify-between gap-4">
-                  <span className="flex items-center gap-1.5 text-[11px] text-fg-muted">
-                    <span className="w-2 h-2 rounded-sm bg-brand shrink-0" />
-                    This week
-                  </span>
-                  <span className="text-[11px] font-bold text-fg tabular-figures">
-                    {weekVal > 0 ? formatMYR(weekVal) : '—'}
-                  </span>
+                  <span className="flex items-center gap-1.5 text-[11px] text-fg-muted"><span className="w-2 h-2 rounded-sm bg-brand shrink-0" /> This week</span>
+                  <span className="text-[11px] font-bold text-fg tabular-figures">{weekVal > 0 ? formatMYR(weekVal) : '—'}</span>
                 </div>
-
                 <div className="flex items-center justify-between gap-4 mt-1">
-                  <span className="flex items-center gap-1.5 text-[11px] text-fg-muted">
-                    <span className="w-2 h-2 rounded-sm bg-brand/25 shrink-0" />
-                    Average
-                  </span>
-                  <span className="text-[11px] font-bold text-fg tabular-figures">
-                    {avg > 0 ? formatMYR(avg) : '—'}
-                  </span>
+                  <span className="flex items-center gap-1.5 text-[11px] text-fg-muted"><span className="w-2 h-2 rounded-sm bg-brand/25 shrink-0" /> Average</span>
+                  <span className="text-[11px] font-bold text-fg tabular-figures">{avg > 0 ? formatMYR(avg) : '—'}</span>
                 </div>
-
-                {weekVal > 0 && avg > 0 && (
-                  <p className="text-[10px] text-fg-subtle mt-1.5 pt-1.5 border-t border-line tabular-figures">
-                    {weekVal > avg
-                      ? `${(((weekVal - avg) / avg) * 100).toFixed(0)}% above usual`
-                      : weekVal < avg
-                        ? `${(((avg - weekVal) / avg) * 100).toFixed(0)}% below usual`
-                        : 'On par with usual'}
-                  </p>
-                )}
-
-                {weekCount > 0 && (
-                  <p className="text-[10px] text-fg-subtle mt-0.5 tabular-figures">
-                    {weekCount} {weekCount === 1 ? 'txn' : 'txns'} this week
-                  </p>
-                )}
-
-                {periodCount > 0 && (
-                  <p className="text-[10px] text-fg-subtle tabular-figures">
-                    {periodCount} {periodCount === 1 ? 'txn' : 'txns'} in period
-                  </p>
-                )}
+                {weekCount > 0 && <p className="text-[10px] text-fg-subtle mt-0.5 tabular-figures">{weekCount} {weekCount === 1 ? 'txn' : 'txns'} this week</p>}
+                {periodCount > 0 && <p className="text-[10px] text-fg-subtle mt-0.5 tabular-figures">{periodCount} {periodCount === 1 ? 'txn' : 'txns'} in period</p>}
               </div>
 
-              <span className="text-[9px] font-bold text-fg-subtle shrink-0 tabular-figures">
-                {weekVal > 0 ? compactValue(weekVal) : ''}
-              </span>
+              <span className="text-[9px] font-bold text-fg-subtle shrink-0 tabular-figures">{weekVal > 0 ? compactValue(weekVal) : ''}</span>
 
               <div className="flex-1 w-full relative">
-                {avg > 0 && (
-                  <div
-                    className={`absolute inset-x-0 bottom-0 rounded-t-lg ${
-                      isPeak ? 'bg-brand/25 dark:bg-brand/20' : 'bg-brand/15 dark:bg-brand/10'
-                    }`}
-                    style={{ height: `${Math.max(ghostPct, 3)}%` }}
-                    aria-hidden="true"
-                  />
-                )}
-
+                {avg > 0 && <div className={`absolute inset-x-0 bottom-0 rounded-t-lg ${isPeak ? 'bg-brand/25 dark:bg-brand/20' : 'bg-brand/15 dark:bg-brand/10'}`} style={{ height: `${Math.max(ghostPct, 3)}%` }} aria-hidden="true" />}
                 {weekVal > 0 && (
-                  <div
-                    className={`absolute inset-x-0 bottom-0 rounded-t-lg transition-all ${
-                      isSelected ? 'ring-2 ring-inset ring-fg' : ''
-                    }`}
-                    style={{
-                      height: `${Math.max(primaryPct, 4)}%`,
-                      backgroundColor: isToday ? theme.accent : theme.current,
-                      opacity: isSelected ? 1 : 0.92,
-                    }}
-                  />
+                  <div className={`absolute inset-x-0 bottom-0 rounded-t-lg transition-all ${isSelected ? 'ring-2 ring-inset ring-fg' : ''}`} style={{ height: `${Math.max(primaryPct, 4)}%`, backgroundColor: isToday ? theme.accent : theme.current, opacity: isSelected ? 1 : 0.92 }} />
                 )}
               </div>
 
-              <span
-                className={`text-[10px] font-bold shrink-0 ${
-                  isToday ? 'text-brand' : 'text-fg-muted'
-                }`}
-              >
-                {WEEKDAY_LABELS[i]}
-              </span>
+              <span className={`text-[10px] font-bold shrink-0 ${isToday ? 'text-brand' : 'text-fg-muted'}`}>{WEEKDAY_LABELS[i]}</span>
             </button>
           )
         })}
@@ -253,54 +193,21 @@ const DayOfWeekBars = ({ expenses, accounts }) => {
           <div className="mt-4 pt-4 border-t border-line animate-fadeIn">
             <div className="flex justify-between items-start gap-3">
               <div className="min-w-0">
-                <p className="text-[10px] font-bold text-fg-subtle uppercase tracking-wider">
-                  {WEEKDAY_LABELS[selectedDay]}s
-                </p>
-
+                <p className="text-[10px] font-bold text-fg-subtle uppercase tracking-wider">{WEEKDAY_LABELS[selectedDay]}s</p>
                 <div className="flex items-baseline gap-2 mt-1.5">
-                  <p className="text-lg font-black text-fg tabular-figures">
-                    {formatMYR(data.thisWeekTotals[selectedDay])}
-                  </p>
+                  <p className="text-lg font-black text-fg tabular-figures">{formatMYR(data.thisWeekTotals[selectedDay])}</p>
                   <span className="text-[11px] font-semibold text-fg-muted">this week</span>
                 </div>
-
-                <p className="text-xs text-fg-muted mt-1">
-                  Typically{' '}
-                  <strong className="text-fg tabular-figures">
-                    {formatMYR(data.periodAverages[selectedDay])}
-                  </strong>
-                  {' · '}
-                  {data.periodCounts[selectedDay]}{' '}
-                  {data.periodCounts[selectedDay] === 1 ? 'txn' : 'txns'} in period
-                </p>
-
-                {topCategory && (
-                  <p className="text-xs text-fg-muted mt-1">
-                    Top category: <strong>{topCategory[0]}</strong> ({formatMYR(topCategory[1])})
-                  </p>
-                )}
+                <p className="text-xs text-fg-muted mt-1">Typically <strong className="text-fg tabular-figures">{formatMYR(data.periodAverages[selectedDay])}</strong></p>
+                {topCategory && <p className="text-xs text-fg-muted mt-1">Top: <strong>{topCategory[0]}</strong> ({formatMYR(topCategory[1])})</p>}
               </div>
-
-              <button
-                onClick={() => setSelectedDay(null)}
-                className="text-xs font-bold text-fg-subtle hover:text-fg px-3 py-2 rounded-lg hover:bg-surface-2 transition-colors shrink-0"
-                style={{ minHeight: 44 }}
-              >
-                Close
-              </button>
+              <button onClick={() => setSelectedDay(null)} className="text-xs font-bold text-fg-subtle hover:text-fg px-3 py-2 rounded-lg hover:bg-surface-2 transition-colors shrink-0" style={{ minHeight: 44 }}>Close</button>
             </div>
           </div>
-
           {data.thisWeekTxns[selectedDay].length > 0 && (
-            <TransactionDrilldown
-              title={`${WEEKDAY_LABELS[selectedDay]} · this week`}
-              total={data.thisWeekTotals[selectedDay]}
-              transactions={data.thisWeekTxns[selectedDay]}
-              accounts={accounts}
-              sortBy="date"
-              scrollable
-              onClose={() => setSelectedDay(null)}
-            />
+            <div ref={drilldownRef} className="scroll-mt-24">
+              <TransactionDrilldown title={`${WEEKDAY_LABELS[selectedDay]} · this week`} total={data.thisWeekTotals[selectedDay]} transactions={data.thisWeekTxns[selectedDay]} accounts={accounts} sortBy="date" scrollable onClose={() => setSelectedDay(null)} />
+            </div>
           )}
         </>
       )}
@@ -309,12 +216,94 @@ const DayOfWeekBars = ({ expenses, accounts }) => {
 }
 
 // ============================================================
-// Calendar heatmap
+// 2. Interactive Calendar Heatmap with Integrated Streaks
 // ============================================================
 const CalendarHeatmap = ({ expenses, accounts }) => {
   const theme = useChartTheme()
   const [cursor, setCursor] = useState(() => new Date())
   const [selectedDayKey, setSelectedDayKey] = useState(null)
+  const drilldownRef = useRef(null)
+
+  // Calculate Streak Stats
+  const streakStats = useMemo(() => {
+    if (!expenses || expenses.length === 0) return null
+
+    const dailyTotals = new Map()
+    expenses.forEach(tx => {
+      const k = dayKey(tx.transaction_date)
+      dailyTotals.set(k, (dailyTotals.get(k) || 0) + (Number(tx.amount) || 0))
+    })
+
+    const allTotals = [...dailyTotals.values()].sort((a, b) => a - b)
+    if (allTotals.length === 0) return null
+
+    const mid = Math.floor(allTotals.length / 2)
+    const median = allTotals.length % 2 !== 0 ? allTotals[mid] : (allTotals[mid - 1] + allTotals[mid]) / 2
+    const threshold = Math.max(10, median * 0.5)
+
+    const today = dayKey(new Date())
+    const sortedKeys = [...dailyTotals.keys()].sort()
+    const firstKey = sortedKeys[0]
+    
+    const start = new Date(firstKey + 'T00:00:00Z')
+    const end = new Date(today + 'T00:00:00Z')
+    const daysDiff = Math.round((end.getTime() - start.getTime()) / 86400000)
+    
+    if (daysDiff < 7) {
+      return { locked: true, daysLeft: 7 - daysDiff }
+    }
+
+    let freeDays = 0, bestStreak = 0, currentRun = 0
+    let graceUsed = false
+    const statusMap = new Map()
+    
+    const cursor = new Date(start)
+    
+    while (cursor <= end) {
+      const k = cursor.toISOString().slice(0, 10)
+      const spent = dailyTotals.get(k)
+      
+      const isToday = k === today
+      const isPending = isToday && spent === undefined
+      const isMissing = spent === undefined && !isPending
+      const isLowSpend = !isPending && !isMissing && spent < threshold
+      
+      let isGrace = false
+
+      if (isLowSpend) {
+        freeDays++
+        currentRun++
+        graceUsed = false
+        bestStreak = Math.max(bestStreak, currentRun)
+        statusMap.set(k, 'low')
+      } else if (!isPending) {
+        if (!graceUsed) {
+          graceUsed = true
+          isGrace = true
+          statusMap.set(k, 'grace')
+        } else {
+          currentRun = 0
+          graceUsed = false
+          statusMap.set(k, isMissing ? 'missing' : 'over')
+        }
+      } else {
+        statusMap.set(k, 'pending')
+      }
+
+      cursor.setUTCDate(cursor.getUTCDate() + 1)
+    }
+
+    return { locked: false, freeDays, currentStreak: currentRun, bestStreak, threshold, statusMap }
+  }, [expenses])
+
+  // Auto-scroll to drilldown when a day is selected
+  useEffect(() => {
+    if (selectedDayKey !== null && drilldownRef.current) {
+      setTimeout(() => {
+        drilldownRef.current?.scrollIntoView({ behavior: 'smooth', block: 'nearest' })
+      }, 100)
+    }
+  }, [selectedDayKey])
 
   const monthData = useMemo(() => {
     const cursorMY = toMYDate(cursor)
@@ -359,16 +348,14 @@ const CalendarHeatmap = ({ expenses, accounts }) => {
     for (let d = 1; d <= dim; d++) {
       cells.push({
         day: d,
+        key: dayKey(new Date(Date.UTC(year, monthIdx, d))),
         total: totalsByDay[d] || 0,
         level: level(totalsByDay[d] || 0),
         txns: txByDay[d] || []
       })
     }
 
-    const monthName = firstDay.toLocaleString('en-MY', {
-      month: 'long', year: 'numeric', timeZone: 'UTC'
-    })
-
+    const monthName = firstDay.toLocaleString('en-MY', { month: 'long', year: 'numeric', timeZone: 'UTC' })
     return { cells, monthName }
   }, [cursor, expenses])
 
@@ -376,13 +363,8 @@ const CalendarHeatmap = ({ expenses, accounts }) => {
 
   const todayMY = toMYDate(new Date())
   const cursorMY = toMYDate(cursor)
-  const isFutureMonth =
-    cursorMY.getUTCFullYear() > todayMY.getUTCFullYear() ||
-    (cursorMY.getUTCFullYear() === todayMY.getUTCFullYear() &&
-      cursorMY.getUTCMonth() > todayMY.getUTCMonth())
-  const isCurrentMonth =
-    cursorMY.getUTCFullYear() === todayMY.getUTCFullYear() &&
-    cursorMY.getUTCMonth() === todayMY.getUTCMonth()
+  const isFutureMonth = cursorMY.getUTCFullYear() > todayMY.getUTCFullYear() || (cursorMY.getUTCFullYear() === todayMY.getUTCFullYear() && cursorMY.getUTCMonth() > todayMY.getUTCMonth())
+  const isCurrentMonth = cursorMY.getUTCFullYear() === todayMY.getUTCFullYear() && cursorMY.getUTCMonth() === todayMY.getUTCMonth()
 
   const go = (delta) => {
     setCursor((c) => {
@@ -394,58 +376,88 @@ const CalendarHeatmap = ({ expenses, accounts }) => {
     setSelectedDayKey(null)
   }
 
+  if (!streakStats) return null
+
   return (
     <section className="space-y-4">
       <div className="flex items-center justify-between">
         <div>
-          <h3 className="text-sm font-bold text-fg">Daily Spending Calendar</h3>
+          <h3 className="text-sm font-bold text-fg flex items-center gap-2">
+            <Flame className={`w-4 h-4 ${streakStats.currentStreak > 0 ? 'text-warning' : 'text-fg-subtle'}`} />
+            Daily Spending Calendar
+          </h3>
           <p className="text-xs text-fg-muted mt-0.5">{monthData.monthName}</p>
         </div>
         <div className="flex items-center gap-1">
-          <button
-            onClick={() => go(-1)}
-            className="w-11 h-11 flex items-center justify-center rounded-lg text-fg-subtle hover:text-fg hover:bg-surface-2 transition-colors"
-            aria-label="Previous month"
-          >
+          <button onClick={() => go(-1)} className="w-11 h-11 flex items-center justify-center rounded-lg text-fg-subtle hover:text-fg hover:bg-surface-2 transition-colors" aria-label="Previous month">
             <ChevronLeft className="w-4 h-4" />
           </button>
-          <button
-            onClick={() => go(1)}
-            className="w-11 h-11 flex items-center justify-center rounded-lg text-fg-subtle hover:text-fg hover:bg-surface-2 transition-colors"
-            aria-label="Next month"
-          >
+          <button onClick={() => go(1)} className="w-11 h-11 flex items-center justify-center rounded-lg text-fg-subtle hover:text-fg hover:bg-surface-2 transition-colors" aria-label="Next month">
             <ChevronRight className="w-4 h-4" />
           </button>
         </div>
       </div>
 
-      <div className="grid grid-cols-7 gap-1 mb-1">
+      {streakStats.locked ? (
+        <div className="text-center p-4 bg-surface-2/50 border border-dashed border-line-strong rounded-xl">
+          <Lock className="w-5 h-5 mx-auto text-fg-subtle mb-2" />
+          <p className="text-xs text-fg-muted font-bold">
+            Streaks locked. Log for {streakStats.daysLeft} more day{streakStats.daysLeft === 1 ? '' : 's'} to unlock.
+          </p>
+        </div>
+      ) : (
+        <>
+          <p className="text-xs text-fg-muted">
+            Low-spend goal: under <strong>{formatMYR(streakStats.threshold)}</strong> per day.
+          </p>
+          
+          <div className="grid grid-cols-3 divide-x divide-line border-y border-line py-3 mb-2">
+            <div className="text-center px-1">
+              <p className="text-[9px] md:text-[10px] font-bold text-fg-subtle uppercase tracking-wider flex items-center justify-center gap-1">
+                <CalendarCheck className="w-3 h-3 md:w-3.5 md:h-3.5" /> Low Days
+              </p>
+              <p className="text-lg md:text-xl font-black text-fg mt-0.5 tabular-figures">{streakStats.freeDays}</p>
+            </div>
+            
+            <div className="text-center px-1">
+              <p className="text-[9px] md:text-[10px] font-bold text-fg-subtle uppercase tracking-wider flex items-center justify-center gap-1">
+                {streakStats.currentStreak > 0 ? <Zap className="w-3 h-3 md:w-3.5 md:h-3.5 text-warning" /> : <MinusCircle className="w-3 h-3 md:w-3.5 md:h-3.5" />} Current
+              </p>
+              <p className={`text-lg md:text-xl font-black mt-0.5 tabular-figures ${streakStats.currentStreak > 0 ? 'text-warning' : 'text-fg'}`}>{streakStats.currentStreak}</p>
+            </div>
+
+            <div className="text-center px-1">
+              <p className="text-[9px] md:text-[10px] font-bold text-fg-subtle uppercase tracking-wider flex items-center justify-center gap-1">
+                <Award className="w-3 h-3 md:w-3.5 md:h-3.5 text-success" /> Best Run
+              </p>
+              <p className="text-lg md:text-xl font-black text-fg mt-0.5 tabular-figures">{streakStats.bestStreak}</p>
+            </div>
+          </div>
+        </>
+      )}
+
+      <div className="grid grid-cols-7 gap-1 md:gap-2 mb-1">
         {WEEKDAY_LABELS.map((d) => (
-          <span
-            key={d}
-            className="text-[9px] font-bold text-fg-subtle text-center uppercase tracking-wider"
-          >
-            {d.slice(0, 1)}
-          </span>
+          <span key={d} className="text-[9px] md:text-[11px] font-bold text-fg-subtle text-center uppercase tracking-wider">{d.slice(0, 1)}</span>
         ))}
       </div>
 
-      <div className="grid grid-cols-7 gap-1">
+      <div className="grid grid-cols-7 gap-1 md:gap-2">
         {monthData.cells.map((cell, i) => {
           if (!cell) return <div key={`blank-${i}`} />
           const isSelected = selectedDayKey === cell.day
-          const isFuture =
-            isFutureMonth || (isCurrentMonth && cell.day > todayMY.getUTCDate())
+          const isFuture = isFutureMonth || (isCurrentMonth && cell.day > todayMY.getUTCDate())
+          
+          const status = streakStats.statusMap?.get(cell.key) || (isFuture ? null : 'missing')
+
           return (
             <button
               key={cell.day}
-              onClick={() =>
-                !isFuture && setSelectedDayKey((prev) => (prev === cell.day ? null : cell.day))
-              }
+              onClick={() => !isFuture && setSelectedDayKey((prev) => (prev === cell.day ? null : cell.day))}
               disabled={isFuture}
               aria-label={`Day ${cell.day}, ${formatMYR(cell.total)}`}
               aria-pressed={isSelected}
-              className={`aspect-square rounded-lg flex items-center justify-center text-[10px] font-bold transition-all ${
+              className={`relative aspect-square rounded-lg flex items-center justify-center text-[10px] md:text-sm font-bold transition-all ${
                 isSelected ? 'ring-2 ring-inset ring-fg' : ''
               } ${isFuture ? 'opacity-30 cursor-not-allowed' : 'hover:scale-105 cursor-pointer'}`}
               style={{
@@ -454,40 +466,49 @@ const CalendarHeatmap = ({ expenses, accounts }) => {
               }}
             >
               {cell.day}
+
+              {status === 'low' && <Flame className="w-2.5 h-2.5 md:w-4.5 md:h-4.5 absolute top-0.5 right-0.5 md:top-1 md:right-1 text-warning" strokeWidth={2} />}
+              {status === 'grace' && <Snowflake className="w-2.5 h-2.5 md:w-4.5 md:h-4.5 absolute top-0.5 right-0.5 md:top-1 md:right-1 text-white drop-shadow-sm" strokeWidth={2} />}
+              {status === 'over' && <MinusCircle className="w-2.5 h-2.5 md:w-4.5 md:h-4.5 absolute top-0.5 right-0.5 md:top-1 md:right-1 text-danger" strokeWidth={2} />}
             </button>
           )
         })}
       </div>
 
-      <div className="flex items-center justify-end gap-1.5">
-        <span className="text-[9px] text-fg-subtle font-semibold">Less</span>
-        {theme.heatmap.map((c, i) => (
-          <div key={i} className="w-3 h-3 rounded" style={{ backgroundColor: c }} />
-        ))}
-        <span className="text-[9px] text-fg-subtle font-semibold">More</span>
+      <div className="flex items-center justify-between pt-2">
+        <div className="flex items-center gap-1.5">
+          <span className="text-[9px] md:text-[10px] text-fg-subtle font-semibold">Less</span>
+          {theme.heatmap.map((c, i) => <div key={i} className="w-2.5 h-2.5 md:w-3 md:h-3 rounded" style={{ backgroundColor: c }} />)}
+          <span className="text-[9px] md:text-[10px] text-fg-subtle font-semibold">More</span>
+        </div>
+
+        <div className="flex items-center gap-2 md:gap-3 text-[9px] md:text-[10px] text-fg-subtle font-medium">
+          <div className="flex items-center gap-1"><Flame className="w-3 h-3 md:w-3.5 md:h-3.5 text-warning" /> Low</div>
+          <div className="flex items-center gap-1"><Snowflake className="w-3 h-3 md:w-3.5 md:h-3.5 text-white drop-shadow-sm" /> Grace</div>
+          <div className="flex items-center gap-1"><MinusCircle className="w-3 h-3 md:w-3.5 md:h-3.5 text-danger" /> Over</div>
+        </div>
       </div>
 
       {selectedCell && selectedCell.txns.length > 0 && (
-        <TransactionDrilldown
-          title={`Day ${selectedCell.day}`}
-          total={selectedCell.total}
-          transactions={selectedCell.txns}
-          accounts={accounts}
-          sortBy="date"
-          scrollable
-          onClose={() => setSelectedDayKey(null)}
-        />
+        <div ref={drilldownRef} className="scroll-mt-24">
+          <TransactionDrilldown
+            title={`Day ${selectedCell.day}`}
+            total={selectedCell.total}
+            transactions={selectedCell.txns}
+            accounts={accounts}
+            sortBy="date"
+            scrollable
+            onClose={() => setSelectedDayKey(null)}
+          />
+        </div>
       )}
     </section>
   )
 }
 
-// ============================================================
-// PatternViews — exported
-// ============================================================
 export const PatternViews = ({ expenses, accounts }) => (
   <div className="space-y-8">
-    <DayOfWeekBars expenses={expenses} accounts={accounts} />
     <CalendarHeatmap expenses={expenses} accounts={accounts} />
+    <DayOfWeekBars expenses={expenses} accounts={accounts} />
   </div>
 )
