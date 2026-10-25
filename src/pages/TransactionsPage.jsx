@@ -1,6 +1,6 @@
 // src/pages/TransactionsPage.jsx
 import { useState, useMemo, useEffect, useRef } from 'react'
-import { ScanText, AlertTriangle, Check, RefreshCw, X, CheckCircle2, ChevronDown } from 'lucide-react'
+import { ScanText, Check, RefreshCw, X, CheckCircle2, ChevronDown } from 'lucide-react'
 import { ActionLedger } from '../components/dashboard/ActionLedger'
 import { ConfirmSheet } from '../components/shared/ConfirmSheet'
 import { formatMYR } from '../utils/formatters'
@@ -47,67 +47,83 @@ function PendingOCRRow({ tx, mainCategories, getSubCategories, onApprove, onDele
     new Date(tx.transaction_date || tx.created_at).toISOString().split('T')[0]
   )
   const [category, setCategory] = useState(tx.category || 'uncategorized')
+  const [description, setDescription] = useState(tx.description || '')
 
   return (
     <div className="bg-warning-soft/30 p-4">
-      <div className="flex justify-between items-start mb-3">
-        <div className="pr-4">
-          <p className="text-sm font-bold text-warning-text leading-tight">{tx.description}</p>
-          <p className="text-xs text-warning-text/90 mt-1 flex items-center gap-1">
-            <AlertTriangle className="w-3 h-3" /> Pending Verification
-          </p>
-        </div>
-        <span className="text-sm font-bold text-fg whitespace-nowrap tabular-figures">
+      {/* Amount - Top Right */}
+      <div className="flex justify-end mb-3">
+        <span className="text-xl font-black text-fg whitespace-nowrap tabular-figures">
           {formatMYR(tx.amount)}
         </span>
       </div>
       
-      <div className="flex flex-col sm:flex-row gap-2">
-        <input
-          type="date"
-          value={date}
-          onChange={(e) => setDate(e.target.value)}
-          className="h-[46px] bg-surface border border-warning-border rounded-xl px-3 text-sm text-fg outline-none focus:border-warning focus:ring-2 focus:ring-warning/30 appearance-none"
-        />
-        
-        <div className="relative flex-1">
-          <select
-            value={category}
-            onChange={(e) => setCategory(e.target.value)}
-            className="w-full h-[46px] bg-surface border border-warning-border rounded-xl pl-3 pr-10 text-sm text-fg outline-none focus:border-warning focus:ring-2 focus:ring-warning/30 appearance-none"
-          >
-            <option value="uncategorized">Select Category...</option>
-            {mainCategories.map((main) => (
-              <optgroup key={main.id} label={main.name}>
-                {getSubCategories(main.id).map((sub) => (
-                  <option key={sub.id} value={`${main.name} > ${sub.name}`}>{sub.name}</option>
-                ))}
-                {getSubCategories(main.id).length === 0 && (
-                  <option value={main.name}>{main.name} (General)</option>
-                )}
-              </optgroup>
-            ))}
-          </select>
-          <ChevronDown className="w-4 h-4 text-fg-muted absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+      <div className="space-y-3">
+        {/* Description - Full Width */}
+        <div>
+          <label htmlFor={`desc-${tx.id}`} className="block text-[10px] font-bold text-warning-text/80 uppercase tracking-wider mb-1.5">
+            Description
+          </label>
+          <input
+            id={`desc-${tx.id}`}
+            type="text"
+            value={description}
+            onChange={(e) => setDescription(e.target.value)}
+            className="w-full h-[46px] bg-surface border border-warning-border rounded-xl px-3 text-sm font-bold text-fg outline-none focus:border-warning focus:ring-2 focus:ring-warning/30 transition-all placeholder:text-fg-subtle"
+            placeholder="Add description..."
+          />
         </div>
 
-        <div className="flex items-center gap-1.5 flex-1 sm:flex-none">
-          <button
-            onClick={() => onApprove(tx.id, category, date)}
-            className="flex-1 sm:w-12 bg-warning-solid hover:bg-warning-solid-hover text-white p-2 rounded-xl transition-colors shadow-sm flex items-center justify-center"
-            style={{ minHeight: 46 }}
-            aria-label="Approve transaction"
-          >
-            <Check className="w-4 h-4" />
-          </button>
-          <button
-            onClick={() => onDelete(tx)}
-            className="flex-1 sm:w-12 bg-surface hover:bg-danger-soft text-danger border border-danger-border p-2 rounded-xl transition-colors shadow-sm flex items-center justify-center"
-            style={{ minHeight: 46 }}
-            aria-label="Delete scan"
-          >
-            <X className="w-4 h-4" />
-          </button>
+        {/* Date, Category, Buttons - Row */}
+        <div className="flex flex-col sm:flex-row gap-3 sm:items-end">
+          <div className="flex-1 w-full">
+            <label className="block text-[10px] font-bold text-warning-text/80 uppercase tracking-wider mb-1.5">Date</label>
+            <input
+              type="date"
+              value={date}
+              onChange={(e) => setDate(e.target.value)}
+              className="w-full h-[46px] bg-surface border border-warning-border rounded-xl px-3 text-sm text-fg outline-none focus:border-warning focus:ring-2 focus:ring-warning/30 appearance-none"
+            />
+          </div>
+          
+          <div className="flex-1 w-full relative">
+            <label className="block text-[10px] font-bold text-warning-text/80 uppercase tracking-wider mb-1.5">Category</label>
+            <select
+              value={category}
+              onChange={(e) => setCategory(e.target.value)}
+              className="w-full h-[46px] bg-surface border border-warning-border rounded-xl pl-3 pr-10 text-sm text-fg outline-none focus:border-warning focus:ring-2 focus:ring-warning/30 appearance-none"
+            >
+              <option value="uncategorized">Select Category...</option>
+              {mainCategories.map((main) => (
+                <optgroup key={main.id} label={main.name}>
+                  {getSubCategories(main.id).map((sub) => (
+                    <option key={sub.id} value={`${main.name} > ${sub.name}`}>{sub.name}</option>
+                  ))}
+                  {getSubCategories(main.id).length === 0 && (
+                    <option value={main.name}>{main.name} (General)</option>
+                  )}
+                </optgroup>
+              ))}
+            </select>
+            <ChevronDown className="w-4 h-4 text-fg-muted absolute right-3 bottom-[15px] pointer-events-none" />
+          </div>
+
+          <div className="flex gap-2 w-full sm:w-auto mt-2 sm:mt-0">
+            <button
+              onClick={() => onApprove(tx.id, category, date, description)}
+              className="flex-1 sm:w-[46px] h-[46px] bg-warning-solid hover:bg-warning-solid-hover text-white rounded-xl transition-colors shadow-sm flex items-center justify-center"
+              aria-label="Approve transaction"
+            >
+              <Check className="w-4 h-4" />
+            </button>
+            <button
+              onClick={() => onDelete(tx)}
+              className="flex-1 sm:w-[46px] h-[46px] bg-surface hover:bg-danger-soft text-danger border border-danger-border rounded-xl transition-colors shadow-sm flex items-center justify-center"
+              aria-label="Delete scan"
+            >
+              <X className="w-4 h-4" />
+            </button>
+          </div>
         </div>
       </div>
     </div>
@@ -132,7 +148,6 @@ export function TransactionsPage({
 }) {
   const [pendingDelete, setPendingDelete] = useState(null)
   
-  // Pagination & Search State
   const [searchQuery, setSearchQuery] = useState('')
   const [debouncedQuery, setDebouncedQuery] = useState('')
   const [page, setPage] = useState(1)
@@ -141,13 +156,11 @@ export function TransactionsPage({
   
   const isInitialMount = useRef(true)
 
-  // Debounce search
   useEffect(() => {
     const t = setTimeout(() => setDebouncedQuery(searchQuery), 300)
     return () => clearTimeout(t)
   }, [searchQuery])
 
-  // Fetch when search changes (skip initial mount to avoid duplicate fetch)
   useEffect(() => {
     if (isInitialMount.current) {
       isInitialMount.current = false

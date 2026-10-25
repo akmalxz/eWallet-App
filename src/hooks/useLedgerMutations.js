@@ -21,7 +21,7 @@ export function useLedgerMutations({
     setIsRefreshing(true)
     try {
       const [txResult, commResult, payResult] = await Promise.all([
-        fetchRecentTransactions({ limit: 50, offset: 0, append: false }), // Fetch first page
+        fetchRecentTransactions({ limit: 50, offset: 0, append: false }),
         supabase.from('commitments').select('*'),
         supabase
           .from('commitments_payments')
@@ -48,17 +48,29 @@ export function useLedgerMutations({
     return () => clearInterval(id)
   }, [user, refreshLedger])
 
-  const approveTransaction = useCallback(async (id, updatedCategory, updatedDate = null) => {
+  // Added updatedDescription parameter
+  const approveTransaction = useCallback(async (id, updatedCategory, updatedDate = null, updatedDescription = null) => {
     if (!updatedCategory || updatedCategory === 'uncategorized') {
       return showToast('Please select a category before approving', 'warning')
     }
+    
     try {
-      const updatePayload = { needs_review: false, category: updatedCategory }
+      const updatePayload = { 
+        needs_review: false, 
+        category: updatedCategory 
+      }
+      
       if (updatedDate) {
         updatePayload.transaction_date = new Date(`${updatedDate}T12:00:00`).toISOString()
       }
+      
+      if (updatedDescription && updatedDescription.trim().length > 0) {
+        updatePayload.description = updatedDescription.trim()
+      }
+
       const { error } = await supabase.from('transactions').update(updatePayload).eq('id', id)
       if (error) throw error
+      
       showToast('Transaction approved successfully!', 'success')
       
       await Promise.all([
