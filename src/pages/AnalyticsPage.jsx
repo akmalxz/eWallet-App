@@ -8,13 +8,12 @@ import { MainTrendChart } from '../components/analytics/MainTrendChart'
 import { PatternViews } from '../components/analytics/PatternViews'
 import { CategoryMovement } from '../components/analytics/CategoryMovement'
 import { IncomeVsExpense } from '../components/analytics/IncomeVsExpense'
+import { SpendingStructure } from '../components/analytics/SpendingStructure' // <-- Added
+import { periodStart } from '../utils/analytics/dateRange' // <-- Added
 import { toMYDate } from '../utils/dateHelpers'
 import { AccountSelector } from '../components/shared/AccountSelector'
 import { SlidingSegmentedControl } from '../components/shared/SlidingSegmentedControl'
 
-// ============================================================
-// ITEM DEFINITIONS
-// ============================================================
 const PERIOD_ITEMS = [
   { id: 3, label: '3M' },
   { id: 6, label: '6M' },
@@ -33,28 +32,17 @@ const MODE_ITEMS = [
   { id: 'everyday', label: 'Excl. bills' }
 ]
 
-// ============================================================
-// HELPERS
-// ============================================================
 const getInitialParam = (key, validValues, fallback) => {
   if (typeof window === 'undefined') return fallback
   const v = new URLSearchParams(window.location.search).get(key)
   return validValues.includes(v) ? v : fallback
 }
 
-// ============================================================
-// LOADING SKELETON — mirrors the flat layout
-// ============================================================
 const AnalyticsSkeleton = () => (
   <div className="space-y-8">
-
-    {/* Insight rows — flat */}
     <div className="space-y-3">
       {[1, 2].map((i) => (
-        <div
-          key={i}
-          className="flex items-start gap-3 py-3 border-b border-line/60"
-        >
+        <div key={i} className="flex items-start gap-3 py-3 border-b border-line/60">
           <div className="w-9 h-9 rounded-xl bg-surface-2 shrink-0 animate-pulse" />
           <div className="flex-1 space-y-2">
             <div className="h-3 w-full bg-surface-2 rounded-full animate-pulse" />
@@ -63,8 +51,6 @@ const AnalyticsSkeleton = () => (
         </div>
       ))}
     </div>
-
-    {/* Trend chart skeleton — flat */}
     <div className="space-y-3 pt-2">
       <div className="flex items-start justify-between gap-3">
         <div className="space-y-2">
@@ -75,13 +61,9 @@ const AnalyticsSkeleton = () => (
       </div>
       <div className="h-[280px] bg-surface-2 rounded-2xl animate-pulse" />
     </div>
-
   </div>
 )
 
-// ============================================================
-// PAGE
-// ============================================================
 export function AnalyticsPage({
   user,
   profile,
@@ -137,29 +119,24 @@ export function AnalyticsPage({
   const spendingSource =
     mode === 'everyday' ? filteredEverydayExpenses : filteredExpenses
 
+  // FIXED: Use the timezone-safe periodStart helper instead of setMonth()
+  const cutoff = useMemo(() => periodStart(period), [period])
+
   const periodScopedExpenses = useMemo(() => {
-    const cutoff = new Date()
-    cutoff.setMonth(cutoff.getMonth() - period)
-    cutoff.setDate(1)
-    cutoff.setHours(0, 0, 0, 0)
     return spendingSource.filter(tx => toMYDate(tx.transaction_date) >= cutoff)
-  }, [spendingSource, period])
+  }, [spendingSource, cutoff])
 
   const periodScopedExpensesAll = useMemo(() => {
-    const cutoff = new Date()
-    cutoff.setMonth(cutoff.getMonth() - period)
-    cutoff.setDate(1)
-    cutoff.setHours(0, 0, 0, 0)
     return filteredExpenses.filter(tx => toMYDate(tx.transaction_date) >= cutoff)
-  }, [filteredExpenses, period])
+  }, [filteredExpenses, cutoff])
+
+  const periodScopedEveryday = useMemo(() => {
+    return filteredEverydayExpenses.filter(tx => toMYDate(tx.transaction_date) >= cutoff)
+  }, [filteredEverydayExpenses, cutoff])
 
   const periodScopedIncome = useMemo(() => {
-    const cutoff = new Date()
-    cutoff.setMonth(cutoff.getMonth() - period)
-    cutoff.setDate(1)
-    cutoff.setHours(0, 0, 0, 0)
     return filteredIncome.filter(tx => toMYDate(tx.transaction_date) >= cutoff)
-  }, [filteredIncome, period])
+  }, [filteredIncome, cutoff])
 
   const handleTabNavigate = useCallback((newTab) => setTab(newTab), [])
 
@@ -186,7 +163,6 @@ export function AnalyticsPage({
   return (
     <div className="max-w-4xl mx-auto animate-enter pb-12 space-y-6">
 
-      {/* Desktop title row — filters hidden during error / empty */}
       <div className="hidden md:flex md:items-center md:justify-between md:gap-4">
         <div className="min-w-0">
           <h1 className="text-2xl font-bold text-fg tracking-tight">Analytics</h1>
@@ -214,7 +190,6 @@ export function AnalyticsPage({
         )}
       </div>
 
-      {/* ─────────── ERROR STATE — flat alert ─────────── */}
       {error && (
         <div className="bg-danger-soft border border-danger-border rounded-xl p-6 text-center">
           <AlertCircle className="w-10 h-10 text-danger mx-auto mb-4" />
@@ -232,7 +207,6 @@ export function AnalyticsPage({
         </div>
       )}
 
-      {/* ─────────── PAGE-LEVEL EMPTY STATE — no card ─────────── */}
       {!error && isTrulyEmpty && (
         <EmptyState
           icon={BarChart3}
@@ -246,10 +220,8 @@ export function AnalyticsPage({
         />
       )}
 
-      {/* ─────────── NORMAL PAGE ─────────── */}
       {!error && !isTrulyEmpty && (
         <>
-          {/* Tabs row */}
           <div className="flex items-center gap-3">
             <div className="flex-1 min-w-0">
               <SlidingSegmentedControl
@@ -267,7 +239,6 @@ export function AnalyticsPage({
             </div>
           </div>
 
-          {/* Mobile filters */}
           <div className="md:hidden space-y-3">
             {showModeControl ? (
               <div className="grid grid-cols-2 gap-2">
@@ -297,7 +268,6 @@ export function AnalyticsPage({
             />
           </div>
 
-          {/* Tab content or loading skeleton */}
           {loading ? (
             <AnalyticsSkeleton />
           ) : (
@@ -326,15 +296,22 @@ export function AnalyticsPage({
               )}
 
               {tab === 'income' && (
-                <IncomeVsExpense
-                  income={periodScopedIncome}
-                  expenses={periodScopedExpensesAll}
-                  periodMonths={period}
-                  accounts={accounts}
-                  selectedAccountId={selectedAccount}
-                  accountLabel={activeAccountName}
-                  onAddIncome={onBack}
-                />
+                <>
+                  <IncomeVsExpense
+                    income={periodScopedIncome}
+                    expenses={periodScopedExpensesAll}
+                    periodMonths={period}
+                    accounts={accounts}
+                    selectedAccountId={selectedAccount}
+                    accountLabel={activeAccountName}
+                    onAddIncome={onBack}
+                  />
+                  <SpendingStructure
+                    income={periodScopedIncome}
+                    expenses={periodScopedExpensesAll}
+                    everyday={periodScopedEveryday}
+                  />
+                </>
               )}
             </>
           )}
