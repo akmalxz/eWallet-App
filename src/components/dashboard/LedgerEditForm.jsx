@@ -1,9 +1,7 @@
 // src/components/dashboard/LedgerEditForm.jsx
 import { useState } from 'react'
-import { X, Save, AlertCircle } from 'lucide-react'
+import { Save, AlertCircle, ChevronDown } from 'lucide-react'
 
-// Build the editable shape from a transaction. Uses the same date
-// derivation the old startEdit() used, so the input pre-fills identically.
 const initialFormState = (tx) => {
   const raw = tx.transaction_date || tx.created_at
   const dateStr = raw
@@ -107,22 +105,9 @@ export const LedgerEditForm = ({
   }
 
   return (
-    <div className="bg-surface-2 px-4 py-4 space-y-4 animate-fadeIn">
-      <div className="flex justify-between items-center border-b border-line pb-2">
-        <span className="text-[11px] font-bold uppercase tracking-wider text-fg-subtle">
-          Editing
-        </span>
-        <button
-          onClick={onCancel}
-          className="w-11 h-11 flex items-center justify-center text-fg-subtle hover:text-fg-muted rounded-lg"
-          aria-label="Cancel editing"
-        >
-          <X className="w-3.5 h-3.5" />
-        </button>
-      </div>
-
+    <div className="space-y-4">
       <div>
-        <label className="block text-[10px] font-bold text-fg-subtle uppercase tracking-wider mb-1.5">
+        <label className="block text-[11px] font-bold text-fg-subtle uppercase tracking-wider mb-1.5">
           Description
         </label>
         <input
@@ -130,11 +115,11 @@ export const LedgerEditForm = ({
           value={data.description}
           onChange={(e) => setField('description', e.target.value)}
           onKeyDown={handleKeyDown}
-          className={`w-full bg-surface border ${
+          className={`w-full h-[46px] bg-surface border ${
             errors.description
               ? 'border-danger-border focus:border-danger'
-              : 'border-line focus:border-brand'
-          } rounded-xl px-3 py-2.5 text-sm text-fg placeholder:text-fg-subtle outline-none focus:ring-2 focus:ring-brand/30 transition-all`}
+              : 'border-line-strong focus:border-brand'
+          } rounded-xl px-3 text-sm text-fg placeholder:text-fg-subtle outline-none focus:ring-2 focus:ring-brand/30 transition-all`}
           placeholder="Description"
         />
         {errors.description && (
@@ -144,22 +129,9 @@ export const LedgerEditForm = ({
         )}
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
         <div>
-          <label className="block text-[10px] font-bold text-fg-subtle uppercase tracking-wider mb-1.5">
-            Date
-          </label>
-          <input
-            type="date"
-            value={data.transaction_date}
-            onChange={(e) => setField('transaction_date', e.target.value)}
-            onKeyDown={handleKeyDown}
-            className="w-full bg-surface border border-line focus:border-brand rounded-xl px-3 py-2.5 text-sm text-fg outline-none focus:ring-2 focus:ring-brand/30 transition-all"
-          />
-        </div>
-
-        <div>
-          <label className="block text-[10px] font-bold text-fg-subtle uppercase tracking-wider mb-1.5">
+          <label className="block text-[11px] font-bold text-fg-subtle uppercase tracking-wider mb-1.5">
             Amount (RM)
           </label>
           <input
@@ -169,11 +141,11 @@ export const LedgerEditForm = ({
             value={data.amount}
             onChange={(e) => setField('amount', e.target.value)}
             onKeyDown={handleKeyDown}
-            className={`w-full bg-surface border ${
+            className={`w-full h-[46px] bg-surface border ${
               errors.amount
                 ? 'border-danger-border focus:border-danger'
-                : 'border-line focus:border-brand'
-            } rounded-xl px-3 py-2.5 text-sm text-fg placeholder:text-fg-subtle outline-none focus:ring-2 focus:ring-brand/30 transition-all`}
+                : 'border-line-strong focus:border-brand'
+            } rounded-xl px-3 text-sm text-fg placeholder:text-fg-subtle outline-none focus:ring-2 focus:ring-brand/30 transition-all tabular-figures`}
             placeholder="0.00"
           />
           {errors.amount && (
@@ -184,18 +156,33 @@ export const LedgerEditForm = ({
         </div>
 
         <div>
-          <label className="block text-[10px] font-bold text-fg-subtle uppercase tracking-wider mb-1.5">
-            Category
+          <label className="block text-[11px] font-bold text-fg-subtle uppercase tracking-wider mb-1.5">
+            Date
           </label>
+          <input
+            type="date"
+            value={data.transaction_date}
+            onChange={(e) => setField('transaction_date', e.target.value)}
+            onKeyDown={handleKeyDown}
+            className="w-full h-[46px] bg-surface border border-line-strong focus:border-brand rounded-xl px-3 text-sm text-fg outline-none focus:ring-2 focus:ring-brand/30 transition-all appearance-none"
+          />
+        </div>
+      </div>
+
+      <div>
+        <label className="block text-[11px] font-bold text-fg-subtle uppercase tracking-wider mb-1.5">
+          Category
+        </label>
+        <div className="relative">
           <select
             value={data.category}
             onChange={(e) => setField('category', e.target.value)}
             onKeyDown={handleKeyDown}
-            className={`w-full bg-surface border ${
+            className={`w-full h-[46px] bg-surface border ${
               errors.category
                 ? 'border-danger-border focus:border-danger'
-                : 'border-line focus:border-brand'
-            } rounded-xl px-3 py-2.5 text-sm text-fg outline-none focus:ring-2 focus:ring-brand/30 transition-all`}
+                : 'border-line-strong focus:border-brand'
+            } rounded-xl pl-3 pr-10 text-sm text-fg outline-none focus:ring-2 focus:ring-brand/30 transition-all appearance-none`}
           >
             <option value="">Select category...</option>
             {mainCategories.map((main) => (
@@ -211,31 +198,32 @@ export const LedgerEditForm = ({
               </optgroup>
             ))}
           </select>
-          {errors.category && (
-            <p className="mt-1 text-[11px] text-danger font-medium">
-              {errors.category}
-            </p>
-          )}
-          {mainCategories.length === 0 && !errors.category && (
-            <p className="mt-1 text-[11px] text-warning-text flex items-center gap-1">
-              <AlertCircle className="w-3 h-3 shrink-0" />
-              No categories yet — set them up in Profile → Expense Categories.
-            </p>
-          )}
+          <ChevronDown className="w-4 h-4 text-fg-muted absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none" />
         </div>
+        {errors.category && (
+          <p className="mt-1 text-[11px] text-danger font-medium">
+            {errors.category}
+          </p>
+        )}
+        {mainCategories.length === 0 && !errors.category && (
+          <p className="mt-1 text-[11px] text-warning-text flex items-center gap-1">
+            <AlertCircle className="w-3 h-3 shrink-0" />
+            No categories yet — set them up in Profile → Expense Categories.
+          </p>
+        )}
       </div>
 
       <div>
-        <label className="block text-[10px] font-bold text-fg-subtle uppercase tracking-wider mb-1.5">
+        <label className="block text-[11px] font-bold text-fg-subtle uppercase tracking-wider mb-1.5">
           Transaction Type
         </label>
-        <div className="flex gap-1.5 bg-surface-2/60 p-1 rounded-xl border border-line">
+        <div className="flex gap-1.5 bg-surface-2 p-1 rounded-xl border border-line">
           <button
             type="button"
             onClick={() => applyType('expense')}
             className={`flex-1 py-2 text-xs font-bold rounded-lg transition-all ${
               isExpense
-                ? 'bg-danger-soft text-danger-text border border-danger-border'
+                ? 'bg-danger-soft text-danger-text border border-danger-border shadow-sm'
                 : 'text-fg-muted hover:text-fg'
             }`}
           >
@@ -246,7 +234,7 @@ export const LedgerEditForm = ({
             onClick={() => applyType('income')}
             className={`flex-1 py-2 text-xs font-bold rounded-lg transition-all ${
               isIncome
-                ? 'bg-success-soft text-success-text border border-success-border'
+                ? 'bg-success-soft text-success-text border border-success-border shadow-sm'
                 : 'text-fg-muted hover:text-fg'
             }`}
           >
@@ -257,7 +245,7 @@ export const LedgerEditForm = ({
             onClick={() => applyType('transfer')}
             className={`flex-1 py-2 text-xs font-bold rounded-lg transition-all ${
               isTransfer
-                ? 'bg-info-soft text-info-text border border-info-border'
+                ? 'bg-info-soft text-info-text border border-info-border shadow-sm'
                 : 'text-fg-muted hover:text-fg'
             }`}
           >
@@ -269,30 +257,33 @@ export const LedgerEditForm = ({
       <div className="grid grid-cols-2 gap-3">
         {isExpense || isTransfer ? (
           <div>
-            <label className="block text-[10px] font-bold text-fg-subtle uppercase tracking-wider mb-1.5">
+            <label className="block text-[11px] font-bold text-fg-subtle uppercase tracking-wider mb-1.5">
               {isExpense ? 'Pay From' : 'From'}
             </label>
-            <select
-              value={data.source_account_id}
-              onChange={(e) => setField('source_account_id', e.target.value)}
-              className="w-full bg-surface border border-line focus:border-brand rounded-xl px-3 py-2.5 text-sm text-fg outline-none focus:ring-2 focus:ring-brand/30 transition-all"
-            >
-              {accounts.map((a) => (
-                <option key={a.id} value={a.id}>
-                  {a.account_name}
-                </option>
-              ))}
-            </select>
+            <div className="relative">
+              <select
+                value={data.source_account_id}
+                onChange={(e) => setField('source_account_id', e.target.value)}
+                className="w-full h-[46px] bg-surface border border-line-strong focus:border-brand rounded-xl pl-3 pr-10 text-sm text-fg outline-none focus:ring-2 focus:ring-brand/30 transition-all appearance-none"
+              >
+                {accounts.map((a) => (
+                  <option key={a.id} value={a.id}>
+                    {a.account_name}
+                  </option>
+                ))}
+              </select>
+              <ChevronDown className="w-4 h-4 text-fg-muted absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+            </div>
           </div>
         ) : (
           <div>
-            <label className="block text-[10px] font-bold text-fg-subtle uppercase tracking-wider mb-1.5">
+            <label className="block text-[11px] font-bold text-fg-subtle uppercase tracking-wider mb-1.5">
               Source
             </label>
             <select
               value=""
               disabled
-              className="w-full bg-surface-2 border border-line rounded-xl px-3 py-2.5 text-sm text-fg-subtle cursor-not-allowed"
+              className="w-full h-[46px] bg-surface-2 border border-line rounded-xl px-3 text-sm text-fg-subtle cursor-not-allowed appearance-none"
             >
               <option value="">None Required</option>
             </select>
@@ -301,30 +292,33 @@ export const LedgerEditForm = ({
 
         {isIncome || isTransfer ? (
           <div>
-            <label className="block text-[10px] font-bold text-fg-subtle uppercase tracking-wider mb-1.5">
+            <label className="block text-[11px] font-bold text-fg-subtle uppercase tracking-wider mb-1.5">
               {isIncome ? 'Deposit To' : 'To'}
             </label>
-            <select
-              value={data.destination_account_id}
-              onChange={(e) => setField('destination_account_id', e.target.value)}
-              className="w-full bg-surface border border-line focus:border-brand rounded-xl px-3 py-2.5 text-sm text-fg outline-none focus:ring-2 focus:ring-brand/30 transition-all"
-            >
-              {accounts.map((a) => (
-                <option key={a.id} value={a.id}>
-                  {a.account_name}
-                </option>
-              ))}
-            </select>
+            <div className="relative">
+              <select
+                value={data.destination_account_id}
+                onChange={(e) => setField('destination_account_id', e.target.value)}
+                className="w-full h-[46px] bg-surface border border-line-strong focus:border-brand rounded-xl pl-3 pr-10 text-sm text-fg outline-none focus:ring-2 focus:ring-brand/30 transition-all appearance-none"
+              >
+                {accounts.map((a) => (
+                  <option key={a.id} value={a.id}>
+                    {a.account_name}
+                  </option>
+                ))}
+              </select>
+              <ChevronDown className="w-4 h-4 text-fg-muted absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+            </div>
           </div>
         ) : (
           <div>
-            <label className="block text-[10px] font-bold text-fg-subtle uppercase tracking-wider mb-1.5">
+            <label className="block text-[11px] font-bold text-fg-subtle uppercase tracking-wider mb-1.5">
               Destination
             </label>
             <select
               value=""
               disabled
-              className="w-full bg-surface-2 border border-line rounded-xl px-3 py-2.5 text-sm text-fg-subtle cursor-not-allowed"
+              className="w-full h-[46px] bg-surface-2 border border-line rounded-xl px-3 text-sm text-fg-subtle cursor-not-allowed appearance-none"
             >
               <option value="">None Required</option>
             </select>
@@ -336,11 +330,11 @@ export const LedgerEditForm = ({
         <p className="text-[11px] text-danger font-medium">{errors.accounts}</p>
       )}
 
-      <div className="flex gap-2 justify-end pt-2 border-t border-line">
+      <div className="flex gap-3 pt-4">
         <button
           type="button"
           onClick={onCancel}
-          className="px-4 py-2.5 text-xs font-semibold text-fg-muted hover:bg-surface-2 rounded-xl transition-all"
+          className="flex-1 py-3 rounded-xl text-sm font-semibold text-fg-muted bg-surface-2 border border-line hover:bg-surface-3 transition-colors"
           style={{ minHeight: 44 }}
         >
           Cancel
@@ -348,10 +342,10 @@ export const LedgerEditForm = ({
         <button
           type="button"
           onClick={handleSave}
-          className="px-4 py-2.5 text-xs font-bold bg-brand-solid hover:bg-brand-solid-hover text-white rounded-xl transition-all flex items-center justify-center gap-1.5 shadow-md"
+          className="flex-1 py-3 rounded-xl text-sm font-bold bg-brand-solid hover:bg-brand-solid-hover text-white transition-colors flex items-center justify-center gap-1.5 shadow-sm"
           style={{ minHeight: 44 }}
         >
-          <Save className="w-3.5 h-3.5" /> Save Changes
+          <Save className="w-4 h-4" /> Save Changes
         </button>
       </div>
     </div>

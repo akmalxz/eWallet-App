@@ -8,6 +8,7 @@ import { formatMYR } from '../../utils/formatters'
 import { toMYDate, dayKey } from '../../utils/dateHelpers'
 import { getColorTheme } from '../../utils/theme/themeRegistry'
 import { ConfirmSheet } from '../shared/ConfirmSheet'
+import { ModalWrapper } from '../modals/ModalWrapper'
 import { LedgerEditForm } from './LedgerEditForm'
 
 const formatGroupLabel = (dateKey, todayKey, yesterdayKey) => {
@@ -39,8 +40,6 @@ const getDailyTotals = (transactions) => {
   return { moneyIn, moneyOut }
 }
 
-// Minimal pill for the ledger row — keeps the color identity
-// but stays compact and uses a tighter border radius.
 const AccountPill = ({ account }) => {
   if (!account) return <span className="text-[10px] text-fg-subtle">Unknown</span>
   const theme = getColorTheme(account.color_theme)
@@ -73,7 +72,7 @@ export const ActionLedger = ({
   onLoadMore,
   isLoadingMore
 }) => {
-  const [editingId, setEditingId] = useState(null)
+  const [editingTx, setEditingTx] = useState(null) // <-- Changed to hold the tx object
   const [expandedGroups, setExpandedGroups] = useState({})
   const [pendingDelete, setPendingDelete] = useState(null)
 
@@ -104,8 +103,8 @@ export const ActionLedger = ({
     return expandedGroups[group.date] ?? false
   }
 
-  const beginEdit = (id) => setEditingId(id)
-  const endEdit = () => setEditingId(null)
+  const beginEdit = (tx) => setEditingTx(tx)
+  const endEdit = () => setEditingTx(null)
   const accountFor = (id) => accounts.find((a) => a.id === id)
 
   if (!recentTransactions || recentTransactions.length === 0) {
@@ -232,102 +231,79 @@ export const ActionLedger = ({
                         {group.transactions.map((tx) => {
                           const isIncome = !tx.source_account_id && tx.destination_account_id
                           const isTransfer = tx.source_account_id && tx.destination_account_id
-                          const isEditingThis = editingId === tx.id
                           const globalIndex = recentTransactions.findIndex((t) => t.id === tx.id)
 
                           const srcAcc = accountFor(tx.source_account_id)
                           const destAcc = accountFor(tx.destination_account_id)
 
                           return (
-                            <div key={tx.id} className="relative">
-                              {isEditingThis && (
-                                <LedgerEditForm
-                                  key={tx.id}
-                                  transaction={tx}
-                                  accounts={accounts}
-                                  mainCategories={mainCategories}
-                                  getSubCategories={getSubCategories}
-                                  onSave={(updates) => {
-                                    handleEditTransaction(tx.id, updates)
-                                    endEdit()
-                                  }}
-                                  onCancel={endEdit}
-                                />
-                              )}
-
-                              {!isEditingThis && (
-                                <div
-                                  id={`tx-${globalIndex}`}
-                                  className="flex items-center justify-between gap-3 px-4 py-3 hover:bg-surface-2 transition-all"
-                                >
-                                  {/* LEFT: Description & Meta */}
-                                  <div className="flex flex-col gap-1 min-w-0 flex-1">
-                                    <p className="text-sm font-bold text-fg truncate">
-                                      {tx.description}
-                                    </p>
-                                    
-                                    <div className="flex items-center gap-1.5 text-[11px] text-fg-subtle min-w-0">
-                                      <span className="truncate max-w-[80px] sm:max-w-[120px]">
-                                        {tx.category || 'Uncategorized'}
-                                      </span>
-                                      <span className="text-line-strong shrink-0">•</span>
-                                      
-                                      {/* Custom Account Pills */}
-                                      <div className="flex items-center gap-1 min-w-0 truncate">
-                                        {isIncome && destAcc && (
-                                          <>
-                                            <span className="text-fg-subtle font-bold">→</span>
-                                            <AccountPill account={destAcc} />
-                                          </>
-                                        )}
-                                        {isTransfer && srcAcc && destAcc && (
-                                          <>
-                                            <AccountPill account={srcAcc} />
-                                            <span className="text-fg-subtle font-bold">→</span>
-                                            <AccountPill account={destAcc} />
-                                          </>
-                                        )}
-                                        {!isIncome && !isTransfer && srcAcc && (
-                                          <>
-                                            <span className="text-fg-subtle font-bold">←</span>
-                                            <AccountPill account={srcAcc} />
-                                          </>
-                                        )}
-                                      </div>
-                                    </div>
+                            <div
+                              key={tx.id}
+                              id={`tx-${globalIndex}`}
+                              className="flex items-center justify-between gap-3 px-4 py-3 hover:bg-surface-2 transition-all"
+                            >
+                              {/* LEFT: Description & Meta */}
+                              <div className="flex flex-col gap-1 min-w-0 flex-1">
+                                <p className="text-sm font-bold text-fg truncate">
+                                  {tx.description}
+                                </p>
+                                
+                                <div className="flex items-center gap-1.5 text-[11px] text-fg-subtle min-w-0">
+                                  <span className="truncate max-w-[80px] sm:max-w-[120px]">
+                                    {tx.category || 'Uncategorized'}
+                                  </span>
+                                  <span className="text-line-strong shrink-0">•</span>
+                                  
+                                  <div className="flex items-center gap-1 min-w-0 truncate">
+                                    {isIncome && destAcc && (
+                                      <>
+                                        <span className="text-fg-subtle font-bold">→</span>
+                                        <AccountPill account={destAcc} />
+                                      </>
+                                    )}
+                                    {isTransfer && srcAcc && destAcc && (
+                                      <>
+                                        <AccountPill account={srcAcc} />
+                                        <span className="text-fg-subtle font-bold">→</span>
+                                        <AccountPill account={destAcc} />
+                                      </>
+                                    )}
+                                    {!isIncome && !isTransfer && srcAcc && (
+                                      <>
+                                        <span className="text-fg-subtle font-bold">←</span>
+                                        <AccountPill account={srcAcc} />
+                                      </>
+                                    )}
                                   </div>
-
-                                  {/* RIGHT: Amount & Actions */}
-                                  <div className="flex flex-col items-end gap-1 shrink-0">
-                                    <span className={`text-sm font-bold tabular-figures whitespace-nowrap ${
-                                      isIncome ? 'text-success' : isTransfer ? 'text-fg-muted' : 'text-fg'
-                                    }`}>
-                                      {isIncome ? '+' : isTransfer ? '' : '-'}{formatMYR(tx.amount)}
-                                    </span>
-                                    
-                                    {/* Actions aligned right under amount, ALWAYS VISIBLE */}
-                                    <div className="ml-auto flex items-center justify-end gap-1 opacity-100 transition-opacity">
-                                      <button
-                                        onClick={() => beginEdit(tx.id)}
-                                        className="w-7 h-7 flex items-center justify-center text-fg-subtle hover:text-fg hover:bg-surface-3 rounded-md transition-all"
-                                        aria-label="Edit transaction"
-                                      >
-                                        <Edit2 className="w-3.5 h-3.5" />
-                                      </button>
-
-                                      <button
-                                        onClick={() => setPendingDelete(tx)}
-                                        className="w-7 h-7 flex items-center justify-center text-fg-subtle hover:text-danger hover:bg-danger-soft rounded-md transition-all"
-                                        aria-label="Delete transaction"
-                                      >
-                                        <Trash2 className="w-3.5 h-3.5" />
-                                      </button>
-                                    </div>
-
-                                  </div>
-
                                 </div>
-                              )}
+                              </div>
+
+                              {/* RIGHT: Amount & Actions */}
+                              <div className="flex flex-col items-end gap-1 shrink-0">
+                                <span className={`text-sm font-bold tabular-figures whitespace-nowrap ${
+                                  isIncome ? 'text-success' : isTransfer ? 'text-fg-muted' : 'text-fg'
+                                }`}>
+                                  {isIncome ? '+' : isTransfer ? '' : '-'}{formatMYR(tx.amount)}
+                                </span>
+                                
+                                <div className="ml-auto flex items-center justify-end gap-1 opacity-100 transition-opacity">
+                                  <button
+                                    onClick={() => beginEdit(tx)}
+                                    className="w-7 h-7 flex items-center justify-center text-fg-subtle hover:text-fg hover:bg-surface-3 rounded-md transition-all"
+                                    aria-label="Edit transaction"
+                                  >
+                                    <Edit2 className="w-3.5 h-3.5" />
+                                  </button>
+
+                                  <button
+                                    onClick={() => setPendingDelete(tx)}
+                                    className="w-7 h-7 flex items-center justify-center text-fg-subtle hover:text-danger hover:bg-danger-soft rounded-md transition-all"
+                                    aria-label="Delete transaction"
+                                  >
+                                    <Trash2 className="w-3.5 h-3.5" />
+                                  </button>
+                                </div>
+                              </div>
                             </div>
                           )
                         })}
@@ -356,6 +332,24 @@ export const ActionLedger = ({
         </div>
       </section>
 
+      {/* EDIT MODAL */}
+      {editingTx && (
+        <ModalWrapper title="Edit Transaction" closeModal={endEdit}>
+          <LedgerEditForm
+            transaction={editingTx}
+            accounts={accounts}
+            mainCategories={mainCategories}
+            getSubCategories={getSubCategories}
+            onSave={(updates) => {
+              handleEditTransaction(editingTx.id, updates)
+              endEdit()
+            }}
+            onCancel={endEdit}
+          />
+        </ModalWrapper>
+      )}
+
+      {/* DELETE CONFIRMATION */}
       {pendingDelete && (
         <ConfirmSheet
           destructive
