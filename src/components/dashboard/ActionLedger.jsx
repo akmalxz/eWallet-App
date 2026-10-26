@@ -10,7 +10,7 @@ import { getColorTheme } from '../../utils/theme/themeRegistry'
 import { ConfirmSheet } from '../shared/ConfirmSheet'
 import { ModalWrapper } from '../modals/ModalWrapper'
 import { LedgerEditForm } from './LedgerEditForm'
-import { Collapse } from '../shared/Collapse' // <-- Import
+import { Collapse } from '../shared/Collapse'
 
 const formatGroupLabel = (dateKey, todayKey, yesterdayKey) => {
   if (dateKey === todayKey) return 'Today'
@@ -108,17 +108,19 @@ export const ActionLedger = ({
   const endEdit = () => setEditingTx(null)
   const accountFor = (id) => accounts.find((a) => a.id === id)
 
+  // FIXED: We only show the full-page empty state if there is NO search query.
+  // If there IS a search query, we keep the UI and show the empty state inside the list.
   if (!recentTransactions || recentTransactions.length === 0) {
-    return (
-      <section className="flex flex-col items-center justify-center p-12 text-fg-subtle border border-dashed border-line-strong rounded-3xl">
-        <div className="w-14 h-14 bg-surface-2 border border-line rounded-2xl flex items-center justify-center mb-4 text-fg-subtle">
-          <Inbox className="w-6 h-6" />
-        </div>
-        <p className="text-sm font-bold text-fg">No Transactions Found</p>
-        <p className="text-xs text-fg-subtle text-center mt-1 max-w-xs leading-relaxed">
-          {searchQuery ? 'Try a different search term.' : 'Record a fast entry with the platform omnibar tools or choose the transaction button below.'}
-        </p>
-        {!searchQuery && (
+    if (!searchQuery) {
+      return (
+        <section className="flex flex-col items-center justify-center p-12 text-fg-subtle border border-dashed border-line-strong rounded-3xl">
+          <div className="w-14 h-14 bg-surface-2 border border-line rounded-2xl flex items-center justify-center mb-4 text-fg-subtle">
+            <Inbox className="w-6 h-6" />
+          </div>
+          <p className="text-sm font-bold text-fg">No Transactions Found</p>
+          <p className="text-xs text-fg-subtle text-center mt-1 max-w-xs leading-relaxed">
+            Record a fast entry with the platform omnibar tools or choose the transaction button below.
+          </p>
           <button
             onClick={onAddTransaction}
             className="mt-4 inline-flex items-center justify-center gap-2 px-4 py-2.5 bg-brand-solid hover:bg-brand-solid-hover text-white text-xs font-bold rounded-xl shadow-sm transition-all"
@@ -126,9 +128,9 @@ export const ActionLedger = ({
           >
             <Plus className="w-4 h-4" /> Log Transaction
           </button>
-        )}
-      </section>
-    )
+        </section>
+      )
+    }
   }
 
   return (
@@ -138,7 +140,7 @@ export const ActionLedger = ({
           <h2 className="text-base font-bold text-fg tracking-tight flex items-center gap-2">
             Action Ledger
             <span className="text-[10px] font-bold uppercase tracking-wider text-fg-subtle bg-surface-2 px-2 py-0.5 rounded-md">
-              {recentTransactions.length}
+              {recentTransactions?.length || 0}
             </span>
           </h2>
 
@@ -180,10 +182,17 @@ export const ActionLedger = ({
         <div className="bg-surface border border-line rounded-2xl overflow-hidden flex flex-col flex-1 max-h-[60vh]">
           <div className="overflow-y-auto overscroll-contain scrollbar-thin flex-1">
             {groupedTransactions.length === 0 ? (
-              <div className="p-8 text-center text-fg-subtle">
+              // Empty state INSIDE the list container so search bar remains
+              <div className="p-8 text-center text-fg-subtle h-full flex flex-col items-center justify-center">
                 <Search className="w-6 h-6 mx-auto mb-2 opacity-50" />
-                <p className="text-sm font-bold">No results found</p>
-                <p className="text-xs mt-1">Try a different search term.</p>
+                <p className="text-sm font-bold text-fg">No results found</p>
+                <p className="text-xs mt-1">Try a different search term or clear the search.</p>
+                <button
+                  onClick={() => onSearchChange('')}
+                  className="mt-4 inline-flex items-center justify-center px-4 py-2 bg-surface-2 border border-line hover:bg-surface-3 text-fg text-xs font-bold rounded-lg transition-colors"
+                >
+                  Clear search
+                </button>
               </div>
             ) : (
               groupedTransactions.map((group) => {
