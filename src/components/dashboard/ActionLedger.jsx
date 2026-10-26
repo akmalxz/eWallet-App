@@ -185,10 +185,12 @@ export const ActionLedger = ({
         <div className="bg-surface border border-line rounded-2xl overflow-hidden flex flex-col flex-1 max-h-[60vh]">
           <div className="overflow-y-auto overscroll-contain scrollbar-thin flex-1">
             {isSearching ? (
-              // Show a clean spinner instead of the empty state while searching
+              // Show a clean spinner instead of the empty state while searching/loading
               <div className="p-8 flex flex-col items-center justify-center h-full text-fg-subtle">
                 <Loader2 className="w-6 h-6 animate-spin mb-3" />
-                <p className="text-sm font-bold text-fg">Searching...</p>
+                <p className="text-sm font-bold text-fg">
+                  {searchQuery.trim() ? 'Searching...' : 'Loading transactions...'}
+                </p>
               </div>
             ) : groupedTransactions.length === 0 ? (
               // Empty state INSIDE the list container so search bar remains
