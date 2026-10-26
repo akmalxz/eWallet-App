@@ -12,6 +12,8 @@ import { ModalWrapper } from '../modals/ModalWrapper'
 import { LedgerEditForm } from './LedgerEditForm'
 import { Collapse } from '../shared/Collapse'
 
+// ... (Keep formatGroupLabel, getDailyTotals, AccountPill exactly the same) ...
+
 const formatGroupLabel = (dateKey, todayKey, yesterdayKey) => {
   if (dateKey === todayKey) return 'Today'
   if (dateKey === yesterdayKey) return 'Yesterday'
@@ -71,7 +73,8 @@ export const ActionLedger = ({
   onSearchChange,
   hasMore,
   onLoadMore,
-  isLoadingMore
+  isLoadingMore,
+  isSearching // <-- Added
 }) => {
   const [editingTx, setEditingTx] = useState(null)
   const [expandedGroups, setExpandedGroups] = useState({})
@@ -108,10 +111,9 @@ export const ActionLedger = ({
   const endEdit = () => setEditingTx(null)
   const accountFor = (id) => accounts.find((a) => a.id === id)
 
-  // FIXED: We only show the full-page empty state if there is NO search query.
-  // If there IS a search query, we keep the UI and show the empty state inside the list.
+  // Only show full empty state if NOT searching
   if (!recentTransactions || recentTransactions.length === 0) {
-    if (!searchQuery) {
+    if (!searchQuery && !isSearching) {
       return (
         <section className="flex flex-col items-center justify-center p-12 text-fg-subtle border border-dashed border-line-strong rounded-3xl">
           <div className="w-14 h-14 bg-surface-2 border border-line rounded-2xl flex items-center justify-center mb-4 text-fg-subtle">
@@ -136,6 +138,7 @@ export const ActionLedger = ({
   return (
     <>
       <section className="flex flex-col flex-1">
+        {/* Header and Search Bar (same as before) */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
           <h2 className="text-base font-bold text-fg tracking-tight flex items-center gap-2">
             Action Ledger
@@ -181,7 +184,13 @@ export const ActionLedger = ({
 
         <div className="bg-surface border border-line rounded-2xl overflow-hidden flex flex-col flex-1 max-h-[60vh]">
           <div className="overflow-y-auto overscroll-contain scrollbar-thin flex-1">
-            {groupedTransactions.length === 0 ? (
+            {isSearching ? (
+              // Show a clean spinner instead of the empty state while searching
+              <div className="p-8 flex flex-col items-center justify-center h-full text-fg-subtle">
+                <Loader2 className="w-6 h-6 animate-spin mb-3" />
+                <p className="text-sm font-bold text-fg">Searching...</p>
+              </div>
+            ) : groupedTransactions.length === 0 ? (
               // Empty state INSIDE the list container so search bar remains
               <div className="p-8 text-center text-fg-subtle h-full flex flex-col items-center justify-center">
                 <Search className="w-6 h-6 mx-auto mb-2 opacity-50" />
@@ -321,7 +330,7 @@ export const ActionLedger = ({
             )}
           </div>
 
-          {hasMore && (
+          {hasMore && !isSearching && (
             <div className="p-3 border-t border-line bg-surface flex justify-center shrink-0">
               <button
                 onClick={onLoadMore}

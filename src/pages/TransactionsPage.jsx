@@ -153,14 +153,20 @@ export function TransactionsPage({
   const [page, setPage] = useState(1)
   const [hasMore, setHasMore] = useState(true)
   const [isLoadingMore, setIsLoadingMore] = useState(false)
+  const [isSearching, setIsSearching] = useState(false)
   
   const isInitialMount = useRef(true)
 
+  // Debounce search and handle searching state
   useEffect(() => {
+    if (searchQuery !== debouncedQuery) {
+      setIsSearching(true)
+    }
     const t = setTimeout(() => setDebouncedQuery(searchQuery), 300)
     return () => clearTimeout(t)
-  }, [searchQuery])
+  }, [searchQuery, debouncedQuery])
 
+  // Fetch when search changes (skip initial mount)
   useEffect(() => {
     if (isInitialMount.current) {
       isInitialMount.current = false
@@ -173,6 +179,7 @@ export function TransactionsPage({
       if (isMounted) {
         setHasMore(res.hasMore)
         setPage(1)
+        setIsSearching(false)
       }
     }
     doFetch()
@@ -291,6 +298,7 @@ export function TransactionsPage({
               hasMore={hasMore}
               onLoadMore={handleLoadMore}
               isLoadingMore={isLoadingMore}
+              isSearching={isSearching}
             />
           </div>
         </>
