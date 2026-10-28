@@ -87,10 +87,6 @@ export const getDayOfMonthMY = (input = new Date()) => {
   return toMYDate(input).getUTCDate()
 }
 
-/**
- * P3.7 — now uses its argument, not the current date.
- * Returns a short month label from a MY-local date (e.g. "Oct").
- */
 export const monthShortName = (input = new Date()) => {
   const d = toMYDate(input)
   return new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), 1)).toLocaleString(
@@ -99,9 +95,6 @@ export const monthShortName = (input = new Date()) => {
   )
 }
 
-/**
- * Full month name and year (e.g. "September 2026").
- */
 export const monthFullName = (input = new Date()) => {
   const d = toMYDate(input)
   return new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), 1)).toLocaleString(
@@ -135,12 +128,31 @@ export const lastWorkingDayOfMonth = (input, isHoliday = () => false) => {
   return new Date(Date.UTC(year, monthIdx, lastDay) - MY_TZ_OFFSET_MS)
 }
 
-export const nextPayday = (input = new Date(), isHoliday = () => false) => {
+export const nextPayday = (
+  input = new Date(), 
+  isHoliday = () => false, 
+  paydayType = 'last_working_day', 
+  paydayDate = null
+) => {
   const d = toMYDate(input)
   const year = d.getUTCFullYear()
   const monthIdx = d.getUTCMonth()
   const todayKey = dayKey(d)
 
+  if (paydayType === 'specific_date' && paydayDate) {
+    const getSpecificPayday = (y, m) => {
+      const lastDay = daysInMonth(y, m)
+      const effectiveDay = Math.min(paydayDate, lastDay)
+      return new Date(Date.UTC(y, m, effectiveDay) - MY_TZ_OFFSET_MS)
+    }
+
+    const thisMonthPayday = getSpecificPayday(year, monthIdx)
+    if (dayKey(thisMonthPayday) >= todayKey) return thisMonthPayday
+
+    return getSpecificPayday(year, monthIdx + 1)
+  }
+
+  // Default: Last working day of the month
   const thisMonthPayday = lastWorkingDayOfMonth(input, isHoliday)
   if (dayKey(thisMonthPayday) >= todayKey) return thisMonthPayday
 
@@ -148,8 +160,13 @@ export const nextPayday = (input = new Date(), isHoliday = () => false) => {
   return lastWorkingDayOfMonth(nextMonthSeed, isHoliday)
 }
 
-export const isTodayPayday = (input = new Date(), isHoliday = () => false) => {
-  return dayKey(input) === dayKey(nextPayday(input, isHoliday))
+export const isTodayPayday = (
+  input = new Date(), 
+  isHoliday = () => false, 
+  paydayType = 'last_working_day', 
+  paydayDate = null
+) => {
+  return dayKey(input) === dayKey(nextPayday(input, isHoliday, paydayType, paydayDate))
 }
 
 export const daysBetweenMY = (a, b) => {
@@ -160,10 +177,6 @@ export const daysBetweenMY = (a, b) => {
   return Math.round((bMs - aMs) / (1000 * 60 * 60 * 24))
 }
 
-/**
- * Due date for a commitment in a given month.
- * `dueDay` is clamped to the last day of the month.
- */
 export const dueDateForMonth = (dueDay, year, monthIdx) => {
   const lastDay = new Date(Date.UTC(year, monthIdx + 1, 0)).getUTCDate()
   const effectiveDay = Math.min(dueDay, lastDay)

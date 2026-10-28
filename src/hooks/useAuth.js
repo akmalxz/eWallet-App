@@ -24,13 +24,13 @@ export const useAuth = () => {
     try {
       const { data, error } = await supabase
         .from('profiles')
-        .select('id, first_name, last_name, username, email, currency, timezone, theme, avatar_kind, avatar_value, avatar_color, has_completed_onboarding, onboarding_done, created_at, updated_at')
+        // ADDED payday_type and payday_date to the end of this list:
+        .select('id, first_name, last_name, username, email, currency, timezone, theme, avatar_kind, avatar_value, avatar_color, has_completed_onboarding, onboarding_done, payday_type, payday_date, created_at, updated_at')
         .eq('id', userId)
         .maybeSingle()
 
       if (error) throw error
       setProfile(data || null)
-      fetchedProfileIdRef.current = userId
     } catch (error) {
       console.error('Error fetching user profile:', error.message)
       setProfile(null)

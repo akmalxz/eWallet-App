@@ -150,7 +150,8 @@ export default function App() {
     commitmentPayments,
     monthlyExpenses,
     scopeAccountId: homeAccountId,
-    receivablesThisMonth: 0
+    receivablesThisMonth: 0,
+    profile
   })
 
   const accountApi = useAccountActions({

@@ -10,10 +10,9 @@ export function useDashboardMetrics({
   commitmentPayments,
   monthlyExpenses,
   scopeAccountId = 'all',
-  receivablesThisMonth = 0
+  receivablesThisMonth = 0,
+  profile // <-- Added
 }) {
-  // Radar always shows the global view — its own scope selector lives on
-  // the radar page and doesn't exist yet.
   const radarSchedule = useMemo(() => {
     return computeCommitmentSchedule({
       commitments,
@@ -49,7 +48,9 @@ export function useDashboardMetrics({
       payments: commitmentPayments,
       scopeAccountId,
       now: new Date(),
-      receivablesThisMonth
+      receivablesThisMonth,
+      paydayType: profile?.payday_type, // <-- Added
+      paydayDate: profile?.payday_date  // <-- Added
     })
   }, [
     accounts,
@@ -57,7 +58,9 @@ export function useDashboardMetrics({
     commitments,
     commitmentPayments,
     scopeAccountId,
-    receivablesThisMonth
+    receivablesThisMonth,
+    profile?.payday_type, // <-- Added
+    profile?.payday_date  // <-- Added
   ])
 
   const cashFlowData = useMemo(

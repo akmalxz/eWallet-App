@@ -58,7 +58,9 @@ export const computeBurnRate = ({
   scopeAccountId = 'all',
   now = new Date(),
   isHoliday = () => false,
-  receivablesThisMonth = 0
+  receivablesThisMonth = 0,
+  paydayType = 'last_working_day', // <-- Added
+  paydayDate = null                // <-- Added
 }) => {
   // ------------------------------------------------------------
   // 1. Scope (P3.2 — shared with the radar)
@@ -71,8 +73,8 @@ export const computeBurnRate = ({
   // ------------------------------------------------------------
   // 2. Dates
   // ------------------------------------------------------------
-  const payday = nextPayday(now, isHoliday)
-  const paydayToday = isTodayPayday(now, isHoliday)
+  const payday = nextPayday(now, isHoliday, paydayType, paydayDate) // <-- Updated
+  const paydayToday = isTodayPayday(now, isHoliday, paydayType, paydayDate) // <-- Updated
   const daysToPayday = Math.max(0, daysBetweenMY(now, payday))
   const daysPassed = getDayOfMonthMY(now)
   const monthLength = getDaysInMonthMY(now)
