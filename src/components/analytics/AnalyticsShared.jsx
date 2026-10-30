@@ -10,7 +10,7 @@ import { AccountCard } from '../shared/AccountCard'
 const PAGE_INFO = {
   overview: {
     title: 'About Overview',
-    summary: 'A quick check-in on how your spending is going this month.',
+    summary: 'A quick check-in on how your spending is going this cycle.',
     points: [
       { heading: 'Insights', text: 'Short sentences about your habits, such as which day you spend the most. They appear once you have about two weeks of data.' },
       { heading: 'Spending Trend', text: 'How much you spent over time. The dashed line is the previous period for comparison. Tap a point to see the purchases behind it.' }
@@ -37,7 +37,7 @@ const PAGE_INFO = {
     title: 'About Income',
     summary: 'Shows how much of your pay you keep.',
     points: [
-      { heading: 'Savings Rate', text: 'The share of your income left after spending. 20% means you kept RM 20 of every RM 100. Only finished months are counted.' },
+      { heading: 'Savings Rate', text: 'The share of your income left after spending. 20% means you kept RM 20 of every RM 100. Only finished cycles are counted.' },
       { heading: 'Where Your Income Goes', text: 'Splits every RM 100 you earned into Bills, Everyday spending, and money kept. If bills take more than half, it leaves less room to adjust day to day.' }
     ]
   }
@@ -48,12 +48,10 @@ export const PageInfo = ({ tab }) => {
   const panelId = useId()
   const info = PAGE_INFO[tab]
 
-  // Close the panel automatically when switching tabs
   useEffect(() => {
     setOpen(false)
   }, [tab])
 
-  // Close on Escape key
   useEffect(() => {
     if (!open) return
     const onKey = (e) => {

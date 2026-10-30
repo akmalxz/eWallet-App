@@ -5,7 +5,7 @@ import {
 } from 'lucide-react'
 import { formatMYR } from '../../utils/formatters'
 import {
-  toMYDate, myWeekdayIndex, WEEKDAY_LABELS, monthKey, dayKey
+  toMYDate, myWeekdayIndex, WEEKDAY_LABELS, getPayCycle
 } from '../../utils/dateHelpers'
 import { useChartTheme } from '../../hooks/useChartTheme'
 import { EmptyState } from './AnalyticsShared'
@@ -14,28 +14,32 @@ const MIN_DAYS = 14
 const MIN_TX = 15
 const MIN_PCT = 15
 
-export const HeadlineInsights = ({ expenses, periodMonths, onNavigate }) => {
+export const HeadlineInsights = ({ expenses, periodMonths, onNavigate, profile }) => {
   const theme = useChartTheme()
 
   const insights = useMemo(() => {
     if (!expenses.length) return []
 
     const now = new Date()
-    const periodStart = new Date(now.getFullYear(), now.getMonth() - (periodMonths - 1), 1)
+    // 1. Get current and previous cycle dates
+    const { startDate: thisCycleStart } = getPayCycle(now, profile?.payday_type, profile?.payday_date)
+    const prevCycleEndSeed = new Date(thisCycleStart.getTime() - 86400000)
+    const { startDate: prevCycleStart, endDate: prevCycleEnd } = getPayCycle(prevCycleEndSeed, profile?.payday_type, profile?.payday_date)
 
     const periodExpenses = expenses.filter(
-      tx => toMYDate(tx.transaction_date) >= periodStart
+      tx => toMYDate(tx.transaction_date) >= thisCycleStart
     )
 
     const dayCount = new Set()
-    periodExpenses.forEach(tx => dayCount.add(dayKey(tx.transaction_date)))
+    periodExpenses.forEach(tx => dayCount.add(toMYDate(tx.transaction_date).getTime()))
 
     if (dayCount.size < MIN_DAYS || periodExpenses.length < MIN_TX) return []
 
+    // 2. Weekday Math
     const totalsByWeekday = [0, 0, 0, 0, 0, 0, 0]
     const occurrencesByWeekday = [0, 0, 0, 0, 0, 0, 0]
 
-    const start = new Date(periodStart)
+    const start = new Date(thisCycleStart)
     while (start <= now) {
       occurrencesByWeekday[myWeekdayIndex(start)]++
       start.setDate(start.getDate() + 1)
@@ -64,52 +68,49 @@ export const HeadlineInsights = ({ expenses, periodMonths, onNavigate }) => {
       ? ((weekendAvg - weekdayAvg) / weekdayAvg) * 100
       : 0
 
-    const thisMonthKey = monthKey(now)
-    const lastMonthDate = new Date(now.getFullYear(), now.getMonth() - 1, 1)
-    const lastMonthKey = monthKey(lastMonthDate)
-
+    // 3. Category Spike Math (Current Cycle vs Previous Cycle)
     const mainCat = (cat) => (cat || 'Uncategorized').split(' > ')[0]
     const thisCatTotals = {}
-    const lastCatTotals = {}
+    const prevCatTotals = {}
 
     expenses.forEach(tx => {
-      const k = monthKey(tx.transaction_date)
+      const d = toMYDate(tx.transaction_date)
       const c = mainCat(tx.category)
       const amt = Number(tx.amount) || 0
-      if (k === thisMonthKey) thisCatTotals[c] = (thisCatTotals[c] || 0) + amt
-      else if (k === lastMonthKey) lastCatTotals[c] = (lastCatTotals[c] || 0) + amt
+
+      if (d >= thisCycleStart) {
+        thisCatTotals[c] = (thisCatTotals[c] || 0) + amt
+      } else if (d >= prevCycleStart && d <= prevCycleEnd) {
+        prevCatTotals[c] = (prevCatTotals[c] || 0) + amt
+      }
     })
 
     let biggestIncrease = null
     Object.keys(thisCatTotals).forEach(c => {
-      const diff = (thisCatTotals[c] || 0) - (lastCatTotals[c] || 0)
+      const diff = (thisCatTotals[c] || 0) - (prevCatTotals[c] || 0)
       if (diff > 0 && (!biggestIncrease || diff > biggestIncrease.diff)) {
-        biggestIncrease = { category: c, diff, thisTotal: thisCatTotals[c], lastTotal: lastCatTotals[c] || 0 }
+        biggestIncrease = { category: c, diff, thisTotal: thisCatTotals[c], lastTotal: prevCatTotals[c] || 0 }
       }
     })
 
-    const dayOfMonth = toMYDate(now).getUTCDate()
+    // 4. Cycle-to-Date Math (Comparison vs same days last cycle)
+    const daysPassed = Math.max(1, Math.round((now - thisCycleStart) / 86400000))
+    const prevCycleSamePeriodEnd = new Date(prevCycleStart.getTime() + daysPassed * 86400000)
 
-    const mtd = expenses
+    const ctd = expenses
+      .filter(tx => toMYDate(tx.transaction_date) >= thisCycleStart)
+      .reduce((s, tx) => s + Number(tx.amount), 0)
+
+    const lastCTD = expenses
       .filter(tx => {
         const d = toMYDate(tx.transaction_date)
-        return d.getUTCFullYear() === now.getFullYear() &&
-               d.getUTCMonth() === now.getMonth() &&
-               d.getUTCDate() <= dayOfMonth
+        return d >= prevCycleStart && d <= prevCycleSamePeriodEnd
       })
       .reduce((s, tx) => s + Number(tx.amount), 0)
 
-    const lastMTD = expenses
-      .filter(tx => {
-        const d = toMYDate(tx.transaction_date)
-        return d.getUTCFullYear() === lastMonthDate.getFullYear() &&
-               d.getUTCMonth() === lastMonthDate.getMonth() &&
-               d.getUTCDate() <= dayOfMonth
-      })
-      .reduce((s, tx) => s + Number(tx.amount), 0)
+    const ctdPct = lastCTD > 0 ? ((ctd - lastCTD) / lastCTD) * 100 : null
 
-    const mtdPct = lastMTD > 0 ? ((mtd - lastMTD) / lastMTD) * 100 : null
-
+    // 5. Build Cards
     const cards = []
 
     if (peakAvg > 0) {
@@ -154,7 +155,7 @@ export const HeadlineInsights = ({ expenses, periodMonths, onNavigate }) => {
         id: 'cat_increase',
         icon: TrendingUp,
         sentence: (
-          <><strong>{biggestIncrease.category}</strong> went up <strong className="tabular-figures">{formatMYR(biggestIncrease.diff)}</strong> vs last month.</>
+          <><strong>{biggestIncrease.category}</strong> went up <strong className="tabular-figures">{formatMYR(biggestIncrease.diff)}</strong> vs last cycle.</>
         ),
         score: biggestIncrease.diff,
         tone: 'up',
@@ -162,21 +163,21 @@ export const HeadlineInsights = ({ expenses, periodMonths, onNavigate }) => {
       })
     }
 
-    if (mtdPct !== null && Math.abs(mtdPct) >= MIN_PCT) {
+    if (ctdPct !== null && Math.abs(ctdPct) >= MIN_PCT) {
       cards.push({
-        id: 'mtd_pace',
-        icon: mtdPct > 0 ? TrendingUp : TrendingDown,
+        id: 'ctd_pace',
+        icon: ctdPct > 0 ? TrendingUp : TrendingDown,
         sentence: (
-          <>Month-to-date spending is <strong>{mtdPct > 0 ? 'up' : 'down'} {Math.abs(mtdPct).toFixed(0)}%</strong> vs the same days last month.</>
+          <>Cycle-to-date spending is <strong>{ctdPct > 0 ? 'up' : 'down'} {Math.abs(ctdPct).toFixed(0)}%</strong> vs the same days last cycle.</>
         ),
-        score: Math.abs(mtdPct) * 5,
-        tone: mtdPct > 0 ? 'up' : 'down',
+        score: Math.abs(ctdPct) * 5,
+        tone: ctdPct > 0 ? 'up' : 'down',
         navigateTo: 'categories'
       })
     }
 
     return cards.sort((a, b) => b.score - a.score).slice(0, 4)
-  }, [expenses, periodMonths])
+  }, [expenses, periodMonths, profile?.payday_type, profile?.payday_date])
 
   if (insights.length === 0) {
     return (

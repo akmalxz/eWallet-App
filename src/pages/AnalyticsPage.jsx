@@ -120,7 +120,11 @@ export function AnalyticsPage({
   const spendingSource =
     mode === 'everyday' ? filteredEverydayExpenses : filteredExpenses
 
-  const cutoff = useMemo(() => periodStart(period), [period])
+  // Use the timezone-safe periodStart helper and pass the profile data
+  const cutoff = useMemo(
+    () => periodStart(period, new Date(), profile?.payday_type, profile?.payday_date),
+    [period, profile?.payday_type, profile?.payday_date]
+  )
 
   const periodScopedExpenses = useMemo(() => {
     return spendingSource.filter(tx => toMYDate(tx.transaction_date) >= cutoff)
@@ -169,41 +173,23 @@ export function AnalyticsPage({
           <p className="text-sm text-fg-muted mt-1">Deep dive into your financial trends.</p>
         </div>
         {showFilters && (
-          <div className="flex items-center shrink-0">
-            {/* DESKTOP: Animate grid-cols from [14rem_14rem] to [28rem_0fr] */}
-            <div
-              className={`grid transition-all duration-300 ease-in-out gap-3 ${
-                showModeControl
-                  ? 'grid-cols-[14rem_14rem]'
-                  : 'grid-cols-[28rem_0fr]'
-              }`}
-            >
-              <div className="min-w-0">
+          <div className="flex items-center gap-3 shrink-0">
+            <div className="w-56">
+              <SlidingSegmentedControl
+                items={PERIOD_ITEMS}
+                value={period}
+                onChange={setPeriod}
+              />
+            </div>
+            {showModeControl && (
+              <div className="w-56">
                 <SlidingSegmentedControl
-                  items={PERIOD_ITEMS}
-                  value={period}
-                  onChange={setPeriod}
+                  items={MODE_ITEMS}
+                  value={mode}
+                  onChange={setMode}
                 />
               </div>
-              
-              {/* 
-                We use relative + absolute inner div so the control does not squish
-                when the grid column collapses to 0fr.
-              */}
-              <div
-                className={`relative min-w-0 overflow-hidden transition-opacity duration-300 ${
-                  showModeControl ? 'opacity-100' : 'opacity-0'
-                }`}
-              >
-                <div className="absolute inset-y-0 left-0 w-[14rem]">
-                  <SlidingSegmentedControl
-                    items={MODE_ITEMS}
-                    value={mode}
-                    onChange={setMode}
-                  />
-                </div>
-              </div>
-            </div>
+            )}
           </div>
         )}
       </div>
@@ -258,38 +244,26 @@ export function AnalyticsPage({
           </div>
 
           <div className="md:hidden space-y-3">
-            {/* MOBILE: Animate grid-cols from [1fr_1fr] to [1fr_0fr] */}
-            <div
-              className={`grid transition-all duration-300 ease-in-out gap-2 ${
-                showModeControl ? 'grid-cols-[1fr_1fr]' : 'grid-cols-[1fr_0fr]'
-              }`}
-            >
-              <div className="min-w-0">
+            {showModeControl ? (
+              <div className="grid grid-cols-2 gap-2">
                 <SlidingSegmentedControl
                   items={PERIOD_ITEMS}
                   value={period}
                   onChange={setPeriod}
                 />
+                <SlidingSegmentedControl
+                  items={MODE_ITEMS}
+                  value={mode}
+                  onChange={setMode}
+                />
               </div>
-              
-              <div
-                className={`relative min-w-0 overflow-hidden transition-opacity duration-300 ${
-                  showModeControl ? 'opacity-100' : 'opacity-0'
-                }`}
-              >
-                {/* 
-                  Using w-[calc(50vw-1.5rem)] ensures the control is exactly half 
-                  the screen width (minus padding and gap) and prevents text squishing.
-                */}
-                <div className="absolute inset-y-0 left-0 w-[calc(50vw-1.5rem)]">
-                  <SlidingSegmentedControl
-                    items={MODE_ITEMS}
-                    value={mode}
-                    onChange={setMode}
-                  />
-                </div>
-              </div>
-            </div>
+            ) : (
+              <SlidingSegmentedControl
+                items={PERIOD_ITEMS}
+                value={period}
+                onChange={setPeriod}
+              />
+            )}
 
             <AccountSelector
               accounts={accounts}
@@ -298,19 +272,19 @@ export function AnalyticsPage({
             />
           </div>
 
-          {/* INFO BUTTON */}
           <PageInfo tab={tab} />
 
           {loading ? (
             <AnalyticsSkeleton />
           ) : (
-            <div key={tab} className="animate-enter space-y-8">
+            <>
               {tab === 'overview' && (
                 <>
                   <HeadlineInsights
                     expenses={periodScopedExpenses}
                     periodMonths={period}
                     onNavigate={handleTabNavigate}
+                    profile={profile} // <-- Passed
                   />
                   <MainTrendChart
                     expenses={periodScopedExpenses}
@@ -345,15 +319,17 @@ export function AnalyticsPage({
                     selectedAccountId={selectedAccount}
                     accountLabel={activeAccountName}
                     onAddIncome={onBack}
+                    profile={profile} // <-- Passed
                   />
                   <SpendingStructure
                     income={periodScopedIncome}
                     expenses={periodScopedExpensesAll}
                     everyday={periodScopedEveryday}
+                    profile={profile} // <-- Passed
                   />
                 </>
               )}
-            </div>
+            </>
           )}
         </>
       )}

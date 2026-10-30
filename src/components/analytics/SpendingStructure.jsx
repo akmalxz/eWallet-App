@@ -4,11 +4,19 @@ import { formatMYR } from '../../utils/formatters'
 import { useChartTheme } from '../../hooks/useChartTheme'
 import { computeStructure } from '../../utils/analytics/structure'
 
-export const SpendingStructure = ({ income, expenses, everyday }) => {
+export const SpendingStructure = ({ income, expenses, everyday, profile }) => {
   const theme = useChartTheme()
+  
   const s = useMemo(
-    () => computeStructure(income, expenses, everyday),
-    [income, expenses, everyday]
+    () => computeStructure(
+      income, 
+      expenses, 
+      everyday, 
+      new Date(), 
+      profile?.payday_type, 
+      profile?.payday_date
+    ),
+    [income, expenses, everyday, profile?.payday_type, profile?.payday_date]
   )
   
   if (!s) return null
@@ -16,9 +24,9 @@ export const SpendingStructure = ({ income, expenses, everyday }) => {
   const scale = Math.max(100, s.billsPct + s.everydayPct)
   
   const parts = [
-    { label: 'Bills', pct: s.billsPct, color: theme.category[3] }, // usually red/orange
-    { label: 'Everyday', pct: s.everydayPct, color: theme.category[0] }, // usually blue
-    { label: 'Kept', pct: Math.max(0, s.keptPct), color: theme.down } // green
+    { label: 'Bills', pct: s.billsPct, color: theme.category[3] },
+    { label: 'Everyday', pct: s.everydayPct, color: theme.category[0] },
+    { label: 'Kept', pct: Math.max(0, s.keptPct), color: theme.down }
   ]
 
   return (
@@ -26,7 +34,7 @@ export const SpendingStructure = ({ income, expenses, everyday }) => {
       <div>
         <h3 className="text-sm font-bold text-fg">Where Your Income Goes</h3>
         <p className="text-xs text-fg-muted mt-0.5">
-          Of every RM 100 you earned over finished months:
+          Of every RM 100 you earned over finished cycles:
         </p>
       </div>
 
@@ -45,7 +53,6 @@ export const SpendingStructure = ({ income, expenses, everyday }) => {
               <span className="w-2 h-2 rounded-full" style={{ backgroundColor: p.color }} />
               <span className="text-[10px] font-bold text-fg-subtle uppercase tracking-wider">{p.label}</span>
             </div>
-            {/* The percentage is also the amount per RM 100 */}
             <p className="text-sm font-black text-fg mt-1 tabular-figures">{formatMYR(p.pct)}</p>
           </div>
         ))}

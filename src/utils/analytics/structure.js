@@ -1,12 +1,21 @@
 // src/utils/analytics/structure.js
-import { monthKey } from '../dateHelpers'
+import { toMYDate, getPayCycle } from '../dateHelpers'
 
-export const computeStructure = (income, allExpenses, everydayExpenses, now = new Date()) => {
-  const current = monthKey(now)
+export const computeStructure = (
+  income, 
+  allExpenses, 
+  everydayExpenses, 
+  now = new Date(),
+  paydayType = 'last_working_day',
+  paydayDate = null
+) => {
+  // Get the exact start date of the current pay cycle.
+  // We only want to count finished cycles, so we exclude anything after this date.
+  const { startDate } = getPayCycle(now, paydayType, paydayDate)
   
   const sum = (list) =>
     list
-      .filter((tx) => monthKey(tx.transaction_date) !== current)
+      .filter((tx) => toMYDate(tx.transaction_date) < startDate)
       .reduce((s, tx) => s + (Number(tx.amount) || 0), 0)
 
   const inc = sum(income)

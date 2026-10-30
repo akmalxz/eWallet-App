@@ -184,14 +184,9 @@ export const dueDateForMonth = (dueDay, year, monthIdx) => {
 }
 
 // ===========================================================================
-// Financial Cycle Helper (Payday-Aware)
+// Financial Cycle Helpers (Payday-Aware)
 // ===========================================================================
 
-/**
- * Returns the start and end dates of the current pay cycle.
- * e.g., If payday is the 25th and today is Oct 26th, 
- * start = Oct 25, end = Nov 24.
- */
 export const getPayCycle = (
   now = new Date(), 
   paydayType = 'last_working_day', 
@@ -202,7 +197,7 @@ export const getPayCycle = (
   const monthIdx = currentMY.getUTCMonth()
   const today = dayKey(currentMY)
 
-  // 1. Find the payday for the start of this month
+  // Find the payday for the start of this month
   const thisMonthSeed = new Date(Date.UTC(year, monthIdx, 1))
   const thisMonthPayday = nextPayday(thisMonthSeed, () => false, paydayType, paydayDate)
 
@@ -212,7 +207,6 @@ export const getPayCycle = (
     // We are currently in the cycle that started this month
     startDate = thisMonthPayday
     
-    // Find next month's payday
     const nextMonthSeed = new Date(Date.UTC(year, monthIdx + 1, 1))
     const nextMonthPayday = nextPayday(nextMonthSeed, () => false, paydayType, paydayDate)
     
@@ -228,4 +222,38 @@ export const getPayCycle = (
   }
 
   return { startDate, endDate }
+}
+
+/**
+ * Generates an array of pay cycles (e.g., for charting 3M, 6M).
+ */
+export const lastNCycles = (
+  count, 
+  now = new Date(), 
+  paydayType = 'last_working_day', 
+  paydayDate = null
+) => {
+  const currentMY = toMYDate(now)
+  const cycles = []
+  let seed = now
+
+  for (let i = 0; i < count; i++) {
+    const { startDate, endDate } = getPayCycle(seed, paydayType, paydayDate)
+    
+    // Format as "1 Oct" or "25 Oct"
+    const startLabel = startDate.toLocaleDateString('en-MY', { day: 'numeric', month: 'short', timeZone: 'UTC' })
+    const endLabel = endDate.toLocaleDateString('en-MY', { day: 'numeric', month: 'short', timeZone: 'UTC' })
+    
+    cycles.unshift({
+      key: dayKey(startDate),
+      startDate,
+      endDate,
+      label: `${startLabel} - ${endLabel}`
+    })
+
+    // Move the seed back 1 day to find the start of the previous cycle
+    seed = new Date(startDate.getTime() - 86400000)
+  }
+
+  return cycles
 }
