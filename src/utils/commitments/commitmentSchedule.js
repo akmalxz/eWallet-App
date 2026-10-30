@@ -3,7 +3,8 @@ import {
   toMYDate,
   dayKey,
   dueDateForMonth,
-  daysBetweenMY
+  daysBetweenMY,
+  getPayCycle
 } from '../dateHelpers'
 import { isPeriodHandled } from './commitmentPayments'
 import { resolveAccountScope } from '../accounts/accountScope'
@@ -22,43 +23,27 @@ const parseDateOnly = (dateStr) => {
   return { year: y, monthIdx: m - 1, day: d }
 }
 
-/**
- * computeCommitmentSchedule
- *
- * Returns every unpaid commitment period within a horizon, using the
- * payments table to skip paid/skipped periods.
- *
- * Recurring bills (kind = 'recurring' or unset):
- *   - Start at the later of (creation month, CARRY_OVER_MONTHS ago)
- *   - Skip periods whose due date is before the creation DAY.
- *
- * BNPL plans (kind = 'bnpl'):
- *   - Start at first_payment_date's month (clamped to the carry-over
- *     window, so a plan started > 3 months ago only shows the last
- *     3 months of overdue periods).
- *   - Due day is derived from first_payment_date, so the plan's day
- *     never drifts even if due_day_of_month is edited independently.
- *   - Complete once paidCount >= term_months; no periods generated.
- *   - Skipped rows don't advance completion.
- *
- * Scope rules (P3.2): uses `resolveAccountScope`, so the caller controls
- * which accounts count.
- */
 export const computeCommitmentSchedule = ({
   commitments = [],
   payments = [],
   accounts = [],
   scopeAccountId = 'all',
   now = new Date(),
-  horizon = null
+  horizon = null,
+  paydayType = 'last_working_day',
+  paydayDate = null
 }) => {
   const { accountIds } = resolveAccountScope(accounts, scopeAccountId)
-
   const nowMY = toMYDate(now)
 
-  const horizonFinal = horizon || new Date(
-    Date.UTC(nowMY.getUTCFullYear(), nowMY.getUTCMonth() + 1, 0) - (8 * 60 * 60 * 1000)
-  )
+  // If no horizon is passed (e.g., from Dashboard radar), use the end of the current pay cycle
+  let horizonFinal = horizon
+  if (!horizonFinal) {
+    const { endDate } = getPayCycle(now, paydayType, paydayDate)
+    // Add 1 day to include the full end date
+    horizonFinal = new Date(endDate.getTime() + 86400000)
+  }
+
   const horizonKey = dayKey(horizonFinal)
   const horizonMY = toMYDate(horizonFinal)
   const horizonYear = horizonMY.getUTCFullYear()
@@ -115,10 +100,8 @@ export const computeCommitmentSchedule = ({
 
     if (isBnpl && comm.first_payment_date) {
       const fp = parseDateOnly(comm.first_payment_date)
-      if (!fp) continue  // malformed date string, defensive
+      if (!fp) continue
 
-      // Clamp to the 3-month carry-over window so an old plan doesn't
-      // suddenly produce a wall of overdue periods.
       const fpIsAfterOldest =
         fp.year > oldestYear ||
         (fp.year === oldestYear && fp.monthIdx >= oldestMonthIdx)
@@ -134,7 +117,6 @@ export const computeCommitmentSchedule = ({
       startKey = String(comm.first_payment_date).slice(0, 10)
       dayForMonth = fp.day
     } else {
-      // Recurring path — preserve existing behaviour.
       const createdMY = comm.created_at ? toMYDate(new Date(comm.created_at)) : null
       const createdYear = createdMY ? createdMY.getUTCFullYear() : null
       const createdMonthIdx = createdMY ? createdMY.getUTCMonth() : null
@@ -204,7 +186,7 @@ export const computeCommitmentSchedule = ({
 
   const total = unpaidPeriods.reduce((s, p) => s + p.amount, 0)
 
-  // ----- Cumulative per-account shortfall (P3.5) -----
+  // ----- Cumulative per-account shortfall -----
   const byAccount = new Map()
   for (const p of unpaidPeriods) {
     if (!byAccount.has(p.accountId)) byAccount.set(p.accountId, [])

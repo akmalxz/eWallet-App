@@ -194,7 +194,7 @@ export const BurnRateWidget = ({ velocityStats, isLoading = false, onSeeTrends, 
           </div>
           <p className="text-sm font-bold text-success-text">It's payday!</p>
           <p className="text-xs text-success-text/90 mt-1 text-center max-w-[240px] leading-relaxed">
-            Your numbers will refresh for the new month tomorrow.
+            Your numbers will refresh for the new cycle tomorrow.
           </p>
         </div>
       ) : (
@@ -269,7 +269,7 @@ export const BurnRateWidget = ({ velocityStats, isLoading = false, onSeeTrends, 
               <EmptyState
                 icon={Coffee}
                 title="No everyday spending yet"
-                message="Log an expense this month to see your runway."
+                message="Log an expense this cycle to see your runway."
                 compact
               />
             </div>

@@ -1,36 +1,23 @@
 // src/utils/analytics/cashFlowEngine.js
-import { toMYDate, monthKey, getDayOfMonthMY } from '../dateHelpers'
+import { toMYDate, getPayCycle } from '../dateHelpers'
 import { rollUpToMain } from './categoryColors'
 import { resolveAccountScope } from '../accounts/accountScope'
 
-/**
- * Cash flow breakdown for the dashboard heatmap.
- *
- * Returns rows shaped for CashFlowHeatmap:
- *   { name, value, comparison, txns }
- * where `comparison` is null, or { diff, pct, isNew }.
- *
- * Color is intentionally NOT included — the caller assigns it from the
- * active theme palette so light/dark modes can differ.
- *
- * - Current-month spend per main category, sorted desc.
- * - `comparison` compares against the same day-range of last month.
- * - `txns` carries the underlying transactions for drill-down.
- */
 export const computeCashFlow = ({
   accounts = [],
   expenses = [],
   scopeAccountId = 'all',
-  now = new Date()
+  now = new Date(),
+  paydayType = 'last_working_day',
+  paydayDate = null
 }) => {
-  const dayOfMonth = getDayOfMonthMY(now)
-  const nowMY = toMYDate(now)
-  const thisKey = monthKey(nowMY)
-  const lastMY = new Date(Date.UTC(nowMY.getUTCFullYear(), nowMY.getUTCMonth() - 1, 1))
-  const lastKey = monthKey(lastMY)
+  // 1. Get current cycle
+  const { startDate: start, endDate: end } = getPayCycle(now, paydayType, paydayDate)
+  
+  // 2. Get previous cycle (for comparison)
+  const prevCycleEndSeed = new Date(start.getTime() - 86400000)
+  const { startDate: prevStart, endDate: prevEnd } = getPayCycle(prevCycleEndSeed, paydayType, paydayDate)
 
-  // Shared scope resolver — excludes archived accounts, same as burn rate
-  // and the commitment radar.
   const { accountIds } = resolveAccountScope(accounts, scopeAccountId)
 
   const thisByCat = {}
@@ -43,26 +30,22 @@ export const computeCashFlow = ({
     const amt = Number(tx.amount) || 0
     if (amt <= 0) continue
 
-    const k = monthKey(tx.transaction_date)
+    const txDate = toMYDate(tx.transaction_date).getTime()
     const cat = rollUpToMain(tx.category)
 
-    if (k === thisKey) {
+    if (txDate >= start.getTime() && txDate <= end.getTime()) {
       thisByCat[cat] = (thisByCat[cat] || 0) + amt
       if (!txByCat[cat]) txByCat[cat] = []
       txByCat[cat].push(tx)
-    } else if (k === lastKey) {
-      const d = toMYDate(tx.transaction_date)
-      if (d.getUTCDate() <= dayOfMonth) {
-        lastByCat[cat] = (lastByCat[cat] || 0) + amt
-      }
+    } else if (txDate >= prevStart.getTime() && txDate <= prevEnd.getTime()) {
+      lastByCat[cat] = (lastByCat[cat] || 0) + amt
     }
   }
 
   const grandTotal = Object.values(thisByCat).reduce((s, v) => s + v, 0)
   if (grandTotal === 0) return []
 
-  // Return ALL categories, sorted descending.
-  const rows = Object.entries(thisByCat)
+  return Object.entries(thisByCat)
     .map(([name, value]) => {
       const last = lastByCat[name] || 0
       let comparison = null
@@ -75,6 +58,4 @@ export const computeCashFlow = ({
       return { name, value, comparison, txns: txByCat[name] || [] }
     })
     .sort((a, b) => b.value - a.value)
-
-  return rows
 }

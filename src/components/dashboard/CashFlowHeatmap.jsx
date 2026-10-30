@@ -1,6 +1,6 @@
 // src/components/dashboard/CashFlowHeatmap.jsx
-import { useState, useMemo } from 'react'
-import { TrendingUp, TrendingDown, Plus, ArrowRight, PieChart, ChevronDown, ChevronLeft, X } from 'lucide-react'
+import { useState, useMemo, useRef, useEffect } from 'react'
+import { TrendingUp, TrendingDown, Plus, ArrowRight, PieChart, ChevronDown, X } from 'lucide-react'
 import { 
   PieChart as RechartsPie, 
   Pie, 
@@ -25,9 +25,9 @@ const compactMYR = (n) => {
 const MOBILE_LIMIT = 6
 
 // ============================================================
-// SUB-CATEGORY DRILLDOWN (Now acts as a full view swap)
+// SUB-CATEGORY DRILLDOWN
 // ============================================================
-function SubCategoryDrilldown({ title, total, txns, accounts, onBack }) {
+function SubCategoryDrilldown({ title, total, txns, accounts, onClose }) {
   const [expandedSub, setExpandedSub] = useState(null)
 
   const groups = useMemo(() => {
@@ -44,19 +44,26 @@ function SubCategoryDrilldown({ title, total, txns, accounts, onBack }) {
   }, [txns])
 
   return (
-    <div className="animate-fadeIn flex flex-col h-full">
-      <div className="flex items-center gap-2 mb-4">
+    <div className="bg-surface border border-line rounded-2xl overflow-hidden animate-fadeIn">
+      <div className="flex items-start justify-between px-4 py-4 border-b border-line bg-surface-2/30">
+        <div>
+          <p className="text-[10px] font-bold text-fg-subtle uppercase tracking-wider">
+            {title} Breakdown
+          </p>
+          <p className="text-base font-black text-fg mt-0.5 tabular-figures">
+            {formatMYR(total)}
+          </p>
+        </div>
         <button
-          onClick={onBack}
-          className="flex items-center gap-1 text-xs font-bold text-fg-muted hover:text-fg transition-colors bg-surface-2 px-3 py-2 rounded-lg"
+          onClick={onClose}
+          className="inline-flex h-8 w-8 items-center justify-center rounded-lg text-fg-subtle hover:text-fg hover:bg-surface-2 transition-colors"
+          aria-label="Close drill-down"
         >
-          <ChevronLeft className="w-4 h-4" /> Back
+          <X className="h-4 w-4" />
         </button>
-        <h3 className="text-sm font-bold text-fg ml-auto truncate pr-2">{title}</h3>
-        <p className="text-base font-black text-fg tabular-figures shrink-0">{formatMYR(total)}</p>
       </div>
 
-      <div className="bg-surface border border-line rounded-2xl divide-y divide-line overflow-hidden flex-1 overflow-y-auto scrollbar-thin">
+      <div className="divide-y divide-line">
         {groups.map((group) => {
           const isExpanded = expandedSub === group.name
           const pct = (group.total / total) * 100
@@ -65,7 +72,7 @@ function SubCategoryDrilldown({ title, total, txns, accounts, onBack }) {
             <div key={group.name}>
               <button
                 onClick={() => setExpandedSub(isExpanded ? null : group.name)}
-                className="w-full flex items-center justify-between px-4 py-3.5 hover:bg-surface-2 transition-colors"
+                className="w-full flex items-center justify-between px-4 py-3 hover:bg-surface-2 transition-colors"
               >
                 <div className="flex items-center gap-2">
                   <ChevronDown className={`w-3.5 h-3.5 text-fg-subtle transition-transform ${isExpanded ? 'rotate-180' : ''}`} />
@@ -148,6 +155,7 @@ export const CashFlowHeatmap = ({
 
   const [activeName, setActiveName] = useState(null)
   const [isHovering, setIsHovering] = useState(false)
+  const drilldownRef = useRef(null)
 
   const totalExpenses = useMemo(
     () => cashFlowData.reduce((sum, item) => sum + (item.value || 0), 0),
@@ -162,27 +170,20 @@ export const CashFlowHeatmap = ({
     [cashFlowData, isDark]
   )
 
+  // Auto-scroll to drilldown when a category is clicked
+  useEffect(() => {
+    if (activeName && drilldownRef.current) {
+      setTimeout(() => {
+        drilldownRef.current?.scrollIntoView({ behavior: 'smooth', block: 'nearest' })
+      }, 100)
+    }
+  }, [activeName])
+
   if (isLoading) return <CashFlowHeatmapSkeleton />
 
   const activeItem = activeName ? coloredData.find(i => i.name === activeName) : null
   const handleSelect = (name) => setActiveName(prev => (prev === name ? null : name))
   
-  // If a category is active, show the full-page drilldown instead of the chart
-  if (activeItem) {
-    return (
-      <div className="relative flex flex-col h-full pt-3">
-        <div className="absolute top-0 left-0 right-0 h-1 bg-brand rounded-full" />
-        <SubCategoryDrilldown
-          title={activeItem.name}
-          total={activeItem.value}
-          txns={activeItem.txns}
-          accounts={accounts}
-          onBack={() => setActiveName(null)}
-        />
-      </div>
-    )
-  }
-
   const donutData = coloredData.slice(0, MOBILE_LIMIT)
   const activeIndex = activeName ? donutData.findIndex(d => d.name === activeName) : -1
 
@@ -194,11 +195,11 @@ export const CashFlowHeatmap = ({
         <div className="pt-1">
           <div className="mb-5">
             <h2 className="text-sm font-bold text-fg">Where your money went</h2>
-            <p className="text-xs text-fg-subtle mt-0.5">This month</p>
+            <p className="text-xs text-fg-subtle mt-0.5">This cycle</p>
           </div>
           <EmptyState
             icon={PieChart}
-            title="No spending yet this month"
+            title="No spending yet this cycle"
             message="Log your first expense to see the breakdown."
             action={{ label: 'Log expense', icon: Plus, onClick: onAddTransaction }}
             compact
@@ -206,10 +207,11 @@ export const CashFlowHeatmap = ({
         </div>
       ) : (
         <>
+          {/* Header */}
           <div className="flex justify-between items-start mb-4 border-b border-line pb-3 pt-1 gap-3">
             <div className="min-w-0">
               <h2 className="text-sm font-bold text-fg">Where your money went</h2>
-              <p className="text-xs text-fg-subtle mt-0.5">This month</p>
+              <p className="text-xs text-fg-subtle mt-0.5">This cycle</p>
             </div>
             <div className="text-right shrink-0">
               <p className="text-[11px] text-fg-subtle uppercase font-bold tracking-wider mb-0.5">Total spent</p>
@@ -299,18 +301,21 @@ export const CashFlowHeatmap = ({
                 {coloredData.map((item) => {
                   const pct = ((item.value / totalExpenses) * 100).toFixed(1)
                   const cmp = item.comparison
+                  const isActive = activeName === item.name
 
                   return (
                     <button
                       key={item.name}
                       onClick={() => handleSelect(item.name)}
-                      className="w-full text-left flex items-center justify-between p-2.5 rounded-xl border border-transparent hover:border-line hover:bg-surface-2/40 transition-all"
+                      className={`w-full text-left flex items-center justify-between p-2.5 rounded-xl border transition-all ${
+                        isActive ? 'bg-surface-2 border-line shadow-sm' : 'bg-transparent border-transparent hover:border-line hover:bg-surface-2/40'
+                      }`}
                       style={{ minHeight: 44 }}
                     >
                       <div className="flex items-center gap-2.5 min-w-0 flex-1">
                         <div className="w-3 h-3 rounded-md shrink-0" style={{ backgroundColor: item.color }} />
                         <div className="min-w-0 flex-1">
-                          <span className="text-xs font-semibold truncate text-fg-muted block">
+                          <span className={`text-xs font-semibold truncate block ${isActive ? 'text-fg font-bold' : 'text-fg-muted'}`}>
                             {item.name}
                           </span>
                           {cmp && (
@@ -341,9 +346,23 @@ export const CashFlowHeatmap = ({
               </div>
             </div>
           </div>
+
+          {/* TEMPORARY SECTION: Sub-Category Drilldown (Appears below chart) */}
+          {activeItem && activeItem.txns && activeItem.txns.length > 0 && (
+            <div ref={drilldownRef} className="mt-6 pt-6 border-t border-line scroll-mt-24">
+              <SubCategoryDrilldown
+                title={activeItem.name}
+                total={activeItem.value}
+                txns={activeItem.txns}
+                accounts={accounts}
+                onClose={() => setActiveName(null)}
+              />
+            </div>
+          )}
         </>
       )}
 
+      {/* See trends link */}
       {onSeeTrends && (
         <button
           onClick={onSeeTrends}

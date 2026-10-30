@@ -182,3 +182,50 @@ export const dueDateForMonth = (dueDay, year, monthIdx) => {
   const effectiveDay = Math.min(dueDay, lastDay)
   return new Date(Date.UTC(year, monthIdx, effectiveDay) - MY_TZ_OFFSET_MS)
 }
+
+// ===========================================================================
+// Financial Cycle Helper (Payday-Aware)
+// ===========================================================================
+
+/**
+ * Returns the start and end dates of the current pay cycle.
+ * e.g., If payday is the 25th and today is Oct 26th, 
+ * start = Oct 25, end = Nov 24.
+ */
+export const getPayCycle = (
+  now = new Date(), 
+  paydayType = 'last_working_day', 
+  paydayDate = null
+) => {
+  const currentMY = toMYDate(now)
+  const year = currentMY.getUTCFullYear()
+  const monthIdx = currentMY.getUTCMonth()
+  const today = dayKey(currentMY)
+
+  // 1. Find the payday for the start of this month
+  const thisMonthSeed = new Date(Date.UTC(year, monthIdx, 1))
+  const thisMonthPayday = nextPayday(thisMonthSeed, () => false, paydayType, paydayDate)
+
+  let startDate, endDate
+
+  if (today >= dayKey(thisMonthPayday)) {
+    // We are currently in the cycle that started this month
+    startDate = thisMonthPayday
+    
+    // Find next month's payday
+    const nextMonthSeed = new Date(Date.UTC(year, monthIdx + 1, 1))
+    const nextMonthPayday = nextPayday(nextMonthSeed, () => false, paydayType, paydayDate)
+    
+    // End date is 1 day before next payday
+    endDate = new Date(nextMonthPayday.getTime() - 86400000)
+  } else {
+    // We are currently in the cycle that started last month
+    const lastMonthSeed = new Date(Date.UTC(year, monthIdx - 1, 1))
+    startDate = nextPayday(lastMonthSeed, () => false, paydayType, paydayDate)
+    
+    // End date is 1 day before this month's payday
+    endDate = new Date(thisMonthPayday.getTime() - 86400000)
+  }
+
+  return { startDate, endDate }
+}

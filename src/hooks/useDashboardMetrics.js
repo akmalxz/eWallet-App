@@ -11,17 +11,20 @@ export function useDashboardMetrics({
   monthlyExpenses,
   scopeAccountId = 'all',
   receivablesThisMonth = 0,
-  profile // <-- Added
+  profile
 }) {
+  // Radar now uses the pay cycle to determine its horizon
   const radarSchedule = useMemo(() => {
     return computeCommitmentSchedule({
       commitments,
       payments: commitmentPayments,
       accounts,
       scopeAccountId: 'all',
-      now: new Date()
+      now: new Date(),
+      paydayType: profile?.payday_type,
+      paydayDate: profile?.payday_date
     })
-  }, [commitments, commitmentPayments, accounts])
+  }, [commitments, commitmentPayments, accounts, profile?.payday_type, profile?.payday_date])
 
   const radarStats = useMemo(() => {
     const currentBalance = accounts
@@ -49,8 +52,8 @@ export function useDashboardMetrics({
       scopeAccountId,
       now: new Date(),
       receivablesThisMonth,
-      paydayType: profile?.payday_type, // <-- Added
-      paydayDate: profile?.payday_date  // <-- Added
+      paydayType: profile?.payday_type,
+      paydayDate: profile?.payday_date
     })
   }, [
     accounts,
@@ -59,17 +62,19 @@ export function useDashboardMetrics({
     commitmentPayments,
     scopeAccountId,
     receivablesThisMonth,
-    profile?.payday_type, // <-- Added
-    profile?.payday_date  // <-- Added
+    profile?.payday_type,
+    profile?.payday_date
   ])
 
   const cashFlowData = useMemo(
     () => computeCashFlow({
       accounts,
       expenses: monthlyExpenses || [],
-      scopeAccountId
+      scopeAccountId,
+      paydayType: profile?.payday_type,
+      paydayDate: profile?.payday_date
     }),
-    [accounts, monthlyExpenses, scopeAccountId]
+    [accounts, monthlyExpenses, scopeAccountId, profile?.payday_type, profile?.payday_date]
   )
 
   return { radarSchedule, radarStats, velocityStats, cashFlowData }

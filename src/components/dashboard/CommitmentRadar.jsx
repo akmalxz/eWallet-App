@@ -18,10 +18,8 @@ import { PaidBillRow } from './PaidBillRow'
 import { AllBillsRow } from './AllBillsRow'
 import { Collapse } from '../shared/Collapse'
 
-// ============================================================
-// Radar
-// ============================================================
 export const CommitmentRadar = ({
+  profile,
   radarStats,
   schedule,
   commitments = [],
@@ -298,7 +296,7 @@ export const CommitmentRadar = ({
   }
 
   // ------------------------------------------------------------
-  // Menu action builders — keep row components dumb
+  // Menu action builders
   // ------------------------------------------------------------
   const billMenuActions = (comm, period) => [
     {
@@ -411,10 +409,10 @@ export const CommitmentRadar = ({
     <>
       <section className="space-y-4">
 
-        {/* Header row — minimal: label + action */}
+        {/* Header row — updated to "This cycle" */}
         <div className="flex items-center justify-between">
           <span className="text-[10px] uppercase font-bold tracking-wider text-fg-subtle">
-            This month
+            This cycle
           </span>
           <button
             onClick={() => setFormState({ mode: 'new' })}
@@ -425,7 +423,7 @@ export const CommitmentRadar = ({
           </button>
         </div>
 
-        {/* Stats — Available emphasized as hero, secondary metrics inline below */}
+        {/* Stats */}
         <div className="mb-4">
           <p className="text-[11px] text-fg-subtle uppercase font-bold tracking-wider mb-1">
             Available
@@ -438,7 +436,6 @@ export const CommitmentRadar = ({
           </p>
         </div>
 
-        {/* SECONDARY: To pay · Unpaid — mirrors BurnRateWidget's Daily avg / Runway */}
         <div className="grid grid-cols-2 gap-4 border-y border-line py-3">
           <div>
             <p className="text-[10px] text-fg-subtle uppercase font-bold tracking-wider mb-0.5">
@@ -538,7 +535,7 @@ export const CommitmentRadar = ({
         {scheduleSafe.unpaidPeriods.length === 0 ? (
           <div className="text-xs font-medium text-success-text p-3.5 bg-success-soft border border-success-border rounded-xl flex items-center gap-2">
             <CheckCircle className="w-4 h-4 text-success shrink-0" />
-            You've handled everything for this month.
+            You've handled everything for this cycle.
           </div>
         ) : (
           <>
@@ -662,7 +659,7 @@ export const CommitmentRadar = ({
           </>
         )}
 
-        {/* Paid this month */}
+        {/* Paid this cycle */}
         {otherPaidCommitments.length > 0 && (
           <div>
             <button
@@ -672,7 +669,7 @@ export const CommitmentRadar = ({
               style={{ minHeight: 44 }}
             >
               <span className="text-[10px] text-fg-muted uppercase font-bold tracking-wider flex items-center gap-1.5">
-                <CheckCircle className="w-3.5 h-3.5 text-success" /> Paid this month (
+                <CheckCircle className="w-3.5 h-3.5 text-success" /> Paid this cycle (
                 {otherPaidCommitments.length})
               </span>
               {showPaid
@@ -714,7 +711,7 @@ export const CommitmentRadar = ({
           </div>
         )}
 
-        {/* Skipped this month */}
+        {/* Skipped this cycle */}
         {skippedCommitments.length > 0 && (
           <div>
             <button
@@ -724,7 +721,7 @@ export const CommitmentRadar = ({
               style={{ minHeight: 44 }}
             >
               <span className="text-[10px] text-fg-muted uppercase font-bold tracking-wider flex items-center gap-1.5">
-                <CircleSlash className="w-3.5 h-3.5 text-fg-subtle" /> Skipped this month (
+                <CircleSlash className="w-3.5 h-3.5 text-fg-subtle" /> Skipped this cycle (
                 {skippedCommitments.length})
               </span>
               {showSkipped
@@ -894,7 +891,7 @@ export const CommitmentRadar = ({
                 You're short by {formatMYR(shortfall)}
               </p>
               <p className="text-xs text-danger-text/90 mt-0.5 leading-relaxed">
-                Your available balance doesn't cover every unpaid bill this month.
+                Your available balance doesn't cover every unpaid bill this cycle.
               </p>
             </div>
           </div>

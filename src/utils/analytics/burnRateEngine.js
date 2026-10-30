@@ -6,27 +6,22 @@ import {
   getDayOfMonthMY,
   nextPayday,
   isTodayPayday,
-  daysBetweenMY
+  daysBetweenMY,
+  getPayCycle // <-- Added
 } from '../dateHelpers'
 import { resolveAccountScope } from '../accounts/accountScope'
 import { computeCommitmentSchedule } from '../commitments/commitmentSchedule'
 
 // ===========================================================================
-// Named thresholds (Phase 5)
+// Named thresholds
 // ===========================================================================
-export const TIGHT_THRESHOLD = 0.90        // daily avg ≥ 90% of safe = "Tight"
-export const CRITICAL_RUNWAY_DAYS = 7      // runway < this = red marker
-export const NEAR_PAYDAY_DAYS = 5          // runout within this of payday = amber
+export const TIGHT_THRESHOLD = 0.90
+export const CRITICAL_RUNWAY_DAYS = 7
+export const NEAR_PAYDAY_DAYS = 5
 
 // ===========================================================================
-// Classification (Phase 2)
+// Classification
 // ===========================================================================
-
-/**
- * A transaction is a commitment payment if:
- *   1. Its metadata has a commitment_id, OR
- *   2. Its category is "Commitments"
- */
 export const isCommitmentPayment = (tx) => {
   if (!tx) return false
   const meta = tx.metadata
@@ -35,10 +30,6 @@ export const isCommitmentPayment = (tx) => {
   return cat === 'Commitments'
 }
 
-/**
- * A real expense is one with a source account, no destination (transfers
- * excluded), and a positive amount.
- */
 export const isRealExpense = (tx) => {
   if (!tx) return false
   if (!tx.source_account_id) return false
@@ -48,7 +39,7 @@ export const isRealExpense = (tx) => {
 }
 
 // ===========================================================================
-// Main engine (Phases 3, 4, 5)
+// Main engine
 // ===========================================================================
 export const computeBurnRate = ({
   accounts = [],
@@ -59,28 +50,34 @@ export const computeBurnRate = ({
   now = new Date(),
   isHoliday = () => false,
   receivablesThisMonth = 0,
-  paydayType = 'last_working_day', // <-- Added
-  paydayDate = null                // <-- Added
+  paydayType = 'last_working_day',
+  paydayDate = null
 }) => {
-  // ------------------------------------------------------------
-  // 1. Scope (P3.2 — shared with the radar)
-  // ------------------------------------------------------------
   const { scopedAccounts, accountIds, scopeLabel } = resolveAccountScope(
     accounts,
     scopeAccountId
   )
 
   // ------------------------------------------------------------
-  // 2. Dates
+  // 1. Dates & Cycles
   // ------------------------------------------------------------
-  const payday = nextPayday(now, isHoliday, paydayType, paydayDate) // <-- Updated
-  const paydayToday = isTodayPayday(now, isHoliday, paydayType, paydayDate) // <-- Updated
+  const payday = nextPayday(now, isHoliday, paydayType, paydayDate)
+  const paydayToday = isTodayPayday(now, isHoliday, paydayType, paydayDate)
   const daysToPayday = Math.max(0, daysBetweenMY(now, payday))
-  const daysPassed = getDayOfMonthMY(now)
-  const monthLength = getDaysInMonthMY(now)
+
+  // Get current pay cycle and previous pay cycle
+  const { startDate: cycleStart } = getPayCycle(now, paydayType, paydayDate)
+  const prevCycleEndSeed = new Date(cycleStart.getTime() - 86400000)
+  const { startDate: prevCycleStart, endDate: prevCycleEnd } = getPayCycle(prevCycleEndSeed, paydayType, paydayDate)
+
+  // Days passed since the cycle started (minimum 1 to avoid division by zero)
+  const daysPassed = Math.max(1, daysBetweenMY(cycleStart, now) + 1)
+  
+  // Total length of the previous cycle (used for fallback average)
+  const prevCycleLength = Math.max(1, daysBetweenMY(prevCycleStart, prevCycleEnd) + 1)
 
   // ------------------------------------------------------------
-  // 3. Balance (P3.2)
+  // 2. Balance
   // ------------------------------------------------------------
   const balance = scopedAccounts.reduce(
     (s, a) => s + (Number(a.balance) || 0),
@@ -88,7 +85,7 @@ export const computeBurnRate = ({
   )
 
   // ------------------------------------------------------------
-  // 4. Bills before payday (P3.3 — shared schedule function)
+  // 3. Bills before payday
   // ------------------------------------------------------------
   const schedule = computeCommitmentSchedule({
     commitments,
@@ -96,150 +93,121 @@ export const computeBurnRate = ({
     accounts,
     scopeAccountId,
     now,
-    horizon: payday
+    horizon: payday,
+    paydayType,
+    paydayDate
   })
 
   const billsBeforePayday = schedule.total
   const billCount = schedule.unpaidPeriods.length
-
-  // ------------------------------------------------------------
-  // 5. Free money
-  // ------------------------------------------------------------
   const freeMoney = balance - billsBeforePayday
 
   // ------------------------------------------------------------
-  // 6. Everyday spending (Phases 2 & 3)
+  // 4. Everyday spending (Cycle-aware)
   // ------------------------------------------------------------
-  const thisMonthK = monthKey(now)
-  const nowMY = toMYDate(now)
-  const lastMonthDate = new Date(Date.UTC(nowMY.getUTCFullYear(), nowMY.getUTCMonth() - 1, 1))
-  const lastMonthK = monthKey(lastMonthDate)
-  const lastMonthLength = getDaysInMonthMY(lastMonthDate)
-
-  let thisMonthEveryday = 0
-  let lastMonthEverydayTotal = 0
-  let lastMonthSamePeriodTotal = 0
+  let thisCycleEveryday = 0
+  let prevCycleEverydayTotal = 0
+  let prevCycleSamePeriodTotal = 0
   let reviewCount = 0
 
+  // Calculate the end date for the "same period" comparison in the previous cycle
+  const prevCycleSamePeriodEnd = new Date(prevCycleStart.getTime() + (daysPassed - 1) * 86400000)
+
   for (const tx of expenses) {
-    // Scope
     if (!accountIds.has(tx.source_account_id)) continue
-    // Real expenses only (skip transfers, zero/negative)
     if (!isRealExpense(tx)) continue
-
-    // Count review items — applies to all expenses regardless of class
     if (tx.needs_review) reviewCount++
-
-    // Skip commitment payments from everyday spending
     if (isCommitmentPayment(tx)) continue
 
-    const k = monthKey(tx.transaction_date)
-    const amt = Number(tx.amount) || 0
-
-    if (k === thisMonthK) {
-      thisMonthEveryday += amt
-    } else if (k === lastMonthK) {
-      lastMonthEverydayTotal += amt
-      const d = toMYDate(tx.transaction_date)
-      if (d.getUTCDate() <= daysPassed) {
-        lastMonthSamePeriodTotal += amt
+    const txDate = toMYDate(tx.transaction_date)
+    
+    // Check if in current cycle
+    if (txDate >= cycleStart && txDate <= now) {
+      thisCycleEveryday += Number(tx.amount) || 0
+    } 
+    // Check if in previous cycle
+    else if (txDate >= prevCycleStart && txDate <= prevCycleEnd) {
+      prevCycleEverydayTotal += Number(tx.amount) || 0
+      
+      // Check if in the "same period" of the previous cycle
+      if (txDate <= prevCycleSamePeriodEnd) {
+        prevCycleSamePeriodTotal += Number(tx.amount) || 0
       }
     }
   }
 
-  // ------------------------------------------------------------
-  // 6b. Accounts Receivable adjustment
-  //     Pending split debts reduce true spending: money you'll get
-  //     back isn't money you spent. Clamp at 0 so a user who didn't
-  //     log the underlying payment doesn't see negative spend.
-  // ------------------------------------------------------------
+  // Receivables adjustment
   const receivablesOffset = Math.max(0, Number(receivablesThisMonth) || 0)
-  const netThisMonthEveryday = Math.max(0, thisMonthEveryday - receivablesOffset)
-
+  const netThisCycleEveryday = Math.max(0, thisCycleEveryday - receivablesOffset)
 
   // ------------------------------------------------------------
-  // 7. Daily average + early-month blend (Phase 5.6, 5.7)
+  // 5. Daily average + early-cycle blend
   // ------------------------------------------------------------
-  const rawDailyAvg = daysPassed > 0 ? netThisMonthEveryday / daysPassed : 0
-  const lastMonthDailyAvg = lastMonthLength > 0
-    ? lastMonthEverydayTotal / lastMonthLength
-    : 0
+  const rawDailyAvg = netThisCycleEveryday / daysPassed
+  const prevCycleDailyAvg = prevCycleEverydayTotal / prevCycleLength
 
-  const isEarlyMonth = daysPassed <= 3
-  const dailyAverage = (isEarlyMonth && lastMonthDailyAvg > 0)
-    ? (rawDailyAvg * daysPassed + lastMonthDailyAvg * (3 - daysPassed)) / 3
+  const isEarlyCycle = daysPassed <= 3
+  const dailyAverage = (isEarlyCycle && prevCycleDailyAvg > 0)
+    ? (rawDailyAvg * daysPassed + prevCycleDailyAvg * (3 - daysPassed)) / 3
     : rawDailyAvg
 
   // ------------------------------------------------------------
-  // 8. Safe daily spend (Phase 5.8)
+  // 6. Safe daily spend
   // ------------------------------------------------------------
   const safeDailySpend = (daysToPayday > 0 && freeMoney > 0)
     ? freeMoney / daysToPayday
     : 0
 
   // ------------------------------------------------------------
-  // 9. Runway (Phase 5.9)
+  // 7. Runway
   // ------------------------------------------------------------
   let runwayDays
   if (freeMoney < 0) {
     runwayDays = 0
   } else if (dailyAverage <= 0) {
-    runwayDays = 9999  // sentinel for infinite
+    runwayDays = 9999
   } else {
     runwayDays = Math.floor(freeMoney / dailyAverage)
   }
 
-  // ------------------------------------------------------------
-  // 10. Runs out before payday? (Phase 5.10)
-  // Strictly less than daysToPayday, and free money must be non-negative.
-  // ------------------------------------------------------------
   const runsOutBeforePayday =
     freeMoney >= 0 &&
     dailyAverage > 0 &&
     daysToPayday > 0 &&
     runwayDays < daysToPayday
 
-  // ------------------------------------------------------------
-  // 11. Runout date (Phase 5.11)
-  // ------------------------------------------------------------
   const runoutDate = runsOutBeforePayday
     ? new Date(
-        nowMY.getUTCFullYear(),
-        nowMY.getUTCMonth(),
-        nowMY.getUTCDate() + runwayDays
+        toMYDate(now).getUTCFullYear(),
+        toMYDate(now).getUTCMonth(),
+        toMYDate(now).getUTCDate() + runwayDays
       )
     : null
 
-  // ------------------------------------------------------------
-  // 12. Expected balance at payday (Phase 5.12)
-  // ------------------------------------------------------------
   const expectedBalanceAtPayday =
     freeMoney - (dailyAverage * daysToPayday)
 
   // ------------------------------------------------------------
-  // 13. Trend (Phase 5.13)
+  // 8. Trend
   // ------------------------------------------------------------
-  const lastSamePeriodDailyAvg = daysPassed > 0
-    ? lastMonthSamePeriodTotal / daysPassed
+  const prevCycleSamePeriodDailyAvg = daysPassed > 0
+    ? prevCycleSamePeriodTotal / daysPassed
     : 0
-  const spendingTrend = lastSamePeriodDailyAvg > 0
-    ? ((rawDailyAvg - lastSamePeriodDailyAvg) / lastSamePeriodDailyAvg) * 100
+  const spendingTrend = prevCycleSamePeriodDailyAvg > 0
+    ? ((rawDailyAvg - prevCycleSamePeriodDailyAvg) / prevCycleSamePeriodDailyAvg) * 100
     : 0
 
   // ------------------------------------------------------------
-  // 14. Status (Phase 5)
+  // 9. Status
   // ------------------------------------------------------------
   let status
   let shortfall = 0
 
   if (paydayToday) {
     status = 'payday_today'
-  } else if (netThisMonthEveryday === 0 && billCount === 0) {
-    // No everyday spending AND no bills — nothing to show
+  } else if (netThisCycleEveryday === 0 && billCount === 0) {
     status = 'no_data'
-  } else if (netThisMonthEveryday === 0) {
-    // No everyday spending but there are bills — treat as no_data for the average
-    // but still expose free money. Status remains 'no_data'.
+  } else if (netThisCycleEveryday === 0) {
     status = 'no_data'
   } else if (freeMoney < 0) {
     status = 'bills_exceed_balance'
@@ -260,40 +228,34 @@ export const computeBurnRate = ({
   // Return
   // ------------------------------------------------------------
   return {
-    // Context
     scopeLabel,
     now,
     payday,
     isPaydayToday: paydayToday,
 
-    // Numbers
     balance,
     billsBeforePayday,
     freeMoney,
-    everydaySpentThisMonth: netThisMonthEveryday,
-    rawEverydaySpentThisMonth: thisMonthEveryday,
+    everydaySpentThisMonth: netThisCycleEveryday, // Keeping the key name for backwards compatibility with the widget
+    rawEverydaySpentThisMonth: thisCycleEveryday,
     receivablesOffset,
     dailyAverage,
     safeDailySpend,
     runwayDays,
     daysToPayday,
     daysPassed,
-    monthLength,
+    monthLength: prevCycleLength, // Repurposed for the UI
 
-    // Dates
     runoutDate,
     runsOutBeforePayday,
     expectedBalanceAtPayday,
 
-    // Trend
     spendingTrend,
-    isEarlyMonth,
+    isEarlyMonth: isEarlyCycle, // Keeping key name for UI
 
-    // Counts
     reviewCount,
     billCount,
 
-    // Status
     status,
     shortfall
   }
