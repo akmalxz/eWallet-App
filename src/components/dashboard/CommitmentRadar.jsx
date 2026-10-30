@@ -790,8 +790,8 @@ export const CommitmentRadar = ({
 
             <Collapse open={showAllBills}>
               <div className="mt-3 animate-fadeIn">
-                <div className="px-1 pb-2 flex items-center justify-between gap-3 flex-wrap">
-                  <p className="text-[11px] text-fg-subtle">
+                <div className="px-1 pb-3 flex flex-col gap-2.5">
+                  <p key={allBillsFilter} className="text-[11px] text-fg-subtle animate-filter">
                     {allBillsFilter === 'all' && (
                       <>
                         {allBillsSummary.totalCount}{' '}
@@ -871,22 +871,29 @@ export const CommitmentRadar = ({
                   )}
                 </div>
 
-                {filteredAllBills.length === 0 ? (
-                  <div className="text-center py-6 text-xs text-fg-subtle">
-                    No {allBillsFilter === 'bnpl' ? 'BNPL plans' : 'recurring bills'} in this list.
-                  </div>
-                ) : (
-                  <div className="bg-surface border border-line rounded-2xl divide-y divide-line overflow-hidden">
-                    {filteredAllBills.map((comm) => (
-                      <AllBillsRow
-                        key={`all-${comm.id}`}
-                        commitment={comm}
-                        paidCount={paidCountByCommitment.get(comm.id) || 0}
-                        menuActions={allBillsMenuActions(comm)}
-                      />
-                    ))}
-                  </div>
-                )}
+                <div key={`list-${allBillsFilter}`} className="animate-filter">
+                  {filteredAllBills.length === 0 ? (
+                    <div className="text-center py-6 text-xs text-fg-subtle">
+                      No {allBillsFilter === 'bnpl' ? 'BNPL plans' : 'recurring bills'} in this list.
+                    </div>
+                  ) : (
+                    <div className="bg-surface border border-line rounded-2xl divide-y divide-line overflow-hidden">
+                      {filteredAllBills.map((comm, idx) => (
+                        <AllBillsRow
+                          key={`all-${comm.id}`}
+                          commitment={comm}
+                          paidCount={paidCountByCommitment.get(comm.id) || 0}
+                          menuActions={allBillsMenuActions(comm)}
+                          style={{
+                            animation: 'filterChange 0.25s cubic-bezier(0.16,1,0.3,1) forwards',
+                            animationDelay: `${idx * 30}ms`,
+                            opacity: 0,
+                          }}
+                        />
+                      ))}
+                    </div>
+                  )}
+                </div>
               </div>
             </Collapse>
           </div>
