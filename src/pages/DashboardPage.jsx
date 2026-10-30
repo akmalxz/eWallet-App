@@ -1,4 +1,5 @@
 // src/pages/DashboardPage.jsx
+import { useState } from 'react'
 import { Activity, Receipt, Users } from 'lucide-react'
 import { AccountCards } from '../components/dashboard/AccountCards'
 import { BurnRateWidget } from '../components/dashboard/BurnRateWidget'
@@ -44,6 +45,26 @@ export function DashboardPage({
     friends,
     refreshProfile,
   })
+
+  // Global Privacy State
+  const [showBalances, setShowBalances] = useState(() => {
+    try {
+      const stored = localStorage.getItem('hideBalances')
+      return stored !== null ? stored === 'false' : true
+    } catch {
+      return true
+    }
+  })
+
+  const toggleBalances = () => {
+    setShowBalances((prev) => {
+      const next = !prev
+      try {
+        localStorage.setItem('hideBalances', String(!next))
+      } catch {}
+      return next
+    })
+  }
 
   const handleStepClick = (stepId) => {
     trackEvent('onboarding_step_clicked', { step: stepId })
@@ -95,11 +116,13 @@ export function DashboardPage({
             onManageAccount={onManageAccount}
             onTogglePin={onTogglePin}
             onMoveAccount={onMoveAccount}
+            showBalances={showBalances}
+            onToggleBalances={toggleBalances}
           />
         )}
       </section>
 
-      {/* QUICK ACTIONS TOOLBAR — grouped into a single bar */}
+      {/* QUICK ACTIONS TOOLBAR */}
       <section className="relative z-10 bg-surface border border-line/60 rounded-2xl overflow-hidden flex divide-x divide-line shadow-sm">
         <button
           onClick={() => onNavigate('network')}
@@ -118,7 +141,7 @@ export function DashboardPage({
         </button>
       </section>
 
-      {/* THIS MONTH — Floating instrument panel */}
+      {/* THIS MONTH */}
       <section className="pt-2">
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
           <h2 className="text-xs font-bold text-fg-subtle uppercase tracking-wider">
@@ -143,7 +166,6 @@ export function DashboardPage({
           </div>
         </div>
 
-        {/* Widgets float directly on the page, separated by a single dividing line */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 lg:gap-12 lg:divide-x lg:divide-line/60">
           <div className="lg:pr-6">
             <BurnRateWidget
@@ -151,6 +173,7 @@ export function DashboardPage({
               isLoading={isLoading}
               onSeeTrends={() => onSeeTrends('overview')}
               onOpenHelp={onOpenBurnRateHelp}
+              hideFreeMoney={!showBalances}
             />
           </div>
           <div className="lg:pl-6">
@@ -160,6 +183,7 @@ export function DashboardPage({
               isLoading={isLoading}
               onAddTransaction={() => onNavigate('log')}
               onSeeTrends={() => onSeeTrends('categories')}
+              hideMoney={!showBalances}
             />
           </div>
         </div>

@@ -2,6 +2,7 @@
 import { CommitmentRadar } from '../components/dashboard/CommitmentRadar'
 
 export const CommitmentsPage = ({
+  profile,
   radarStats,
   radarSchedule,
   radarCommitments,
@@ -28,6 +29,7 @@ export const CommitmentsPage = ({
     </div>
 
     <CommitmentRadar
+      profile={profile}
       radarStats={radarStats}
       schedule={radarSchedule}
       commitments={radarCommitments}

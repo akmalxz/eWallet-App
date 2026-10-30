@@ -42,7 +42,13 @@ const BurnRateWidgetSkeleton = () => (
   </div>
 )
 
-export const BurnRateWidget = ({ velocityStats, isLoading = false, onSeeTrends, onOpenHelp }) => {
+export const BurnRateWidget = ({
+  velocityStats,
+  isLoading = false,
+  onSeeTrends,
+  onOpenHelp,
+  hideFreeMoney = false // masks ONLY the "Free money" figures (hero + equation row)
+}) => {
   const [showDetails, setShowDetails] = useState(() => {
     try { return localStorage.getItem('burnRateExpanded') === 'true' } catch { return false }
   })
@@ -120,6 +126,7 @@ export const BurnRateWidget = ({ velocityStats, isLoading = false, onSeeTrends, 
     return 'linear-gradient(to right, #f59e0b, #f97316)'
   })()
 
+  // All advice copy is unmasked — only the "Free money" figure itself is hidden.
   const advice = (() => {
     if (status === 'bills_exceed_balance') {
       return {
@@ -176,7 +183,7 @@ export const BurnRateWidget = ({ velocityStats, isLoading = false, onSeeTrends, 
             <HelpCircle className="w-4 h-4" />
           </button>
           {statusBadge.label && (
-            <div 
+            <div
               key={status}
               className={`px-2.5 py-1.5 rounded-lg text-[10px] font-bold tracking-wider flex items-center gap-1.5 border shadow-sm animate-attention ${statusBadge.color}`}
             >
@@ -199,10 +206,14 @@ export const BurnRateWidget = ({ velocityStats, isLoading = false, onSeeTrends, 
         </div>
       ) : (
         <>
+          {/* HERO — Free money: MASKED */}
           <div className="mb-5">
             <p className="text-[11px] text-fg-subtle uppercase font-bold tracking-wider mb-1">Free money</p>
-            <div className={`text-4xl font-black tracking-tighter tabular-figures ${freeMoneyNegative ? 'text-danger' : 'text-fg'}`}>
-              <AnimatedNumber value={freeMoney} format={formatMYR} />
+            <div
+              className={`text-4xl font-black tracking-tighter tabular-figures ${freeMoneyNegative ? 'text-danger' : 'text-fg'}`}
+              aria-label={hideFreeMoney ? 'Free money hidden' : undefined}
+            >
+              {hideFreeMoney ? '••••••' : <AnimatedNumber value={freeMoney} format={formatMYR} />}
             </div>
             <p className="text-[11px] text-fg-muted mt-1">Available to spend before payday.</p>
           </div>
@@ -211,8 +222,9 @@ export const BurnRateWidget = ({ velocityStats, isLoading = false, onSeeTrends, 
             <div>
               <p className="text-[10px] text-fg-subtle uppercase font-bold tracking-wider mb-0.5">Daily avg</p>
               <div className="flex items-baseline gap-1.5">
+                {/* Daily avg — VISIBLE */}
                 <p className="text-lg font-bold text-fg tabular-figures">
-                  {hasEverydayData ? <AnimatedNumber value={dailyAverage} format={formatMYR} /> : '—'}
+                  {!hasEverydayData ? '—' : <AnimatedNumber value={dailyAverage} format={formatMYR} />}
                 </p>
                 {hasEverydayData && Math.abs(spendingTrend) > 5 && (
                   <span className={`text-[10px] font-bold ${spendingTrend > 0 ? 'text-danger' : 'text-success'}`}>
@@ -259,6 +271,7 @@ export const BurnRateWidget = ({ velocityStats, isLoading = false, onSeeTrends, 
                   At this pace, your money runs out on <strong className="text-fg">{formatDate(runoutDate)}</strong>, {daysToPayday - runwayDays} day{daysToPayday - runwayDays === 1 ? '' : 's'} before payday.
                 </p>
               ) : (
+                // "Lasts until payday" — VISIBLE
                 <p className="text-xs text-success mt-3 leading-relaxed font-medium">
                   Lasts until payday, with about {formatMYR(Math.max(0, expectedBalanceAtPayday))} to spare.
                 </p>
@@ -305,8 +318,8 @@ export const BurnRateWidget = ({ velocityStats, isLoading = false, onSeeTrends, 
           }`}
         >
           <div className="overflow-hidden space-y-3">
-            
-            {/* The Equation */}
+
+            {/* The Equation — always fully visible */}
             <div className="bg-surface-2/60 p-3.5 rounded-xl border border-line flex items-center justify-between gap-2">
               <div className="text-center flex-1">
                 <p className="text-[10px] text-fg-subtle uppercase font-bold tracking-wider">Balance</p>
@@ -326,10 +339,10 @@ export const BurnRateWidget = ({ velocityStats, isLoading = false, onSeeTrends, 
               </div>
             </div>
 
-            {/* Side-by-side daily spend comparison */}
+            {/* Side-by-side daily spend comparison — VISIBLE */}
             <div className="grid grid-cols-2 gap-3">
               <div className="bg-surface-2/60 p-3.5 rounded-xl border border-line">
-                <p className="text-[10px] text-fg-subtle uppercase font-bold tracking-wider">Safe Daily Spend</p>
+                <p className="text-[10px] text-fg-subtle uppercase font-bold tracking-wider">Safe limit</p>
                 <p className="text-sm font-black text-fg mt-1 tabular-figures">
                   {safeDailySpend > 0 ? formatMYR(safeDailySpend) : '—'}
                 </p>
@@ -344,16 +357,20 @@ export const BurnRateWidget = ({ velocityStats, isLoading = false, onSeeTrends, 
               </div>
             </div>
 
+            {/* Owed back — VISIBLE */}
             {receivablesOffset > 0 && (
               <div className="bg-success-soft p-3.5 rounded-xl border border-success-border flex items-center justify-between gap-3">
                 <div>
                   <p className="text-[10px] text-success-text uppercase font-bold tracking-wider">Owed back to you</p>
                   <p className="text-[10px] text-success-text/80 mt-0.5">Net spend: {formatMYR(everydaySpentThisMonth)}</p>
                 </div>
-                <p className="text-sm font-black text-success-text tabular-figures">− {formatMYR(receivablesOffset)}</p>
+                <p className="text-sm font-black text-success-text tabular-figures">
+                  − {formatMYR(receivablesOffset)}
+                </p>
               </div>
             )}
 
+            {/* At payday — VISIBLE */}
             <div className="bg-surface-2/60 p-3.5 rounded-xl border border-line flex items-center justify-between gap-3">
               <div>
                 <p className="text-[10px] text-fg-subtle uppercase font-bold tracking-wider">At payday</p>

@@ -7,8 +7,7 @@ import {
   Layers, List
 } from 'lucide-react'
 import { formatMYR } from '../../utils/formatters'
-import { monthShortName, toMYDate, dayKey, dueDateForMonth } from '../../utils/dateHelpers'
-import { isPeriodPaid, isPeriodSkipped } from '../../utils/commitments/commitmentPayments'
+import { monthShortName, toMYDate, dayKey, dueDateForMonth, getPayCycle } from '../../utils/dateHelpers'
 import { MarkPaidSheet } from './MarkPaidSheet'
 import { CommitmentFormSheet } from '../commitments/CommitmentFormSheet'
 import { ConfirmSheet } from '../shared/ConfirmSheet'
@@ -66,21 +65,52 @@ export const CommitmentRadar = ({
 
   const getAccount = (id) => accounts.find((a) => a.id === id)
 
-  const nowMY = toMYDate(new Date())
-  const currentYear = nowMY.getUTCFullYear()
-  const currentMonth = nowMY.getUTCMonth() + 1
-
   const todayKey = dayKey(new Date())
+  
+  // Get the exact date range of the current cycle
+  const { startDate: cycleStart, endDate: cycleEnd } = getPayCycle(
+    new Date(),
+    profile?.payday_type,
+    profile?.payday_date
+  )
 
   const activeAll = commitments.filter((c) => c.is_active)
 
+  // Find paid commitments whose actual due date falls inside the current cycle
   const paidCommitments = activeAll
-    .filter((c) => isPeriodPaid(payments, c.id, currentYear, currentMonth))
-    .sort((a, b) => a.due_day_of_month - b.due_day_of_month)
+    .map((c) => {
+      const pmt = payments.find(
+        (p) => p.commitment_id === c.id && p.status === 'paid'
+      )
+      if (!pmt) return null
+      
+      const due = dueDateForMonth(c.due_day_of_month, pmt.period_year, pmt.period_month - 1)
+      
+      if (due >= cycleStart && due <= cycleEnd) {
+        return { comm: c, pmt, dueKey: dayKey(due) }
+      }
+      return null
+    })
+    .filter(Boolean)
+    .sort((a, b) => a.comm.due_day_of_month - b.comm.due_day_of_month)
 
+  // Find skipped commitments whose due date falls inside the current cycle
   const skippedCommitments = activeAll
-    .filter((c) => isPeriodSkipped(payments, c.id, currentYear, currentMonth))
-    .sort((a, b) => a.due_day_of_month - b.due_day_of_month)
+    .map((c) => {
+      const pmt = payments.find(
+        (p) => p.commitment_id === c.id && p.status === 'skipped'
+      )
+      if (!pmt) return null
+      
+      const due = dueDateForMonth(c.due_day_of_month, pmt.period_year, pmt.period_month - 1)
+      
+      if (due >= cycleStart && due <= cycleEnd) {
+        return { comm: c, pmt, dueKey: dayKey(due) }
+      }
+      return null
+    })
+    .filter(Boolean)
+    .sort((a, b) => a.comm.due_day_of_month - b.comm.due_day_of_month)
 
   const hasAnyCommitments = commitments.length > 0
 
@@ -192,33 +222,14 @@ export const CommitmentRadar = ({
     return otherPeriods.find(p => p.daysOverdue === 0) || otherPeriods[0] || null
   }, [otherPeriods])
 
-  const paidByDueDate = useMemo(() => {
-    return paidCommitments.map((comm) => {
-      const pmt = payments.find(
-        (p) =>
-          p.commitment_id === comm.id &&
-          p.period_year === currentYear &&
-          p.period_month === currentMonth &&
-          p.status === 'paid'
-      )
-      if (!pmt) return { comm, dueKey: null }
-      const due = dueDateForMonth(
-        comm.due_day_of_month,
-        pmt.period_year,
-        pmt.period_month - 1
-      )
-      return { comm, dueKey: dayKey(due) }
-    })
-  }, [paidCommitments, payments, currentYear, currentMonth])
-
   const paidPeriodsForSelectedDate = useMemo(
-    () => paidByDueDate.filter((x) => x.dueKey === selectedDate).map((x) => x.comm),
-    [paidByDueDate, selectedDate]
+    () => paidCommitments.filter((x) => x.dueKey === selectedDate),
+    [paidCommitments, selectedDate]
   )
 
   const otherPaidCommitments = useMemo(
-    () => paidByDueDate.filter((x) => x.dueKey !== selectedDate).map((x) => x.comm),
-    [paidByDueDate, selectedDate]
+    () => paidCommitments.filter((x) => x.dueKey !== selectedDate),
+    [paidCommitments, selectedDate]
   )
 
   const selectedDayTotal = useMemo(
@@ -289,8 +300,8 @@ export const CommitmentRadar = ({
       if (res?.success) setConfirm(null)
     },
     undo: async () => {
-      const c = confirm.commitment
-      const res = await onUnmarkAsPaid(c.id, currentYear, currentMonth)
+      const { comm, pmt } = confirm
+      const res = await onUnmarkAsPaid(comm.id, pmt.period_year, pmt.period_month)
       if (res?.success) setConfirm(null)
     }
   }
@@ -408,8 +419,7 @@ export const CommitmentRadar = ({
   return (
     <>
       <section className="space-y-4">
-
-        {/* Header row — updated to "This cycle" */}
+        {/* Header row */}
         <div className="flex items-center justify-between">
           <span className="text-[10px] uppercase font-bold tracking-wider text-fg-subtle">
             This cycle
@@ -598,13 +608,13 @@ export const CommitmentRadar = ({
                       menuActions={billMenuActions(period.commitment, period)}
                     />
                   ))}
-                  {paidPeriodsForSelectedDate.map((comm) => (
+                  {paidPeriodsForSelectedDate.map(({ comm, pmt }) => (
                     <PaidBillRow
                       key={`paid-${comm.id}`}
                       commitment={comm}
                       account={getAccount(comm.account_id)}
                       saving={saving}
-                      onUndo={() => setConfirm({ kind: 'undo', commitment: comm })}
+                      onUndo={() => setConfirm({ kind: 'undo', commitment: comm, pmt })}
                     />
                   ))}
                 </div>
@@ -679,7 +689,7 @@ export const CommitmentRadar = ({
 
             <Collapse open={showPaid}>
               <div className="mt-3 space-y-1.5">
-                {otherPaidCommitments.map((comm) => (
+                {otherPaidCommitments.map(({ comm, pmt }) => (
                   <div
                     key={comm.id}
                     className="flex items-center justify-between p-2.5 rounded-xl bg-success-soft/30 border border-success-border gap-2"
@@ -695,7 +705,7 @@ export const CommitmentRadar = ({
                         {formatMYR(comm.amount)}
                       </span>
                       <button
-                        onClick={() => setConfirm({ kind: 'undo', commitment: comm })}
+                        onClick={() => setConfirm({ kind: 'undo', commitment: comm, pmt })}
                         disabled={saving}
                         className="inline-flex items-center gap-1 text-[11px] font-bold text-fg-subtle hover:text-fg hover:bg-surface px-2.5 py-2 rounded-md transition-colors border border-transparent hover:border-line disabled:opacity-50"
                         style={{ minHeight: 44 }}
@@ -731,7 +741,7 @@ export const CommitmentRadar = ({
 
             <Collapse open={showSkipped}>
               <div className="mt-3 space-y-1.5">
-                {skippedCommitments.map((comm) => (
+                {skippedCommitments.map(({ comm, pmt }) => (
                   <div
                     key={comm.id}
                     className="flex items-center justify-between p-2.5 rounded-xl bg-surface-2/40 border border-line gap-2"
@@ -745,7 +755,7 @@ export const CommitmentRadar = ({
                         {formatMYR(comm.amount)}
                       </span>
                       <button
-                        onClick={() => setConfirm({ kind: 'undo', commitment: comm })}
+                        onClick={() => setConfirm({ kind: 'undo', commitment: comm, pmt })}
                         disabled={saving}
                         className="inline-flex items-center gap-1 text-[11px] font-bold text-fg-subtle hover:text-fg hover:bg-surface px-2.5 py-2 rounded-md transition-colors border border-transparent hover:border-line disabled:opacity-50"
                         style={{ minHeight: 44 }}
@@ -788,7 +798,7 @@ export const CommitmentRadar = ({
                         {allBillsSummary.totalCount === 1 ? 'bill' : 'bills'}
                         <span className="text-line-strong mx-1.5">·</span>
                         <span className="font-bold text-fg-muted tabular-figures">
-                          {formatMYR(allBillsSummary.combinedTotal)}/month
+                          {formatMYR(allBillsSummary.combinedTotal)}/cycle
                         </span>
                         {allBillsSummary.bnplCount > 0 && (
                           <>
@@ -806,7 +816,7 @@ export const CommitmentRadar = ({
                         {allBillsSummary.recurringCount} recurring
                         <span className="text-line-strong mx-1.5">·</span>
                         <span className="font-bold text-fg-muted tabular-figures">
-                          {formatMYR(allBillsSummary.recurringTotal)}/month
+                          {formatMYR(allBillsSummary.recurringTotal)}/cycle
                         </span>
                         {allBillsSummary.recurringActiveCount < allBillsSummary.recurringCount && (
                           <>
@@ -823,7 +833,7 @@ export const CommitmentRadar = ({
                         {allBillsSummary.bnplCount} BNPL
                         <span className="text-line-strong mx-1.5">·</span>
                         <span className="font-bold text-purple tabular-figures">
-                          {formatMYR(allBillsSummary.bnplTotal)}/month
+                          {formatMYR(allBillsSummary.bnplTotal)}/cycle
                         </span>
                         {allBillsSummary.bnplActiveCount < allBillsSummary.bnplCount && (
                           <>
@@ -956,9 +966,9 @@ export const CommitmentRadar = ({
               return "It won't count in your radar or burn rate until you reactivate it."
             }
             if (confirm.kind === 'skip') {
-              return "It won't count this month. The expense will not be created."
+              return "It won't count this cycle. The expense will not be created."
             }
-            return 'The bill will be reset to unpaid for this month.'
+            return 'The bill will be reset to unpaid for this cycle.'
           })()}
           confirmLabel={
             confirm.kind === 'delete'

@@ -11,16 +11,18 @@ export const AccountCards = ({
   onLogTransaction,
   onManageAccount,
   onTogglePin,
-  onMoveAccount
+  onMoveAccount,
+  showBalances,       // received from DashboardPage
+  onToggleBalances    // received from DashboardPage
 }) => {
   const [expandedId, setExpandedId] = useState(null)
-  const [showBalances, setShowBalances] = useState(true)
 
   const toggleExpand = (id) => {
     setExpandedId(expandedId === id ? null : id)
   }
 
-  const toggleBalances = () => setShowBalances(!showBalances)
+  // NOTE: removed local showBalances useState + toggleBalances
+  // — state now lives in DashboardPage
 
   if (!accounts || accounts.length === 0) {
     return (
@@ -49,7 +51,8 @@ export const AccountCards = ({
           Accounts
         </span>
         <button
-          onClick={toggleBalances}
+          onClick={onToggleBalances}
+          aria-pressed={!showBalances}
           className="flex items-center justify-center gap-1.5 text-xs text-fg-subtle hover:text-fg-muted transition-colors px-3 py-2 rounded-lg hover:bg-surface-2"
           style={{ minHeight: 44 }}
         >

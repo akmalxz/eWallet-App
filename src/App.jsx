@@ -324,6 +324,7 @@ export default function App() {
 
         {currentView === 'commitments' && (
           <CommitmentsPage
+            profile={profile}
             radarStats={radarStats}
             radarSchedule={radarSchedule}
             radarCommitments={commitments}
