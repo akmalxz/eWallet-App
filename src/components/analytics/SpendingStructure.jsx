@@ -8,15 +8,8 @@ export const SpendingStructure = ({ income, expenses, everyday, profile }) => {
   const theme = useChartTheme()
   
   const s = useMemo(
-    () => computeStructure(
-      income, 
-      expenses, 
-      everyday, 
-      new Date(), 
-      profile?.payday_type, 
-      profile?.payday_date
-    ),
-    [income, expenses, everyday, profile?.payday_type, profile?.payday_date]
+    () => computeStructure(income, expenses, everyday),
+    [income, expenses, everyday]
   )
   
   if (!s) return null

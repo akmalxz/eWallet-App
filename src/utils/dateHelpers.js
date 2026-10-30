@@ -188,8 +188,8 @@ export const dueDateForMonth = (dueDay, year, monthIdx) => {
 // ===========================================================================
 
 export const getPayCycle = (
-  now = new Date(), 
-  paydayType = 'last_working_day', 
+  now = new Date(),
+  paydayType = 'last_working_day',
   paydayDate = null
 ) => {
   const currentMY = toMYDate(now)
@@ -197,7 +197,6 @@ export const getPayCycle = (
   const monthIdx = currentMY.getUTCMonth()
   const today = dayKey(currentMY)
 
-  // Find the payday for the start of this month
   const thisMonthSeed = new Date(Date.UTC(year, monthIdx, 1))
   const thisMonthPayday = nextPayday(thisMonthSeed, () => false, paydayType, paydayDate)
 
@@ -206,52 +205,63 @@ export const getPayCycle = (
   if (today >= dayKey(thisMonthPayday)) {
     // We are currently in the cycle that started this month
     startDate = thisMonthPayday
-    
+
     const nextMonthSeed = new Date(Date.UTC(year, monthIdx + 1, 1))
     const nextMonthPayday = nextPayday(nextMonthSeed, () => false, paydayType, paydayDate)
-    
-    // End date is 1 day before next payday
-    endDate = new Date(nextMonthPayday.getTime() - 86400000)
+
+    // END-OF-DAY of the cycle's last day (1ms before the next cycle
+    // begins). Inclusive `<= endDate` filters now correctly include
+    // the entire final day rather than just its midnight instant.
+    endDate = new Date(nextMonthPayday.getTime() - 1)
   } else {
     // We are currently in the cycle that started last month
     const lastMonthSeed = new Date(Date.UTC(year, monthIdx - 1, 1))
     startDate = nextPayday(lastMonthSeed, () => false, paydayType, paydayDate)
-    
-    // End date is 1 day before this month's payday
-    endDate = new Date(thisMonthPayday.getTime() - 86400000)
+
+    endDate = new Date(thisMonthPayday.getTime() - 1)
   }
 
   return { startDate, endDate }
 }
 
+
 /**
  * Generates an array of pay cycles (e.g., for charting 3M, 6M).
  */
 export const lastNCycles = (
-  count, 
-  now = new Date(), 
-  paydayType = 'last_working_day', 
+  count,
+  now = new Date(),
+  paydayType = 'last_working_day',
   paydayDate = null
 ) => {
-  const currentMY = toMYDate(now)
   const cycles = []
   let seed = now
 
   for (let i = 0; i < count; i++) {
     const { startDate, endDate } = getPayCycle(seed, paydayType, paydayDate)
-    
-    // Format as "1 Oct" or "25 Oct"
-    const startLabel = startDate.toLocaleDateString('en-MY', { day: 'numeric', month: 'short', timeZone: 'UTC' })
-    const endLabel = endDate.toLocaleDateString('en-MY', { day: 'numeric', month: 'short', timeZone: 'UTC' })
-    
+
+    // `startDate` / `endDate` are MY-midnight Dates stored 8h behind UTC
+    // (e.g. MY midnight Oct 24 is Oct 23 16:00 UTC internally). Formatting
+    // them directly with timeZone: 'UTC' shows the previous day. Shift
+    // through toMYDate() first so the wall-clock day matches MY.
+    const startLabel = toMYDate(startDate).toLocaleDateString('en-MY', {
+      day: 'numeric',
+      month: 'short',
+      timeZone: 'UTC',
+    })
+    const endLabel = toMYDate(endDate).toLocaleDateString('en-MY', {
+      day: 'numeric',
+      month: 'short',
+      timeZone: 'UTC',
+    })
+
     cycles.unshift({
       key: dayKey(startDate),
       startDate,
       endDate,
-      label: `${startLabel} - ${endLabel}`
+      label: `${startLabel} - ${endLabel}`,
     })
 
-    // Move the seed back 1 day to find the start of the previous cycle
     seed = new Date(startDate.getTime() - 86400000)
   }
 

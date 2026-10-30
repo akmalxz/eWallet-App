@@ -10,7 +10,7 @@ import { IncomeVsExpense } from '../components/analytics/IncomeVsExpense'
 import { SpendingStructure } from '../components/analytics/SpendingStructure'
 import { SmallLeaks } from '../components/analytics/SmallLeaks'
 import { TopCategories } from '../components/analytics/TopCategories'
-import { periodStart } from '../utils/analytics/dateRange'
+import { periodRange } from '../utils/analytics/dateRange'
 import { toMYDate } from '../utils/dateHelpers'
 import { AccountSelector } from '../components/shared/AccountSelector'
 import { SlidingSegmentedControl } from '../components/shared/SlidingSegmentedControl'
@@ -29,7 +29,7 @@ const TAB_ITEMS = [
 ]
 
 const MODE_ITEMS = [
-  { id: 'all',      label: 'All' },
+  { id: 'all', label: 'All' },
   { id: 'everyday', label: 'Excl. bills' }
 ]
 
@@ -120,27 +120,46 @@ export function AnalyticsPage({
   const spendingSource =
     mode === 'everyday' ? filteredEverydayExpenses : filteredExpenses
 
-  // Use the timezone-safe periodStart helper and pass the profile data
-  const cutoff = useMemo(
-    () => periodStart(period, new Date(), profile?.payday_type, profile?.payday_date),
+  // ----------------------------------------------------------
+  // Period range: the last N *completed* pay cycles, excluding
+  // the current partial cycle. Cycle-aware, aligned with the
+  // Burn Rate on the Dashboard.
+  //
+  //   range.start — inclusive lower bound
+  //   range.end   — exclusive upper bound
+  // ----------------------------------------------------------
+  const range = useMemo(
+    () => periodRange(period, new Date(), profile?.payday_type, profile?.payday_date),
     [period, profile?.payday_type, profile?.payday_date]
   )
 
-  const periodScopedExpenses = useMemo(() => {
-    return spendingSource.filter(tx => toMYDate(tx.transaction_date) >= cutoff)
-  }, [spendingSource, cutoff])
+  const inRange = useCallback(
+    (tx) => {
+      const d = toMYDate(tx.transaction_date)
+      return d >= range.start && d < range.end
+    },
+    [range]
+  )
 
-  const periodScopedExpensesAll = useMemo(() => {
-    return filteredExpenses.filter(tx => toMYDate(tx.transaction_date) >= cutoff)
-  }, [filteredExpenses, cutoff])
+  const periodScopedExpenses = useMemo(
+    () => spendingSource.filter(inRange),
+    [spendingSource, inRange]
+  )
 
-  const periodScopedEveryday = useMemo(() => {
-    return filteredEverydayExpenses.filter(tx => toMYDate(tx.transaction_date) >= cutoff)
-  }, [filteredEverydayExpenses, cutoff])
+  const periodScopedExpensesAll = useMemo(
+    () => filteredExpenses.filter(inRange),
+    [filteredExpenses, inRange]
+  )
 
-  const periodScopedIncome = useMemo(() => {
-    return filteredIncome.filter(tx => toMYDate(tx.transaction_date) >= cutoff)
-  }, [filteredIncome, cutoff])
+  const periodScopedEveryday = useMemo(
+    () => filteredEverydayExpenses.filter(inRange),
+    [filteredEverydayExpenses, inRange]
+  )
+
+  const periodScopedIncome = useMemo(
+    () => filteredIncome.filter(inRange),
+    [filteredIncome, inRange]
+  )
 
   const handleTabNavigate = useCallback((newTab) => setTab(newTab), [])
 
@@ -173,13 +192,18 @@ export function AnalyticsPage({
           <p className="text-sm text-fg-muted mt-1">Deep dive into your financial trends.</p>
         </div>
         {showFilters && (
-          <div className="flex items-center gap-3 shrink-0">
-            <div className="w-56">
-              <SlidingSegmentedControl
-                items={PERIOD_ITEMS}
-                value={period}
-                onChange={setPeriod}
-              />
+          <div className="flex items-start gap-3 shrink-0">
+            <div>
+              <div className="w-56">
+                <SlidingSegmentedControl
+                  items={PERIOD_ITEMS}
+                  value={period}
+                  onChange={setPeriod}
+                />
+              </div>
+              <p className="text-[10px] text-fg-subtle mt-1 text-center tabular-figures whitespace-nowrap">
+                {range.label}
+              </p>
             </div>
             {showModeControl && (
               <div className="w-56">
@@ -245,24 +269,34 @@ export function AnalyticsPage({
 
           <div className="md:hidden space-y-3">
             {showModeControl ? (
-              <div className="grid grid-cols-2 gap-2">
+              <>
+                <div className="grid grid-cols-2 gap-2">
+                  <SlidingSegmentedControl
+                    items={PERIOD_ITEMS}
+                    value={period}
+                    onChange={setPeriod}
+                  />
+                  <SlidingSegmentedControl
+                    items={MODE_ITEMS}
+                    value={mode}
+                    onChange={setMode}
+                  />
+                </div>
+                <p className="text-[10px] text-fg-subtle text-center tabular-figures -mt-1">
+                  {range.label}
+                </p>
+              </>
+            ) : (
+              <>
                 <SlidingSegmentedControl
                   items={PERIOD_ITEMS}
                   value={period}
                   onChange={setPeriod}
                 />
-                <SlidingSegmentedControl
-                  items={MODE_ITEMS}
-                  value={mode}
-                  onChange={setMode}
-                />
-              </div>
-            ) : (
-              <SlidingSegmentedControl
-                items={PERIOD_ITEMS}
-                value={period}
-                onChange={setPeriod}
-              />
+                <p className="text-[10px] text-fg-subtle text-center tabular-figures -mt-1">
+                  {range.label}
+                </p>
+              </>
             )}
 
             <AccountSelector
@@ -284,7 +318,7 @@ export function AnalyticsPage({
                     expenses={periodScopedExpenses}
                     periodMonths={period}
                     onNavigate={handleTabNavigate}
-                    profile={profile} // <-- Passed
+                    profile={profile}
                   />
                   <MainTrendChart
                     expenses={periodScopedExpenses}
@@ -300,10 +334,10 @@ export function AnalyticsPage({
 
               {tab === 'categories' && (
                 <>
-                  <SmallLeaks 
-                    expenses={periodScopedEveryday} 
-                    periodMonths={period} 
-                    accounts={accounts} 
+                  <SmallLeaks
+                    expenses={periodScopedEveryday}
+                    periodMonths={period}
+                    accounts={accounts}
                   />
                   <TopCategories expenses={periodScopedExpenses} accounts={accounts} />
                 </>
@@ -319,13 +353,13 @@ export function AnalyticsPage({
                     selectedAccountId={selectedAccount}
                     accountLabel={activeAccountName}
                     onAddIncome={onBack}
-                    profile={profile} // <-- Passed
+                    profile={profile}
                   />
                   <SpendingStructure
                     income={periodScopedIncome}
                     expenses={periodScopedExpensesAll}
                     everyday={periodScopedEveryday}
-                    profile={profile} // <-- Passed
+                    profile={profile}
                   />
                 </>
               )}
