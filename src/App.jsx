@@ -382,6 +382,7 @@ export default function App() {
             monthlyInflows={monthlyInflows}
             profile={profile}
             onBack={() => setCurrentView('dashboard')}
+            onAddAccount={accountApi.goToAddAccount}
           />
         )}
 
