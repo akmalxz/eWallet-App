@@ -150,7 +150,7 @@ export default function App() {
     commitmentPayments,
     monthlyExpenses,
     scopeAccountId: homeAccountId,
-    receivablesThisMonth: 0,
+    receivablesThisMonth: pendingReceivablesThisMonth,
     profile
   })
 

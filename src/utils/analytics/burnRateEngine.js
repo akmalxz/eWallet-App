@@ -7,7 +7,8 @@ import {
   nextPayday,
   isTodayPayday,
   daysBetweenMY,
-  getPayCycle // <-- Added
+  getPayCycle,
+  dayKey
 } from '../dateHelpers'
 import { resolveAccountScope } from '../accounts/accountScope'
 import { computeCommitmentSchedule } from '../commitments/commitmentSchedule'
@@ -18,6 +19,39 @@ import { computeCommitmentSchedule } from '../commitments/commitmentSchedule'
 export const TIGHT_THRESHOLD = 0.90
 export const CRITICAL_RUNWAY_DAYS = 7
 export const NEAR_PAYDAY_DAYS = 5
+
+// Fraction trimmed from EACH end when computing the "typical" previous-cycle
+// daily spend. 10% on a 30-day cycle means the highest 3 and lowest 3 days
+// are excluded — enough to neutralise a one-off large purchase without
+// discarding legitimate variance.
+export const PREV_CYCLE_TRIM_FRACTION = 0.10
+
+// ===========================================================================
+// Statistical helpers
+// ===========================================================================
+/**
+ * Trimmed mean — drop the top and bottom `trimFraction` of values,
+ * average the rest.
+ *
+ * Used for `prevCycleDailyAvg` so a single big purchase in the previous
+ * cycle doesn't inflate the fallback prior that gets blended into the
+ * first two days of the current cycle.
+ */
+const trimmedMean = (values, trimFraction = PREV_CYCLE_TRIM_FRACTION) => {
+  const valid = values.filter(Number.isFinite)
+  if (valid.length === 0) return 0
+  if (valid.length < 5) {
+    // Too few samples to trim meaningfully — plain mean is fine.
+    return valid.reduce((s, v) => s + v, 0) / valid.length
+  }
+  const sorted = [...valid].sort((a, b) => a - b)
+  const trimCount = Math.floor(sorted.length * trimFraction)
+  const trimmed = sorted.slice(trimCount, sorted.length - trimCount)
+  if (trimmed.length === 0) {
+    return sorted.reduce((a, b) => a + b, 0) / sorted.length
+  }
+  return trimmed.reduce((s, v) => s + v, 0) / trimmed.length
+}
 
 // ===========================================================================
 // Classification
@@ -65,15 +99,15 @@ export const computeBurnRate = ({
   const paydayToday = isTodayPayday(now, isHoliday, paydayType, paydayDate)
   const daysToPayday = Math.max(0, daysBetweenMY(now, payday))
 
-  // Get current pay cycle and previous pay cycle
   const { startDate: cycleStart } = getPayCycle(now, paydayType, paydayDate)
   const prevCycleEndSeed = new Date(cycleStart.getTime() - 86400000)
-  const { startDate: prevCycleStart, endDate: prevCycleEnd } = getPayCycle(prevCycleEndSeed, paydayType, paydayDate)
+  const { startDate: prevCycleStart, endDate: prevCycleEnd } = getPayCycle(
+    prevCycleEndSeed,
+    paydayType,
+    paydayDate
+  )
 
-  // Days passed since the cycle started (minimum 1 to avoid division by zero)
   const daysPassed = Math.max(1, daysBetweenMY(cycleStart, now) + 1)
-  
-  // Total length of the previous cycle (used for fallback average)
   const prevCycleLength = Math.max(1, daysBetweenMY(prevCycleStart, prevCycleEnd) + 1)
 
   // ------------------------------------------------------------
@@ -104,14 +138,18 @@ export const computeBurnRate = ({
 
   // ------------------------------------------------------------
   // 4. Everyday spending (Cycle-aware)
+  //
+  // prevCycleDailyTotals accumulates per-day spend for the previous
+  // cycle so we can compute a robust "typical daily rate" afterwards.
   // ------------------------------------------------------------
   let thisCycleEveryday = 0
-  let prevCycleEverydayTotal = 0
   let prevCycleSamePeriodTotal = 0
   let reviewCount = 0
+  const prevCycleDailyTotals = new Map()
 
-  // Calculate the end date for the "same period" comparison in the previous cycle
-  const prevCycleSamePeriodEnd = new Date(prevCycleStart.getTime() + (daysPassed - 1) * 86400000)
+  const prevCycleSamePeriodEnd = new Date(
+    prevCycleStart.getTime() + (daysPassed - 1) * 86400000
+  )
 
   for (const tx of expenses) {
     if (!accountIds.has(tx.source_account_id)) continue
@@ -120,31 +158,41 @@ export const computeBurnRate = ({
     if (isCommitmentPayment(tx)) continue
 
     const txDate = toMYDate(tx.transaction_date)
-    
-    // Check if in current cycle
+
     if (txDate >= cycleStart && txDate <= now) {
       thisCycleEveryday += Number(tx.amount) || 0
-    } 
-    // Check if in previous cycle
-    else if (txDate >= prevCycleStart && txDate <= prevCycleEnd) {
-      prevCycleEverydayTotal += Number(tx.amount) || 0
-      
-      // Check if in the "same period" of the previous cycle
+    } else if (txDate >= prevCycleStart && txDate <= prevCycleEnd) {
+      const k = dayKey(tx.transaction_date)
+      prevCycleDailyTotals.set(
+        k,
+        (prevCycleDailyTotals.get(k) || 0) + (Number(tx.amount) || 0)
+      )
       if (txDate <= prevCycleSamePeriodEnd) {
         prevCycleSamePeriodTotal += Number(tx.amount) || 0
       }
     }
   }
 
-  // Receivables adjustment
   const receivablesOffset = Math.max(0, Number(receivablesThisMonth) || 0)
   const netThisCycleEveryday = Math.max(0, thisCycleEveryday - receivablesOffset)
 
   // ------------------------------------------------------------
   // 5. Daily average + early-cycle blend
+  //
+  // prevCycleDailyAvg is a trimmed mean of per-day totals (zero-days
+  // included — a day with no spend is a real data point for a rate).
+  // This makes the early-cycle blend robust to one-off large purchases
+  // in the previous cycle.
   // ------------------------------------------------------------
+  const prevCycleDaysList = []
+  for (let i = 0; i < prevCycleLength; i++) {
+    const dayDate = new Date(prevCycleStart.getTime() + i * 86400000)
+    const k = dayKey(dayDate)
+    prevCycleDaysList.push(prevCycleDailyTotals.get(k) || 0)
+  }
+  const prevCycleDailyAvg = trimmedMean(prevCycleDaysList)
+
   const rawDailyAvg = netThisCycleEveryday / daysPassed
-  const prevCycleDailyAvg = prevCycleEverydayTotal / prevCycleLength
 
   const isEarlyCycle = daysPassed <= 3
   const dailyAverage = (isEarlyCycle && prevCycleDailyAvg > 0)
@@ -205,13 +253,11 @@ export const computeBurnRate = ({
 
   if (paydayToday) {
     status = 'payday_today'
-  } else if (netThisCycleEveryday === 0 && billCount === 0) {
-    status = 'no_data'
-  } else if (netThisCycleEveryday === 0) {
-    status = 'no_data'
   } else if (freeMoney < 0) {
     status = 'bills_exceed_balance'
     shortfall = Math.abs(freeMoney)
+  } else if (netThisCycleEveryday === 0) {
+    status = 'no_data'
   } else if (runsOutBeforePayday) {
     status = 'at_risk'
   } else if (
@@ -236,7 +282,7 @@ export const computeBurnRate = ({
     balance,
     billsBeforePayday,
     freeMoney,
-    everydaySpentThisMonth: netThisCycleEveryday, // Keeping the key name for backwards compatibility with the widget
+    everydaySpentThisMonth: netThisCycleEveryday,
     rawEverydaySpentThisMonth: thisCycleEveryday,
     receivablesOffset,
     dailyAverage,
@@ -244,14 +290,14 @@ export const computeBurnRate = ({
     runwayDays,
     daysToPayday,
     daysPassed,
-    monthLength: prevCycleLength, // Repurposed for the UI
+    monthLength: prevCycleLength,
 
     runoutDate,
     runsOutBeforePayday,
     expectedBalanceAtPayday,
 
     spendingTrend,
-    isEarlyMonth: isEarlyCycle, // Keeping key name for UI
+    isEarlyMonth: isEarlyCycle,
 
     reviewCount,
     billCount,
