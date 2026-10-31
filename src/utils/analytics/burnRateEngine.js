@@ -238,11 +238,12 @@ export const computeBurnRate = ({
   // ------------------------------------------------------------
   // 8. Trend
   // ------------------------------------------------------------
+  const thisCycleGrossDailyAvg = thisCycleEveryday / daysPassed
   const prevCycleSamePeriodDailyAvg = daysPassed > 0
-    ? prevCycleSamePeriodTotal / daysPassed
+    ? prevCycleSamePeriodTotal / Math.min(daysPassed, prevCycleLength)
     : 0
   const spendingTrend = prevCycleSamePeriodDailyAvg > 0
-    ? ((rawDailyAvg - prevCycleSamePeriodDailyAvg) / prevCycleSamePeriodDailyAvg) * 100
+    ? ((thisCycleGrossDailyAvg - prevCycleSamePeriodDailyAvg) / prevCycleSamePeriodDailyAvg) * 100
     : 0
 
   // ------------------------------------------------------------

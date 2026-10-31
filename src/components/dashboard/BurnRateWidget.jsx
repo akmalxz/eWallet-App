@@ -132,7 +132,9 @@ export const BurnRateWidget = ({
       return {
         type: 'risk',
         title: 'Bills exceed balance',
-        body: `Your unpaid bills are ${formatMYR(shortfall)} more than your balance.`,
+        body: hideFreeMoney
+          ? `Your unpaid bills exceed your balance.`
+          : `Your unpaid bills are ${formatMYR(shortfall)} more than your balance.`,
         action: 'Pause or reschedule a bill to get back on track.'
       }
     }
@@ -141,14 +143,18 @@ export const BurnRateWidget = ({
         type: 'risk',
         title: 'Runway risk',
         body: `At this pace, your money runs out in ${runwayDays} day${runwayDays === 1 ? '' : 's'}.`,
-        action: `Keep daily spend under ${formatMYR(safeDailySpend)} to last until payday.`
+        action: hideFreeMoney
+          ? `Trim your daily spend to last until payday.`
+          : `Keep daily spend under ${formatMYR(safeDailySpend)} to last until payday.`
       }
     }
     if (status === 'tight') {
       return {
         type: 'over',
         title: 'Running tight',
-        body: `Your daily pace is close to your safe limit of ${formatMYR(safeDailySpend)}.`,
+        body: hideFreeMoney
+          ? `Your daily pace is close to your safe limit.`
+          : `Your daily pace is close to your safe limit of ${formatMYR(safeDailySpend)}.`,
         action: `Trim a little to finish with cushion.`
       }
     }
@@ -157,7 +163,9 @@ export const BurnRateWidget = ({
         type: 'good',
         title: 'On track',
         body: `Your pace is sustainable at ${formatMYR(dailyAverage)}/day.`,
-        action: `Expected to finish with ${formatMYR(Math.max(0, expectedBalanceAtPayday))} to spare.`
+        action: hideFreeMoney
+          ? `Expected to finish with a surplus at payday.`
+          : `Expected to finish with ${formatMYR(Math.max(0, expectedBalanceAtPayday))} to spare.`
       }
     }
     return null

@@ -9,11 +9,19 @@ import { computeCommitmentSchedule } from '../commitments/commitmentSchedule'
 import {
   nextPayday,
   lastWorkingDayOfMonth,
-  getDayOfMonthMY
+  getDayOfMonthMY,
+  getPayCycle,
+  toMYDate
 } from '../dateHelpers'
 
-// Helper: build a MY-local date from components
+// Helper: build a MY-local noon as a UTC Date.
+// Date.UTC(y, m, d, 4) = 04:00 UTC = 12:00 MY on that day.
 const d = (year, monthIdx, day) => new Date(Date.UTC(year, monthIdx, day, 4, 0, 0))
+
+const toMYMonth = (input) => {
+  const shifted = new Date(input.getTime() + 8 * 60 * 60 * 1000)
+  return shifted.getUTCMonth()
+}
 
 // Shared fixture accounts
 const ACC_A = { id: 'acc-a', account_name: 'Maybank', balance: 1000, is_archived: false }
@@ -81,18 +89,13 @@ describe('Payday helpers', () => {
     expect(getDayOfMonthMY(payday)).toBe(30)
   })
 
-  it('rolls over to next month after payday has passed', () => {
+  it('returns the current-month payday on payday itself and next-month payday on the day after', () => {
     const fromDec = nextPayday(d(2026, 11, 31))
     const fromJan = nextPayday(d(2027, 0, 1))
-    expect(toMYMonth(fromDec)).toBe(11)
-    expect(toMYMonth(fromJan)).toBe(0)
+    expect(toMYMonth(fromDec)).toBe(11)  // Dec 31 is December's payday
+    expect(toMYMonth(fromJan)).toBe(0)   // Jan 1 → January's payday
   })
 })
-
-const toMYMonth = (input) => {
-  const shifted = new Date(input.getTime() + 8 * 60 * 60 * 1000)
-  return shifted.getUTCMonth()
-}
 
 // ---------------------------------------------------------------------------
 // Phase 2 — Classification
@@ -228,7 +231,7 @@ describe('computeBurnRate', () => {
   it('clamps a bill due on the 31st in February', () => {
     // Feb 2025 — Feb 28 2025 is a Friday, so payday is Feb 28. A bill due on
     // day 31 clamps to Feb 28, which lands exactly on payday and is included.
-    const now = d(2025, 1, 15)  // Feb 15 2025
+    const now = d(2025, 1, 15)
     const result = computeBurnRate({
       accounts: [ACC_A],
       expenses: [everydayTx(100, now)],
@@ -333,7 +336,7 @@ describe('computeBurnRate', () => {
     expect(result.scopeLabel).toBe('TNG')
   })
 
-  it('does not flag at_risk when runway equals daysToPayday exactly', () => {
+  it('does not flag at_risk when runway exceeds daysToPayday', () => {
     const expenses = Array.from({ length: 15 }, (_, i) =>
       everydayTx(1000 / 15, d(2026, 9, i + 1))
     )
@@ -345,6 +348,154 @@ describe('computeBurnRate', () => {
       now: d(2026, 9, 15)
     })
     expect(result.runsOutBeforePayday).toBe(false)
+  })
+})
+
+// ---------------------------------------------------------------------------
+// Regression guards — one test per fix we've shipped in burnRateEngine /
+// getPayCycle. If any of these fail, a recent fix has been reverted.
+//
+// All tests use `paydayType: 'specific_date', paydayDate: 1` so pay
+// cycles align to calendar months. This makes cycle boundaries obvious
+// and immune to weekend arithmetic, which is the point of a regression
+// test.
+// ---------------------------------------------------------------------------
+describe('Regression guards', () => {
+  const specificDateCycle = {
+    paydayType: 'specific_date',
+    paydayDate: 1
+  }
+
+  // --- Status ordering ----------------------------------------------------
+  // Before the fix: `no_data` was checked before `bills_exceed_balance`,
+  // masking the financial warning whenever the user had no everyday spend.
+  it('surfaces bills_exceed_balance even when there is no everyday spending', () => {
+    const result = computeBurnRate({
+      accounts: [{ ...ACC_A, balance: 50 }],
+      expenses: [],
+      commitments: [
+        commitment(200, 20, 'acc-a', null, {
+          created_at: d(2026, 9, 1).toISOString()
+        })
+      ],
+      scopeAccountId: 'all',
+      now: d(2026, 9, 15),
+      ...specificDateCycle
+    })
+    expect(result.everydaySpentThisMonth).toBe(0)
+    expect(result.freeMoney).toBeLessThan(0)
+    expect(result.status).toBe('bills_exceed_balance')
+    expect(result.shortfall).toBe(150)
+  })
+
+  // --- Trimmed mean for prevCycleDailyAvg --------------------------------
+  // Before the fix: prevCycleDailyAvg used the plain mean, so a single
+  // large purchase in the previous cycle inflated the fallback prior
+  // and made the current cycle's early-day dailyAverage look catastrophic.
+  it('resists a one-off large purchase in the previous cycle', () => {
+    // Now: Oct 2 2026, daysPassed = 2 (still in blend window).
+    // Prev cycle Sep 1-30: RM 50/day × 29 + RM 5000 on Sep 15.
+    //   Plain mean: (29×50 + 5000)/30 = 215/day
+    //   Trimmed mean (10%): drops top 3 and bottom 3 → 24×50/24 = 50/day
+    // Current cycle Oct 1: RM 100 → rawDailyAvg = 50
+    //   With trimmed mean: (50×2 + 50×1)/3 = 50
+    //   With plain mean:   (50×2 + 215×1)/3 = 105
+    const expenses = [
+      everydayTx(100, d(2026, 9, 1))
+    ]
+    for (let i = 0; i < 14; i++) {
+      expenses.push(everydayTx(50, d(2026, 8, i + 1)))  // Sep 1-14
+    }
+    expenses.push(everydayTx(5000, d(2026, 8, 15)))     // Sep 15
+    for (let i = 0; i < 15; i++) {
+      expenses.push(everydayTx(50, d(2026, 8, i + 16)))  // Sep 16-30
+    }
+
+    const result = computeBurnRate({
+      accounts: [ACC_A],
+      expenses,
+      commitments: [],
+      scopeAccountId: 'all',
+      now: d(2026, 9, 2),
+      ...specificDateCycle
+    })
+
+    // If plain mean were used, this would be ~105.
+    expect(result.dailyAverage).toBeCloseTo(50, 0)
+  })
+
+  // --- Trend: gross-vs-gross ---------------------------------------------
+  // Before the fix: trend compared net-current (after receivables) to
+  // gross-previous, so any user owed money got a false negative trend
+  // arrow even when their gross spending was flat.
+  it('reports 0% trend when gross spend is flat, even with receivables', () => {
+    // Now: Oct 16 2026, daysPassed = 16.
+    // Current cycle Oct 1-16: RM 50/day × 16 = 800 (gross)
+    // Prev cycle same period Sep 1-16: RM 50/day × 16 = 800 (gross)
+    // Receivables: RM 200
+    //   Display dailyAverage = (800 - 200)/16 = 37.5  (net)
+    //   spendingTrend          = 0%                  (gross-vs-gross)
+    // Buggy behaviour (net-vs-gross): trend ≈ -25%.
+    const expenses = []
+    for (let i = 0; i < 16; i++) {
+      expenses.push(everydayTx(50, d(2026, 9, i + 1)))
+      expenses.push(everydayTx(50, d(2026, 8, i + 1)))
+    }
+
+    const result = computeBurnRate({
+      accounts: [ACC_A],
+      expenses,
+      commitments: [],
+      scopeAccountId: 'all',
+      now: d(2026, 9, 16),
+      receivablesThisMonth: 200,
+      ...specificDateCycle
+    })
+
+    expect(result.spendingTrend).toBeCloseTo(0, 0)
+    expect(result.dailyAverage).toBeCloseTo(37.5, 1)
+  })
+
+  // --- Daily average — mid-cycle steady state ----------------------------
+  // Verifies that once past the blend window, dailyAverage is exactly
+  // net-spend / daysPassed with no lingering weighting.
+  it('uses raw net average once past the blend window', () => {
+    // Now: Oct 15 2026, daysPassed = 15.
+    // Current cycle Oct 1-14: RM 50/day × 14 = 700.
+    // rawDailyAvg = 700/15 ≈ 46.67. daysPassed > 3 → no blend.
+    const expenses = Array.from({ length: 14 }, (_, i) =>
+      everydayTx(50, d(2026, 9, i + 1))
+    )
+
+    const result = computeBurnRate({
+      accounts: [ACC_A],
+      expenses,
+      commitments: [],
+      scopeAccountId: 'all',
+      now: d(2026, 9, 15),
+      ...specificDateCycle
+    })
+
+    expect(result.daysPassed).toBe(15)
+    expect(result.everydaySpentThisMonth).toBe(700)
+    expect(result.dailyAverage).toBeCloseTo(700 / 15, 1)
+  })
+
+  // --- getPayCycle end-of-day boundary -----------------------------------
+  // Before the fix: endDate was the *start* of the cycle's last day, so
+  // any transaction after midnight on that day fell outside the cycle.
+  // The fix makes endDate the last millisecond of the cycle.
+  it('endDate is the last moment of the cycle, not its first', () => {
+    // specific_date = 1, now = Oct 15 2026 → cycle = Oct 1 → Oct 31.
+    // endDate must be Oct 31 23:59:59.999 (MY).
+    const { endDate } = getPayCycle(d(2026, 9, 15), 'specific_date', 1)
+    const myEnd = toMYDate(endDate)
+
+    expect(myEnd.getUTCDate()).toBe(31)
+    expect(myEnd.getUTCHours()).toBe(23)
+    expect(myEnd.getUTCMinutes()).toBe(59)
+    expect(myEnd.getUTCSeconds()).toBe(59)
+    expect(myEnd.getUTCMilliseconds()).toBe(999)
   })
 })
 
