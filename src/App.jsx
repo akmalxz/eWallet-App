@@ -378,6 +378,9 @@ export default function App() {
           <WealthPage
             user={user}
             accounts={accountApi.activeAccounts}
+            monthlyExpenses={monthlyExpenses}
+            monthlyInflows={monthlyInflows}
+            profile={profile}
             onBack={() => setCurrentView('dashboard')}
           />
         )}

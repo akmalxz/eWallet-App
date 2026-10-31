@@ -11,8 +11,6 @@ import { useFriendRequests } from '../hooks/useFriendRequests'
 import { useOnboardingProgress } from '../hooks/useOnboardingProgress'
 import { trackEvent } from '../lib/analytics'
 import { SavingsMigrationPrompt } from '../components/wealth/SavingsMigrationPrompt'
-import { SavingsRateCard } from '../components/wealth/SavingsRateCard'
-import { useSavingsRate } from '../hooks/useSavingsRate'
 
 export function DashboardPage({
   user,
@@ -63,13 +61,6 @@ export function DashboardPage({
     } catch {
       return true
     }
-  })
-
-  const savingsRate = useSavingsRate({
-    transactions: monthlyExpenses || [],
-    inflows: monthlyInflows || [],
-    accounts,
-    profile
   })
 
   const toggleBalances = () => {
@@ -199,14 +190,6 @@ export function DashboardPage({
               />
             </div>
           </div>
-        </div>
-
-        <div className="mb-6">
-          <SavingsRateCard
-            data={savingsRate}
-            hideMoney={!showBalances}
-            onSeeTrends={onSeeTrends}
-          />
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 lg:gap-12 lg:divide-x lg:divide-line/60">

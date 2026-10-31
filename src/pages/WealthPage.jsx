@@ -3,10 +3,19 @@ import { useState } from 'react'
 import { ChevronLeft, Eye, EyeOff } from 'lucide-react'
 import { NetWorthHistoryChart } from '../components/wealth/NetWorthHistoryChart'
 import { NetWorthSummary } from '../components/wealth/NetWorthSummary'
+import { SavingsRateCard } from '../components/wealth/SavingsRateCard'
 import { AssetGrowthBreakdown } from '../components/wealth/AssetGrowthBreakdown'
 import { useWealthHistory } from '../hooks/useWealthHistory'
+import { useSavingsRate } from '../hooks/useSavingsRate'
 
-export function WealthPage({ user, accounts = [], onBack }) {
+export function WealthPage({
+  user,
+  accounts = [],
+  monthlyExpenses = [],
+  monthlyInflows = [],
+  profile,
+  onBack
+}) {
   const [showBalances, setShowBalances] = useState(() => {
     try {
       const stored = localStorage.getItem('hideBalances')
@@ -25,6 +34,13 @@ export function WealthPage({ user, accounts = [], onBack }) {
   }
 
   const { history, monthDelta, loading } = useWealthHistory(user, accounts)
+
+  const savingsRate = useSavingsRate({
+    transactions: monthlyExpenses || [],
+    inflows: monthlyInflows || [],
+    accounts,
+    profile
+  })
 
   const primaryAsbAccount = accounts
     .filter(a => !a.is_archived && a.classification === 'fixed_price_ut')
@@ -67,6 +83,11 @@ export function WealthPage({ user, accounts = [], onBack }) {
         accounts={accounts}
         hideMoney={!showBalances}
         delta={monthDelta}
+      />
+
+      <SavingsRateCard
+        data={savingsRate}
+        hideMoney={!showBalances}
       />
 
       {primaryAsbAccount && (
