@@ -1,7 +1,7 @@
 // src/components/transactions/TransactionForm.jsx
 import { useState, useEffect, useMemo, useRef } from 'react'
 import {
-  AlertCircle, Loader2, ChevronDown,
+  AlertCircle, Loader2, ChevronDown, Info,
   ArrowUpRight, ArrowDownRight, ArrowRight,
 } from 'lucide-react'
 import { supabase } from '../../lib/supabaseClient'
@@ -92,6 +92,15 @@ export function TransactionForm({
   )
 
   const showCategory = txType !== 'transfer'
+
+  const isSavingsCategory = useMemo(() => {
+    if (txType !== 'expense') return false
+    const lower = (category || '').toLowerCase().trim()
+    if (!lower.startsWith('savings > ')) return false
+    const sub = lower.replace('savings > ', '').trim()
+    return ['asb', 'asnb', 'asm', 'tabung haji', 'tabunghaji', 'epf', 'prs']
+      .some(kw => sub.includes(kw))
+  }, [txType, category])
 
   const clearError = (field) => {
     if (!errors[field]) return
@@ -328,6 +337,26 @@ export function TransactionForm({
             </div>
           )}
         </div>
+
+        {showCategory && isSavingsCategory && (
+          <div className="bg-info-soft border border-info-border rounded-xl p-3 flex items-start gap-2">
+            <Info className="w-4 h-4 text-info shrink-0 mt-0.5" />
+            <div className="flex-1 min-w-0">
+              <p className="text-xs text-info-text leading-relaxed">
+                This looks like a savings contribution. Transfers to your own accounts
+                aren't counted as spending in your burn rate.
+              </p>
+              <button
+                type="button"
+                onClick={() => setTxType('transfer')}
+                className="mt-2 inline-flex items-center gap-1 text-[11px] font-bold text-info-text hover:text-info-text/80 underline underline-offset-2"
+                style={{ minHeight: 28 }}
+              >
+                Switch to Transfer <ArrowRight className="w-3 h-3" />
+              </button>
+            </div>
+          </div>
+        )}
 
         <div>
           <label htmlFor="tx-desc" className="block text-xs font-bold text-fg-subtle uppercase mb-1">

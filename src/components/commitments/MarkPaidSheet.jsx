@@ -1,4 +1,4 @@
-// src/components/dashboard/MarkPaidSheet.jsx
+// src/components/commitments/MarkPaidSheet.jsx
 import { useState } from 'react'
 import { Check, AlertCircle, AlertTriangle } from 'lucide-react'
 import { formatMYR } from '../../utils/formatters'

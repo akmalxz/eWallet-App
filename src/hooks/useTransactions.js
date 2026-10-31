@@ -9,9 +9,9 @@ export const useTransactions = (user, showToast) => {
   const [commitments, setCommitments] = useState([])
   const [commitmentPayments, setCommitmentPayments] = useState([])
   const [monthlyExpenses, setMonthlyExpenses] = useState([])
+  const [monthlyInflows, setMonthlyInflows] = useState([])
   const [pendingReceivables, setPendingReceivables] = useState([])
   const [categories, setCategories] = useState([])
-  const [classifications, setClassifications] = useState([])
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState(null)
 
@@ -85,10 +85,10 @@ export const useTransactions = (user, showToast) => {
       new Date().getMonth() - 1,
       1
     ).toISOString()
-    
+
     const minPaymentYear = new Date().getFullYear() - 1
 
-    const [monthResult, paymentResult, classResult] = await Promise.all([
+    const [monthResult, paymentResult, inflowResult] = await Promise.all([
       supabase
         .from('transactions')
         .select('id, amount, source_account_id, destination_account_id, category, transaction_date, description, needs_review, metadata')
@@ -101,14 +101,16 @@ export const useTransactions = (user, showToast) => {
         .eq('user_id', user.id)
         .gte('period_year', minPaymentYear),
       supabase
-        .from('classifications')
-        .select('*')
+        .from('transactions')
+        .select('id, amount, source_account_id, destination_account_id, category, transaction_date, description, needs_review, metadata')
         .eq('user_id', user.id)
+        .not('destination_account_id', 'is', null)
+        .gte('transaction_date', startOfLastMonth)
     ])
 
     if (!monthResult.error) setMonthlyExpenses(monthResult.data || [])
     if (!paymentResult.error) setCommitmentPayments(paymentResult.data || [])
-    if (!classResult.error) setClassifications(classResult.data || [])
+    if (!inflowResult.error) setMonthlyInflows(inflowResult.data || [])
   }, [user])
 
   const fetchReceivables = useCallback(async () => {
@@ -189,9 +191,9 @@ export const useTransactions = (user, showToast) => {
     commitments,
     commitmentPayments,
     monthlyExpenses,
+    monthlyInflows,
     pendingReceivables,
     categories,
-    classifications,
     isLoading,
     error,
     setAccounts,
@@ -199,9 +201,9 @@ export const useTransactions = (user, showToast) => {
     setCommitments,
     setCommitmentPayments,
     setMonthlyExpenses,
+    setMonthlyInflows,
     setPendingReceivables,
     setCategories,
-    setClassifications,
     setIsLoading,
     setError,
     fetchInitialData,

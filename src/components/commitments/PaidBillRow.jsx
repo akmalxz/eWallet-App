@@ -1,4 +1,4 @@
-// src/components/dashboard/PaidBillRow.jsx
+// src/components/commitments/PaidBillRow.jsx
 import { CheckCircle, Building2, Undo2 } from 'lucide-react'
 import { formatMYR } from '../../utils/formatters'
 

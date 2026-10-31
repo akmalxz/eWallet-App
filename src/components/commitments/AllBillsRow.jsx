@@ -1,4 +1,4 @@
-// src/components/dashboard/AllBillsRow.jsx
+// src/components/commitments/AllBillsRow.jsx
 import { Calendar, Power } from 'lucide-react'
 import { formatMYR } from '../../utils/formatters'
 import { RowMenu } from '../shared/RowMenu'

@@ -1,4 +1,4 @@
-// src/components/dashboard/BillRow.jsx
+// src/components/commitments/BillRow.jsx
 import {
   Calendar, AlertTriangle, Building2, Wallet, Check, SkipForward
 } from 'lucide-react'

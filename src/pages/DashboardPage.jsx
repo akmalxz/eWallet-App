@@ -1,6 +1,6 @@
 // src/pages/DashboardPage.jsx
 import { useState } from 'react'
-import { Activity, Receipt, Users } from 'lucide-react'
+import { Receipt, Users, TrendingUp } from 'lucide-react'
 import { AccountCards } from '../components/dashboard/AccountCards'
 import { BurnRateWidget } from '../components/dashboard/BurnRateWidget'
 import { CashFlowHeatmap } from '../components/dashboard/CashFlowHeatmap'
@@ -10,6 +10,9 @@ import { OnboardingChecklist } from '../components/dashboard/OnboardingChecklist
 import { useFriendRequests } from '../hooks/useFriendRequests'
 import { useOnboardingProgress } from '../hooks/useOnboardingProgress'
 import { trackEvent } from '../lib/analytics'
+import { SavingsMigrationPrompt } from '../components/wealth/SavingsMigrationPrompt'
+import { SavingsRateCard } from '../components/wealth/SavingsRateCard'
+import { useSavingsRate } from '../hooks/useSavingsRate'
 
 export function DashboardPage({
   user,
@@ -26,6 +29,8 @@ export function DashboardPage({
   onHomeAccountChange,
   velocityStats,
   cashFlowData,
+  monthlyExpenses,
+  monthlyInflows,
   onAddAccount,
   onLogTransaction,
   onManageAccount,
@@ -33,7 +38,11 @@ export function DashboardPage({
   onMoveAccount,
   onSeeTrends,
   onOpenBurnRateHelp,
-  onNavigate
+  onNavigate,
+  showToast,
+  fetchRecentTransactions,
+  fetchAccounts,
+  fetchMonthlyData
 }) {
   const { friends } = useFriendRequests(user)
 
@@ -54,6 +63,13 @@ export function DashboardPage({
     } catch {
       return true
     }
+  })
+
+  const savingsRate = useSavingsRate({
+    transactions: monthlyExpenses || [],
+    inflows: monthlyInflows || [],
+    accounts,
+    profile
   })
 
   const toggleBalances = () => {
@@ -78,6 +94,16 @@ export function DashboardPage({
 
   return (
     <div className="space-y-8 md:space-y-12 animate-enter">
+
+      <SavingsMigrationPrompt
+        user={user}
+        transactions={recentTransactions}
+        accounts={accounts}
+        showToast={showToast}
+        fetchRecentTransactions={fetchRecentTransactions}
+        fetchAccounts={fetchAccounts}
+        fetchMonthlyData={fetchMonthlyData}
+      />
 
       {/* ONBOARDING CHECKLIST */}
       {onboarding.shouldShow && !isLoading && (
@@ -139,6 +165,15 @@ export function DashboardPage({
           <Receipt className="w-4 h-4 text-fg-muted group-hover:text-fg transition-colors" />
           <span className="text-[10px] font-bold text-fg-muted uppercase tracking-wider group-hover:text-fg transition-colors">Split Bill</span>
         </button>
+
+        {/* NEW */}
+        <button
+          onClick={() => onNavigate('wealth')}
+          className="flex-1 py-3.5 flex flex-col items-center justify-center gap-1.5 hover:bg-surface-2 transition-colors group"
+        >
+          <TrendingUp className="w-4 h-4 text-fg-muted group-hover:text-fg transition-colors" />
+          <span className="text-[10px] font-bold text-fg-muted uppercase tracking-wider group-hover:text-fg transition-colors">Wealth</span>
+        </button>
       </section>
 
       {/* THIS MONTH */}
@@ -166,6 +201,14 @@ export function DashboardPage({
           </div>
         </div>
 
+        <div className="mb-6">
+          <SavingsRateCard
+            data={savingsRate}
+            hideMoney={!showBalances}
+            onSeeTrends={onSeeTrends}
+          />
+        </div>
+
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 lg:gap-12 lg:divide-x lg:divide-line/60">
           <div className="lg:pr-6">
             <BurnRateWidget
@@ -183,7 +226,6 @@ export function DashboardPage({
               isLoading={isLoading}
               onAddTransaction={() => onNavigate('log')}
               onSeeTrends={() => onSeeTrends('categories')}
-              hideMoney={!showBalances}
             />
           </div>
         </div>

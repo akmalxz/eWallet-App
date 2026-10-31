@@ -1,7 +1,7 @@
 // src/pages/TransactionsPage.jsx
 import { useState, useMemo, useEffect, useRef } from 'react'
 import { ScanText, Check, RefreshCw, X, CheckCircle2, ChevronDown } from 'lucide-react'
-import { ActionLedger } from '../components/dashboard/ActionLedger'
+import { ActionLedger } from '../components/transactions/ActionLedger'
 import { ConfirmSheet } from '../components/shared/ConfirmSheet'
 import { formatMYR } from '../utils/formatters'
 

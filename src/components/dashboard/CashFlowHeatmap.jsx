@@ -1,12 +1,15 @@
 // src/components/dashboard/CashFlowHeatmap.jsx
 import { useState, useMemo, useRef, useEffect } from 'react'
-import { TrendingUp, TrendingDown, Plus, ArrowRight, PieChart, ChevronDown, X } from 'lucide-react'
-import { 
-  PieChart as RechartsPie, 
-  Pie, 
-  Cell, 
-  ResponsiveContainer, 
-  Tooltip as RechartsTooltip 
+import {
+  TrendingUp, TrendingDown, Plus, ArrowRight, PieChart,
+  ChevronDown, X, Eye, EyeOff
+} from 'lucide-react'
+import {
+  PieChart as RechartsPie,
+  Pie,
+  Cell,
+  ResponsiveContainer,
+  Tooltip as RechartsTooltip
 } from 'recharts'
 import { formatMYR } from '../../utils/formatters'
 import { useChartTheme } from '../../hooks/useChartTheme'
@@ -27,7 +30,7 @@ const MOBILE_LIMIT = 6
 // ============================================================
 // SUB-CATEGORY DRILLDOWN
 // ============================================================
-function SubCategoryDrilldown({ title, total, txns, accounts, onClose }) {
+function SubCategoryDrilldown({ title, total, txns, accounts, onClose, hideExpenses }) {
   const [expandedSub, setExpandedSub] = useState(null)
 
   const groups = useMemo(() => {
@@ -51,7 +54,7 @@ function SubCategoryDrilldown({ title, total, txns, accounts, onClose }) {
             {title} Breakdown
           </p>
           <p className="text-base font-black text-fg mt-0.5 tabular-figures">
-            {formatMYR(total)}
+            {hideExpenses ? '••••' : formatMYR(total)}
           </p>
         </div>
         <button
@@ -78,11 +81,11 @@ function SubCategoryDrilldown({ title, total, txns, accounts, onClose }) {
                   <ChevronDown className={`w-3.5 h-3.5 text-fg-subtle transition-transform ${isExpanded ? 'rotate-180' : ''}`} />
                   <span className="text-sm font-bold text-fg">{group.name}</span>
                   <span className="text-[10px] font-bold text-fg-subtle bg-surface-2 px-1.5 py-0.5 rounded">
-                    {pct.toFixed(0)}%
+                    {hideExpenses ? '••' : `${pct.toFixed(0)}%`}
                   </span>
                 </div>
                 <span className="text-sm font-bold text-fg tabular-figures">
-                  {formatMYR(group.total)}
+                  {hideExpenses ? '••••' : formatMYR(group.total)}
                 </span>
               </button>
 
@@ -100,7 +103,7 @@ function SubCategoryDrilldown({ title, total, txns, accounts, onClose }) {
                           </p>
                         </div>
                         <span className="text-xs font-black text-fg shrink-0 tabular-figures">
-                          {formatMYR(tx.amount)}
+                          {hideExpenses ? '••••' : formatMYR(tx.amount)}
                         </span>
                       </div>
                     )
@@ -157,6 +160,26 @@ export const CashFlowHeatmap = ({
   const [isHovering, setIsHovering] = useState(false)
   const drilldownRef = useRef(null)
 
+  // Local, self-contained privacy toggle. Persisted to localStorage so
+  // the choice survives navigation and reloads. Independent of the
+  // dashboard's `hideBalances` toggle — hiding your balances is about
+  // what you *have*, hiding expenses is about what you *spent*.
+  const [hideExpenses, setHideExpenses] = useState(() => {
+    try {
+      return localStorage.getItem('hideHeatmapExpenses') === 'true'
+    } catch {
+      return false
+    }
+  })
+
+  const toggleHideExpenses = () => {
+    setHideExpenses((prev) => {
+      const next = !prev
+      try { localStorage.setItem('hideHeatmapExpenses', String(next)) } catch {}
+      return next
+    })
+  }
+
   const totalExpenses = useMemo(
     () => cashFlowData.reduce((sum, item) => sum + (item.value || 0), 0),
     [cashFlowData]
@@ -170,7 +193,6 @@ export const CashFlowHeatmap = ({
     [cashFlowData, isDark]
   )
 
-  // Auto-scroll to drilldown when a category is clicked
   useEffect(() => {
     if (activeName && drilldownRef.current) {
       setTimeout(() => {
@@ -183,7 +205,7 @@ export const CashFlowHeatmap = ({
 
   const activeItem = activeName ? coloredData.find(i => i.name === activeName) : null
   const handleSelect = (name) => setActiveName(prev => (prev === name ? null : name))
-  
+
   const donutData = coloredData.slice(0, MOBILE_LIMIT)
   const activeIndex = activeName ? donutData.findIndex(d => d.name === activeName) : -1
 
@@ -213,16 +235,36 @@ export const CashFlowHeatmap = ({
               <h2 className="text-sm font-bold text-fg">Where your money went</h2>
               <p className="text-xs text-fg-subtle mt-0.5">This cycle</p>
             </div>
-            <div className="text-right shrink-0">
-              <p className="text-[11px] text-fg-subtle uppercase font-bold tracking-wider mb-0.5">Total spent</p>
-              <p className="text-base font-black text-fg tabular-figures" title={formatMYR(totalExpenses)}>
-                {formatMYR(totalExpenses)}
+            <div className="text-right shrink-0 flex flex-col items-end">
+              <div className="flex items-center gap-1">
+                <p className="text-[11px] text-fg-subtle uppercase font-bold tracking-wider">
+                  Total spent
+                </p>
+                <button
+                  type="button"
+                  onClick={toggleHideExpenses}
+                  aria-pressed={hideExpenses}
+                  aria-label={hideExpenses ? 'Show expense amounts' : 'Hide expense amounts'}
+                  title={hideExpenses ? 'Show expense amounts' : 'Hide expense amounts'}
+                  className="inline-flex items-center justify-center w-5 h-5 rounded text-fg-subtle hover:text-fg hover:bg-surface-2 transition-colors"
+                >
+                  {hideExpenses
+                    ? <Eye className="w-3 h-3" />
+                    : <EyeOff className="w-3 h-3" />
+                  }
+                </button>
+              </div>
+              <p
+                className="text-base font-black text-fg tabular-figures"
+                title={hideExpenses ? undefined : formatMYR(totalExpenses)}
+              >
+                {hideExpenses ? '••••••' : formatMYR(totalExpenses)}
               </p>
             </div>
           </div>
 
           <div className="flex flex-col md:flex-row items-start gap-5 md:gap-6">
-            
+
             {/* Donut Chart */}
             <div className="relative w-44 h-44 md:w-48 md:h-48 shrink-0 flex items-center justify-center md:sticky md:top-4 mx-auto md:mx-0">
               <ResponsiveContainer width="100%" height="100%">
@@ -269,7 +311,9 @@ export const CashFlowHeatmap = ({
                             <span className="w-2 h-2 rounded-full" style={{ backgroundColor: data.color }} />
                             {data.name}
                           </p>
-                          <p className="text-fg-muted tabular-figures font-black">{formatMYR(data.value)}</p>
+                          <p className="text-fg-muted tabular-figures font-black">
+                            {hideExpenses ? '••••' : formatMYR(data.value)}
+                          </p>
                         </div>
                       )
                     }}
@@ -278,16 +322,19 @@ export const CashFlowHeatmap = ({
               </ResponsiveContainer>
 
               {/* Center Text */}
-              <div 
+              <div
                 className={`absolute inset-0 flex flex-col items-center justify-center text-center p-4 pointer-events-none transition-opacity duration-200 ${
-                  isHovering ? 'opacity-0' : 'opacity-100'
+                  isHovering && !hideExpenses ? 'opacity-0' : 'opacity-100'
                 }`}
               >
                 <p className="text-[10px] font-bold text-fg-subtle uppercase tracking-wider truncate w-24">
                   Outflow
                 </p>
                 <p className="text-sm font-black text-fg tracking-tight truncate w-28 mt-0.5 tabular-figures">
-                  <AnimatedNumber value={totalExpenses} format={compactMYR} />
+                  {hideExpenses
+                    ? '••••'
+                    : <AnimatedNumber value={totalExpenses} format={compactMYR} />
+                  }
                 </p>
                 <p className="text-[10px] font-bold text-brand mt-0.5 tabular-figures">
                   {coloredData.length} categories
@@ -318,7 +365,7 @@ export const CashFlowHeatmap = ({
                           <span className={`text-xs font-semibold truncate block ${isActive ? 'text-fg font-bold' : 'text-fg-muted'}`}>
                             {item.name}
                           </span>
-                          {cmp && (
+                          {cmp && !hideExpenses && (
                             <span className={`text-[10px] font-bold flex items-center gap-0.5 mt-0.5 ${
                               cmp.isNew ? 'text-brand' : cmp.diff > 0 ? 'text-danger' : 'text-success'
                             }`}>
@@ -334,10 +381,10 @@ export const CashFlowHeatmap = ({
                       </div>
                       <div className="flex items-center gap-3 shrink-0 ml-2 text-right">
                         <span className="text-xs font-black text-fg tabular-figures">
-                          {formatMYR(item.value)}
+                          {hideExpenses ? '••••' : formatMYR(item.value)}
                         </span>
                         <span className="text-[10px] font-bold text-fg-subtle bg-surface-2 border border-line px-1.5 py-0.5 rounded-md min-w-[42px] text-center tabular-figures">
-                          {pct}%
+                          {hideExpenses ? '••' : `${pct}%`}
                         </span>
                       </div>
                     </button>
@@ -347,7 +394,7 @@ export const CashFlowHeatmap = ({
             </div>
           </div>
 
-          {/* TEMPORARY SECTION: Sub-Category Drilldown (Appears below chart) */}
+          {/* Sub-Category Drilldown */}
           {activeItem && activeItem.txns && activeItem.txns.length > 0 && (
             <div ref={drilldownRef} className="mt-6 pt-6 border-t border-line scroll-mt-24">
               <SubCategoryDrilldown
@@ -355,6 +402,7 @@ export const CashFlowHeatmap = ({
                 total={activeItem.value}
                 txns={activeItem.txns}
                 accounts={accounts}
+                hideExpenses={hideExpenses}
                 onClose={() => setActiveName(null)}
               />
             </div>
@@ -362,7 +410,6 @@ export const CashFlowHeatmap = ({
         </>
       )}
 
-      {/* See trends link */}
       {onSeeTrends && (
         <button
           onClick={onSeeTrends}

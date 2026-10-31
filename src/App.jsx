@@ -21,6 +21,7 @@ import { TransactionsPage } from './pages/TransactionsPage'
 import { CommitmentsPage } from './pages/CommitmentsPage'
 import { NetworkPage } from './pages/NetworkPage'
 import { SplitBillPage } from './pages/SplitBillPage'
+import { WealthPage } from './pages/WealthPage'
 
 import { useAuth } from './hooks/useAuth'
 import { useTransactions } from './hooks/useTransactions'
@@ -66,8 +67,8 @@ export default function App() {
     accounts, recentTransactions, setRecentTransactions,
     commitments, setCommitments,
     commitmentPayments, setCommitmentPayments,
-    monthlyExpenses, pendingReceivables,
-    categories, classifications, isLoading, error,
+    monthlyExpenses, monthlyInflows, pendingReceivables,
+    categories, isLoading, error,
     fetchInitialData,
     fetchAccounts,
     fetchCategories,
@@ -278,6 +279,8 @@ export default function App() {
             onHomeAccountChange={setHomeAccountId}
             velocityStats={velocityStats}
             cashFlowData={cashFlowData}
+            monthlyExpenses={monthlyExpenses}
+            monthlyInflows={monthlyInflows}
             onAddAccount={accountApi.goToAddAccount}
             onLogTransaction={accountApi.goToLogTransaction}
             onManageAccount={accountApi.goToManageAccount}
@@ -286,6 +289,10 @@ export default function App() {
             onSeeTrends={handleSeeTrends}
             onOpenBurnRateHelp={() => setShowBurnRateHelp(true)}
             onNavigate={setCurrentView}
+            showToast={showToast}
+            fetchRecentTransactions={fetchRecentTransactions}
+            fetchAccounts={fetchAccounts}
+            fetchMonthlyData={fetchMonthlyData}
           />
         )}
 
@@ -364,6 +371,14 @@ export default function App() {
             showToast={showToast}
             onBack={() => setCurrentView('dashboard')}
             initialTab={splitInitialTab}
+          />
+        )}
+
+        {currentView === 'wealth' && (
+          <WealthPage
+            user={user}
+            accounts={accountApi.activeAccounts}
+            onBack={() => setCurrentView('dashboard')}
           />
         )}
 

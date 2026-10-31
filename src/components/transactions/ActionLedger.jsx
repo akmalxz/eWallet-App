@@ -1,4 +1,4 @@
-// src/components/dashboard/ActionLedger.jsx
+// src/components/transactions/ActionLedger.jsx
 import { useState, useMemo } from 'react'
 import {
   ArrowDownRight, ArrowUpRight, RefreshCw,

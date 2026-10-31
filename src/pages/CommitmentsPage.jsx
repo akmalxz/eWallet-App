@@ -1,5 +1,5 @@
 // src/pages/CommitmentsPage.jsx
-import { CommitmentRadar } from '../components/dashboard/CommitmentRadar'
+import { CommitmentRadar } from '../components/commitments/CommitmentRadar'
 
 export const CommitmentsPage = ({
   profile,

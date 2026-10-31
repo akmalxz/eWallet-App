@@ -1,4 +1,4 @@
-// src/components/dashboard/LedgerEditForm.jsx
+// src/components/transactions/LedgerEditForm.jsx
 import { useState } from 'react'
 import { Save, AlertCircle, ChevronDown } from 'lucide-react'
 

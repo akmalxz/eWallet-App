@@ -1,4 +1,4 @@
-// src/components/dashboard/CommitmentRadar.jsx
+// src/components/commitments/CommitmentRadar.jsx
 import { useState, useMemo } from 'react'
 import {
   Target, ShieldCheck, AlertTriangle, Calendar, Plus, CheckCircle,
@@ -9,13 +9,11 @@ import {
 import { formatMYR } from '../../utils/formatters'
 import { monthShortName, toMYDate, dayKey, dueDateForMonth, getPayCycle } from '../../utils/dateHelpers'
 import { MarkPaidSheet } from './MarkPaidSheet'
-import { CommitmentFormSheet } from '../commitments/CommitmentFormSheet'
-import { ConfirmSheet } from '../shared/ConfirmSheet'
-import { BillsCalendar } from '../commitments/BillsCalendar'
+import { CommitmentFormSheet } from './CommitmentFormSheet'
+import { BillsCalendar } from './BillsCalendar'
 import { BillRow } from './BillRow'
 import { PaidBillRow } from './PaidBillRow'
 import { AllBillsRow } from './AllBillsRow'
-import { Collapse } from '../shared/Collapse'
 
 export const CommitmentRadar = ({
   profile,
