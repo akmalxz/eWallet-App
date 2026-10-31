@@ -1,10 +1,10 @@
 // src/components/commitments/CommitmentRadar.jsx
 import { useState, useMemo } from 'react'
 import {
-  Target, ShieldCheck, AlertTriangle, Calendar, Plus, CheckCircle,
+  Target, AlertTriangle, Calendar, Plus, CheckCircle,
   ChevronDown, ChevronUp, ChevronRight, Power, Trash2,
   CircleSlash, AlertOctagon, Pencil, Loader2, Undo2,
-  Layers, List
+  List, ArrowRight, SkipForward
 } from 'lucide-react'
 import { formatMYR } from '../../utils/formatters'
 import {
@@ -66,10 +66,8 @@ export const CommitmentRadar = ({
   }
 
   const getAccount = (id) => accounts.find((a) => a.id === id)
-
   const todayKey = dayKey(new Date())
   
-  // Get the exact date range of the current cycle
   const { startDate: cycleStart, endDate: cycleEnd } = getPayCycle(
     new Date(),
     profile?.payday_type,
@@ -78,37 +76,23 @@ export const CommitmentRadar = ({
 
   const activeAll = commitments.filter((c) => c.is_active)
 
-  // Find paid commitments whose actual due date falls inside the current cycle
   const paidCommitments = activeAll
     .map((c) => {
-      const pmt = payments.find(
-        (p) => p.commitment_id === c.id && p.status === 'paid'
-      )
+      const pmt = payments.find((p) => p.commitment_id === c.id && p.status === 'paid')
       if (!pmt) return null
-      
       const due = dueDateForMonth(c.due_day_of_month, pmt.period_year, pmt.period_month - 1)
-      
-      if (due >= cycleStart && due <= cycleEnd) {
-        return { comm: c, pmt, dueKey: dayKey(due) }
-      }
+      if (due >= cycleStart && due <= cycleEnd) return { comm: c, pmt, dueKey: dayKey(due) }
       return null
     })
     .filter(Boolean)
     .sort((a, b) => a.comm.due_day_of_month - b.comm.due_day_of_month)
 
-  // Find skipped commitments whose due date falls inside the current cycle
   const skippedCommitments = activeAll
     .map((c) => {
-      const pmt = payments.find(
-        (p) => p.commitment_id === c.id && p.status === 'skipped'
-      )
+      const pmt = payments.find((p) => p.commitment_id === c.id && p.status === 'skipped')
       if (!pmt) return null
-      
       const due = dueDateForMonth(c.due_day_of_month, pmt.period_year, pmt.period_month - 1)
-      
-      if (due >= cycleStart && due <= cycleEnd) {
-        return { comm: c, pmt, dueKey: dayKey(due) }
-      }
+      if (due >= cycleStart && due <= cycleEnd) return { comm: c, pmt, dueKey: dayKey(due) }
       return null
     })
     .filter(Boolean)
@@ -118,9 +102,7 @@ export const CommitmentRadar = ({
 
   const paymentCountByCommitment = useMemo(() => {
     const map = new Map()
-    for (const p of payments) {
-      map.set(p.commitment_id, (map.get(p.commitment_id) || 0) + 1)
-    }
+    for (const p of payments) map.set(p.commitment_id, (map.get(p.commitment_id) || 0) + 1)
     return map
   }, [payments])
 
@@ -133,29 +115,19 @@ export const CommitmentRadar = ({
     return map
   }, [payments])
 
-  // ------------------------------------------------------------
-  // All bills
-  // ------------------------------------------------------------
   const sortedAllBills = useMemo(() => {
     const active = commitments.filter(c => c.is_active)
     const inactive = commitments.filter(c => !c.is_active)
-
     const byDueDay = (a, b) => (a.due_day_of_month ?? 0) - (b.due_day_of_month ?? 0)
-    const byCreated = (a, b) =>
-      new Date(b.created_at || 0) - new Date(a.created_at || 0)
-
+    const byCreated = (a, b) => new Date(b.created_at || 0) - new Date(a.created_at || 0)
     const sortFn = (a, b) => {
       const dueDiff = byDueDay(a, b)
       return dueDiff !== 0 ? dueDiff : byCreated(a, b)
     }
-
     return [...active.sort(sortFn), ...inactive.sort(sortFn)]
   }, [commitments])
 
-  const hasAnyBnpl = useMemo(
-    () => commitments.some(c => c.kind === 'bnpl'),
-    [commitments]
-  )
+  const hasAnyBnpl = useMemo(() => commitments.some(c => c.kind === 'bnpl'), [commitments])
 
   const filteredAllBills = useMemo(() => {
     if (allBillsFilter === 'all') return sortedAllBills
@@ -171,92 +143,61 @@ export const CommitmentRadar = ({
       }
       return true
     }
-
     const activeCount = sortedAllBills.filter(c => c.is_active).length
     const pausedCount = sortedAllBills.length - activeCount
-
     const recurringList = sortedAllBills.filter(c => c.kind !== 'bnpl')
     const bnplList = sortedAllBills.filter(c => c.kind === 'bnpl')
-
-    const recurringTotal = recurringList
-      .filter(contributes)
-      .reduce((s, c) => s + (Number(c.amount) || 0), 0)
-    const bnplTotal = bnplList
-      .filter(contributes)
-      .reduce((s, c) => s + (Number(c.amount) || 0), 0)
-
+    const recurringTotal = recurringList.filter(contributes).reduce((s, c) => s + (Number(c.amount) || 0), 0)
+    const bnplTotal = bnplList.filter(contributes).reduce((s, c) => s + (Number(c.amount) || 0), 0)
     return {
-      totalCount: sortedAllBills.length,
-      activeCount,
-      pausedCount,
-      recurringCount: recurringList.length,
-      recurringActiveCount: recurringList.filter(c => c.is_active).length,
-      bnplCount: bnplList.length,
-      bnplActiveCount: bnplList.filter(c => c.is_active).length,
-      recurringTotal,
-      bnplTotal,
-      combinedTotal: recurringTotal + bnplTotal
+      totalCount: sortedAllBills.length, activeCount, pausedCount,
+      recurringCount: recurringList.length, recurringActiveCount: recurringList.filter(c => c.is_active).length,
+      bnplCount: bnplList.length, bnplActiveCount: bnplList.filter(c => c.is_active).length,
+      recurringTotal, bnplTotal, combinedTotal: recurringTotal + bnplTotal
     }
   }, [sortedAllBills, paidCountByCommitment])
 
-  // ------------------------------------------------------------
-  // Filtering (selected day + upcoming)
-  // ------------------------------------------------------------
-  const selectedPeriods = useMemo(() => {
-    return scheduleSafe.unpaidPeriods.filter(
-      (p) => dayKey(p.dueDate) === selectedDate
-    )
-  }, [scheduleSafe.unpaidPeriods, selectedDate])
+  const selectedPeriods = useMemo(() => 
+    scheduleSafe.unpaidPeriods.filter((p) => dayKey(p.dueDate) === selectedDate)
+  , [scheduleSafe.unpaidPeriods, selectedDate])
 
-  const otherPeriods = useMemo(() => {
-    return scheduleSafe.unpaidPeriods
+  const otherPeriods = useMemo(() => 
+    scheduleSafe.unpaidPeriods
       .filter((p) => dayKey(p.dueDate) !== selectedDate)
       .sort((a, b) => {
         if (a.daysOverdue !== b.daysOverdue) return b.daysOverdue - a.daysOverdue
-        if (a.dueDate.getTime() !== b.dueDate.getTime()) {
-          return a.dueDate - b.dueDate
-        }
+        if (a.dueDate.getTime() !== b.dueDate.getTime()) return a.dueDate - b.dueDate
         return b.amount - a.amount
       })
-  }, [scheduleSafe.unpaidPeriods, selectedDate])
+  , [scheduleSafe.unpaidPeriods, selectedDate])
 
-  const nextUpcomingPeriod = useMemo(() => {
-    return otherPeriods.find(p => p.daysOverdue === 0) || otherPeriods[0] || null
-  }, [otherPeriods])
+  const nextUpcomingPeriod = useMemo(() => 
+    otherPeriods.find(p => p.daysOverdue === 0) || otherPeriods[0] || null
+  , [otherPeriods])
 
-  const paidPeriodsForSelectedDate = useMemo(
-    () => paidCommitments.filter((x) => x.dueKey === selectedDate),
-    [paidCommitments, selectedDate]
-  )
+  const paidPeriodsForSelectedDate = useMemo(() => 
+    paidCommitments.filter((x) => x.dueKey === selectedDate)
+  , [paidCommitments, selectedDate])
 
-  const otherPaidCommitments = useMemo(
-    () => paidCommitments.filter((x) => x.dueKey !== selectedDate),
-    [paidCommitments, selectedDate]
-  )
+  const otherPaidCommitments = useMemo(() => 
+    paidCommitments.filter((x) => x.dueKey !== selectedDate)
+  , [paidCommitments, selectedDate])
 
-  const selectedDayTotal = useMemo(
-    () => selectedPeriods.reduce((s, p) => s + p.amount, 0),
-    [selectedPeriods]
-  )
+  const selectedDayTotal = useMemo(() => 
+    selectedPeriods.reduce((s, p) => s + p.amount, 0)
+  , [selectedPeriods])
 
   const selectedDayCount = selectedPeriods.length + paidPeriodsForSelectedDate.length
   const hasAnythingOnDay = selectedDayCount > 0
 
-  const handleSelectDate = (key) => {
-    setSelectedDate(key)
-  }
+  const handleSelectDate = (key) => setSelectedDate(key)
 
   const selectedHeaderLabel = useMemo(() => {
     if (selectedDate === todayKey) return 'Today'
     const d = new Date(`${selectedDate}T12:00:00+08:00`)
-    return d.toLocaleDateString('en-MY', {
-      weekday: 'short', day: 'numeric', month: 'short'
-    })
+    return d.toLocaleDateString('en-MY', { weekday: 'short', day: 'numeric', month: 'short' })
   }, [selectedDate, todayKey])
 
-  // ------------------------------------------------------------
-  // Handlers
-  // ------------------------------------------------------------
   const handleFormSubmit = async (payload, existing) => {
     if (existing) {
       const res = await onUpdateCommitment(existing.id, payload)
@@ -271,12 +212,7 @@ export const CommitmentRadar = ({
   const handleMarkPaidConfirm = async ({ periodYear, periodMonth, amount, paidDate }) => {
     if (!onMarkAsPaid || !marking) return
     setMarkPaidError(null)
-    const result = await onMarkAsPaid(marking.commitmentId, {
-      periodYear,
-      periodMonth,
-      amount,
-      paidDate
-    })
+    const result = await onMarkAsPaid(marking.commitmentId, { periodYear, periodMonth, amount, paidDate })
     if (result?.success) {
       setMarking(null)
       setMarkPaidError(null)
@@ -287,77 +223,50 @@ export const CommitmentRadar = ({
 
   const confirmActions = {
     delete: async () => {
-      const c = confirm.commitment
-      const res = await onDeleteCommitment(c.id)
+      const res = await onDeleteCommitment(confirm.commitment.id)
       if (res?.success) setConfirm(null)
     },
     pause: async () => {
-      const c = confirm.commitment
-      const res = await onPauseCommitment(c.id)
+      const res = await onPauseCommitment(confirm.commitment.id)
       if (res?.success) setConfirm(null)
     },
     skip: async () => {
-      const p = confirm.period
-      const res = await onSkipCommitment(p.commitmentId, p.periodYear, p.periodMonth)
+      const res = await onSkipCommitment(confirm.period.commitmentId, confirm.period.periodYear, confirm.period.periodMonth)
       if (res?.success) setConfirm(null)
     },
     undo: async () => {
-      const { comm, pmt } = confirm
-      const res = await onUnmarkAsPaid(comm.id, pmt.period_year, pmt.period_month)
+      const res = await onUnmarkAsPaid(confirm.comm.id, confirm.pmt.period_year, confirm.pmt.period_month)
       if (res?.success) setConfirm(null)
     }
   }
 
-  // ------------------------------------------------------------
-  // Menu action builders
-  // ------------------------------------------------------------
-  const billMenuActions = (comm, period) => [
-    {
-      label: 'Edit',
-      icon: <Pencil className="w-3.5 h-3.5" />,
-      onClick: () => setFormState({ mode: 'edit', commitment: comm })
-    },
-    {
-      label: 'Pause',
-      icon: <Power className="w-3.5 h-3.5" />,
-      onClick: () => setConfirm({ kind: 'pause', commitment: comm })
-    },
-    {
-      label: 'Delete',
-      icon: <Trash2 className="w-3.5 h-3.5" />,
-      danger: true,
-      onClick: () => setConfirm({ kind: 'delete', commitment: comm })
-    }
-  ]
+  const billMenuActions = (comm, period) => {
+    const isBnpl = comm.kind === 'bnpl'
+    return [
+      ...(!isBnpl ? [{ 
+        label: 'Skip this month', 
+        icon: <SkipForward className="w-3.5 h-3.5" />, 
+        onClick: () => setConfirm({ kind: 'skip', commitment: comm, period }) 
+      }] : []),
+      { label: 'Edit', icon: <Pencil className="w-3.5 h-3.5" />, onClick: () => setFormState({ mode: 'edit', commitment: comm }) },
+      { label: 'Pause', icon: <Power className="w-3.5 h-3.5" />, onClick: () => setConfirm({ kind: 'pause', commitment: comm }) },
+      { label: 'Delete', icon: <Trash2 className="w-3.5 h-3.5" />, danger: true, onClick: () => setConfirm({ kind: 'delete', commitment: comm }) }
+    ]
+  }
 
   const allBillsMenuActions = (comm) => {
     const isPaused = !comm.is_active
     return [
-      {
-        label: 'Edit',
-        icon: <Pencil className="w-3.5 h-3.5" />,
-        onClick: () => setFormState({ mode: 'edit', commitment: comm })
+      { label: 'Edit', icon: <Pencil className="w-3.5 h-3.5" />, onClick: () => setFormState({ mode: 'edit', commitment: comm }) },
+      { 
+        label: isPaused ? 'Reactivate' : 'Pause', 
+        icon: <Power className="w-3.5 h-3.5" />, 
+        onClick: () => { if (isPaused) onReactivateCommitment(comm.id); else setConfirm({ kind: 'pause', commitment: comm }) } 
       },
-      {
-        label: isPaused ? 'Reactivate' : 'Pause',
-        icon: <Power className="w-3.5 h-3.5" />,
-        onClick: () => {
-          if (isPaused) onReactivateCommitment(comm.id)
-          else setConfirm({ kind: 'pause', commitment: comm })
-        }
-      },
-      {
-        label: 'Delete',
-        icon: <Trash2 className="w-3.5 h-3.5" />,
-        danger: true,
-        onClick: () => setConfirm({ kind: 'delete', commitment: comm })
-      }
+      { label: 'Delete', icon: <Trash2 className="w-3.5 h-3.5" />, danger: true, onClick: () => setConfirm({ kind: 'delete', commitment: comm }) }
     ]
   }
 
-  // ------------------------------------------------------------
-  // Early returns
-  // ------------------------------------------------------------
   if (loading) {
     return (
       <div className="flex items-center justify-center py-12 text-fg-subtle">
@@ -384,8 +293,8 @@ export const CommitmentRadar = ({
   if (!hasAnyCommitments) {
     return (
       <>
-        <div className="text-center py-10 border border-dashed border-line-strong rounded-2xl">
-          <div className="w-14 h-14 bg-surface-2 border border-line rounded-2xl flex items-center justify-center mx-auto mb-4 text-fg-subtle">
+        <div className="text-center py-10">
+          <div className="w-14 h-14 bg-surface-2 rounded-2xl flex items-center justify-center mx-auto mb-4 text-fg-subtle">
             <Target className="w-6 h-6" />
           </div>
           <p className="text-sm font-bold text-fg">No bills yet</p>
@@ -400,7 +309,6 @@ export const CommitmentRadar = ({
             <Plus className="w-4 h-4" /> Add your first bill
           </button>
         </div>
-
         {formState && (
           <CommitmentFormSheet
             commitment={formState.mode === 'edit' ? formState.commitment : null}
@@ -415,12 +323,9 @@ export const CommitmentRadar = ({
     )
   }
 
-  // ------------------------------------------------------------
-  // Main render
-  // ------------------------------------------------------------
   return (
     <>
-      <section className="space-y-4">
+      <section className="space-y-6">
         {/* Header row */}
         <div className="flex items-center justify-between">
           <span className="text-[10px] uppercase font-bold tracking-wider text-fg-subtle">
@@ -435,81 +340,59 @@ export const CommitmentRadar = ({
           </button>
         </div>
 
-        {/* Stats */}
-        <div className="mb-4">
-          <p className="text-[11px] text-fg-subtle uppercase font-bold tracking-wider mb-1">
-            Available
-          </p>
+        {/* Hero Stats */}
+        <div>
+          <p className="text-[11px] text-fg-subtle uppercase font-bold tracking-wider mb-1">Available</p>
           <p className="text-4xl font-black tracking-tighter text-fg tabular-figures">
             {formatMYR(currentBalance)}
           </p>
-          <p className="text-[11px] text-fg-muted mt-1">
+          <p className="text-[11px] text-fg-muted mt-1 mb-4">
             Across your linked accounts.
           </p>
         </div>
 
+        {/* ADDED border-y border-line here */}
         <div className="grid grid-cols-2 gap-4 border-y border-line py-3">
           <div>
-            <p className="text-[10px] text-fg-subtle uppercase font-bold tracking-wider mb-0.5">
-              To pay
-            </p>
-            <p className="text-lg font-bold text-fg tabular-figures">
-              {formatMYR(totalRequired)}
-            </p>
+            <p className="text-[10px] text-fg-subtle uppercase font-bold tracking-wider mb-0.5">To pay</p>
+            <p className="text-lg font-bold text-fg tabular-figures">{formatMYR(totalRequired)}</p>
           </div>
           <div>
-            <p className="text-[10px] text-fg-subtle uppercase font-bold tracking-wider mb-0.5">
-              Unpaid
-            </p>
-            <p
-              className={`text-lg font-bold tabular-figures ${
-                unpaidCount > 0 ? 'text-warning' : 'text-fg'
-              }`}
-            >
+            <p className="text-[10px] text-fg-subtle uppercase font-bold tracking-wider mb-0.5">Unpaid</p>
+            <p className={`text-lg font-bold tabular-figures ${unpaidCount > 0 ? 'text-warning' : 'text-fg'}`}>
               {unpaidCount}
             </p>
           </div>
         </div>
 
-        {/* Needs attention banner */}
+        {/* Warnings */}
         {scheduleSafe.needsAttention.length > 0 && (
-          <div className="bg-warning-soft border border-warning-border rounded-xl p-3 flex items-start gap-2">
+          <div className="bg-warning-soft/50 border border-warning-border/50 rounded-xl p-3 flex items-start gap-2">
             <AlertOctagon className="w-4 h-4 text-warning shrink-0 mt-0.5" />
             <div className="flex-1 min-w-0">
               <p className="text-xs text-warning-text leading-relaxed">
                 <strong>{scheduleSafe.needsAttention.length}</strong> bill
                 {scheduleSafe.needsAttention.length === 1 ? '' : 's'} aren't counted because{' '}
-                {scheduleSafe.needsAttention.length === 1 ? 'its' : 'their'} account is archived or
-                missing.
+                {scheduleSafe.needsAttention.length === 1 ? 'its' : 'their'} account is archived or missing.
               </p>
               <button
                 type="button"
-                onClick={() =>
-                  setFormState({
-                    mode: 'edit',
-                    commitment: scheduleSafe.needsAttention[0].commitment
-                  })
-                }
+                onClick={() => setFormState({ mode: 'edit', commitment: scheduleSafe.needsAttention[0].commitment })}
                 className="mt-2 inline-flex items-center gap-1 text-[11px] font-bold text-warning-text hover:text-warning-text/80 underline underline-offset-2"
                 style={{ minHeight: 32 }}
               >
                 Fix "{scheduleSafe.needsAttention[0].commitment.name}"
-                {scheduleSafe.needsAttention.length > 1 &&
-                  ` (${scheduleSafe.needsAttention.length - 1} more)`}
+                {scheduleSafe.needsAttention.length > 1 && ` (${scheduleSafe.needsAttention.length - 1} more)`}
               </button>
             </div>
           </div>
         )}
 
-        {/* Per-account shortfall warnings */}
         {scheduleSafe.accountShortfalls.length > 0 && (
-          <div className="bg-warning-soft border border-warning-border rounded-xl p-3.5">
+          <div className="bg-warning-soft/50 border border-warning-border/50 rounded-xl p-3.5">
             <div className="space-y-3">
               {scheduleSafe.accountShortfalls.map((sf, idx) => (
-                <div
-                  key={sf.accountId}
-                  className={idx > 0 ? 'pt-3 border-t border-warning-border/50' : ''}
-                >
+                <div key={sf.accountId} className={idx > 0 ? 'pt-3 border-t border-warning-border/50' : ''}>
                   <div className="flex items-start gap-2">
                     <AlertTriangle className="w-4 h-4 text-warning shrink-0 mt-0.5" />
                     <div className="min-w-0 flex-1">
@@ -524,16 +407,10 @@ export const CommitmentRadar = ({
                 </div>
               ))}
             </div>
-
-            {isSafe && scheduleSafe.accountShortfalls.length > 1 && (
-              <p className="text-[11px] text-warning-text/80 italic mt-3 pt-3 border-t border-warning-border/50">
-                Overall balance covers it — just spread across the wrong accounts.
-              </p>
-            )}
           </div>
         )}
 
-        {/* Calendar widget */}
+        {/* Calendar */}
         <BillsCalendar
           schedule={scheduleSafe}
           payments={payments}
@@ -545,7 +422,7 @@ export const CommitmentRadar = ({
 
         {/* All done? */}
         {scheduleSafe.unpaidPeriods.length === 0 ? (
-          <div className="text-xs font-medium text-success-text p-3.5 bg-success-soft border border-success-border rounded-xl flex items-center gap-2">
+          <div className="text-xs font-medium text-success-text p-3.5 bg-success-soft/50 border border-success-border/50 rounded-xl flex items-center gap-2">
             <CheckCircle className="w-4 h-4 text-success shrink-0" />
             You've handled everything for this cycle.
           </div>
@@ -553,13 +430,11 @@ export const CommitmentRadar = ({
           <>
             {/* SECTION 1 — Bills on the selected day */}
             <div>
-              <div className="flex items-center justify-between gap-2 mb-2.5">
+              <div className="flex items-center justify-between gap-2 mb-2">
                 <p className="text-[10px] text-fg-subtle uppercase font-bold tracking-wider flex items-center gap-1.5">
                   <Calendar className="w-3.5 h-3.5 text-brand" />
                   {selectedHeaderLabel}
-                  {hasAnythingOnDay && (
-                    <span className="text-fg-muted">({selectedDayCount})</span>
-                  )}
+                  {hasAnythingOnDay && <span className="text-fg-muted">({selectedDayCount})</span>}
                 </p>
                 {selectedDayTotal > 0 && (
                   <span className="text-[10px] font-bold text-fg-muted tabular-figures">
@@ -569,7 +444,7 @@ export const CommitmentRadar = ({
               </div>
 
               {!hasAnythingOnDay ? (
-                <div className="text-center p-6 bg-surface-2/40 border border-dashed border-line-strong rounded-xl">
+                <div className="py-8 flex flex-col items-center justify-center text-center">
                   <p className="text-xs font-bold text-fg-muted">
                     Nothing due on this day.
                   </p>
@@ -588,7 +463,7 @@ export const CommitmentRadar = ({
                   )}
                 </div>
               ) : (
-                <div className="bg-surface border border-line rounded-2xl overflow-hidden divide-y divide-line">
+                <div className="flex flex-col border-t border-line/40">
                   {selectedPeriods.map((period) => (
                     <BillRow
                       key={`${period.commitmentId}-${period.periodYear}-${period.periodMonth}`}
@@ -596,17 +471,8 @@ export const CommitmentRadar = ({
                       account={getAccount(period.accountId)}
                       paidCount={paidCountByCommitment.get(period.commitmentId) || 0}
                       saving={saving}
-                      onMarkPaid={() => {
-                        setMarkPaidError(null)
-                        setMarking(period)
-                      }}
-                      onSkip={() =>
-                        setConfirm({
-                          kind: 'skip',
-                          commitment: period.commitment,
-                          period
-                        })
-                      }
+                      onMarkPaid={() => { setMarkPaidError(null); setMarking(period) }}
+                      onSkip={() => setConfirm({ kind: 'skip', commitment: period.commitment, period })}
                       menuActions={billMenuActions(period.commitment, period)}
                     />
                   ))}
@@ -633,16 +499,13 @@ export const CommitmentRadar = ({
                   style={{ minHeight: 44 }}
                 >
                   <span className="text-[10px] text-fg-muted uppercase font-bold tracking-wider flex items-center gap-1.5">
-                    <Calendar className="w-3.5 h-3.5 text-fg-subtle" /> Upcoming (
-                    {otherPeriods.length})
+                    <Calendar className="w-3.5 h-3.5 text-fg-subtle" /> Upcoming ({otherPeriods.length})
                   </span>
-                  {showUpcoming
-                    ? <ChevronUp className="w-4 h-4 text-fg-subtle" />
-                    : <ChevronDown className="w-4 h-4 text-fg-subtle" />}
+                  {showUpcoming ? <ChevronUp className="w-4 h-4 text-fg-subtle" /> : <ChevronDown className="w-4 h-4 text-fg-subtle" />}
                 </button>
 
                 <Collapse open={showUpcoming}>
-                  <div className="mt-3 bg-surface border border-line rounded-2xl overflow-hidden divide-y divide-line">
+                  <div className="flex flex-col mt-1">
                     {otherPeriods.map((period) => (
                       <BillRow
                         key={`${period.commitmentId}-${period.periodYear}-${period.periodMonth}`}
@@ -650,24 +513,15 @@ export const CommitmentRadar = ({
                         account={getAccount(period.accountId)}
                         paidCount={paidCountByCommitment.get(period.commitmentId) || 0}
                         saving={saving}
-                        onMarkPaid={() => {
-                          setMarkPaidError(null)
-                          setMarking(period)
-                        }}
-                        onSkip={() =>
-                          setConfirm({
-                            kind: 'skip',
-                            commitment: period.commitment,
-                            period
-                          })
-                        }
+                        onMarkPaid={() => { setMarkPaidError(null); setMarking(period) }}
+                        onSkip={() => setConfirm({ kind: 'skip', commitment: period.commitment, period })}
                         menuActions={billMenuActions(period.commitment, period)}
                       />
                     ))}
                   </div>
                 </Collapse>
               </div>
-              )}
+            )}
           </>
         )}
 
@@ -681,42 +535,21 @@ export const CommitmentRadar = ({
               style={{ minHeight: 44 }}
             >
               <span className="text-[10px] text-fg-muted uppercase font-bold tracking-wider flex items-center gap-1.5">
-                <CheckCircle className="w-3.5 h-3.5 text-success" /> Paid this cycle (
-                {otherPaidCommitments.length})
+                <CheckCircle className="w-3.5 h-3.5 text-success" /> Paid this cycle ({otherPaidCommitments.length})
               </span>
-              {showPaid
-                ? <ChevronUp className="w-4 h-4 text-fg-subtle" />
-                : <ChevronDown className="w-4 h-4 text-fg-subtle" />}
+              {showPaid ? <ChevronUp className="w-4 h-4 text-fg-subtle" /> : <ChevronDown className="w-4 h-4 text-fg-subtle" />}
             </button>
 
             <Collapse open={showPaid}>
-              <div className="mt-3 space-y-1.5">
+              <div className="mt-1 flex flex-col">
                 {otherPaidCommitments.map(({ comm, pmt }) => (
-                  <div
+                  <PaidBillRow
                     key={comm.id}
-                    className="flex items-center justify-between p-2.5 rounded-xl bg-success-soft/30 border border-success-border gap-2"
-                  >
-                    <div className="flex items-center gap-2 min-w-0 flex-1">
-                      <CheckCircle className="w-3.5 h-3.5 text-success shrink-0" />
-                      <span className="text-xs font-medium text-fg-muted line-through truncate">
-                        {comm.name}
-                      </span>
-                    </div>
-                    <div className="flex items-center gap-2 shrink-0">
-                      <span className="text-xs font-bold text-fg-subtle line-through tabular-figures">
-                        {formatMYR(comm.amount)}
-                      </span>
-                      <button
-                        onClick={() => setConfirm({ kind: 'undo', commitment: comm, pmt })}
-                        disabled={saving}
-                        className="inline-flex items-center gap-1 text-[11px] font-bold text-fg-subtle hover:text-fg hover:bg-surface px-2.5 py-2 rounded-md transition-colors border border-transparent hover:border-line disabled:opacity-50"
-                        style={{ minHeight: 44 }}
-                        aria-label={`Undo payment for ${comm.name}`}
-                      >
-                        <Undo2 className="w-3.5 h-3.5" /> Undo
-                      </button>
-                    </div>
-                  </div>
+                    commitment={comm}
+                    account={getAccount(comm.account_id)}
+                    saving={saving}
+                    onUndo={() => setConfirm({ kind: 'undo', commitment: comm, pmt })}
+                  />
                 ))}
               </div>
             </Collapse>
@@ -733,33 +566,27 @@ export const CommitmentRadar = ({
               style={{ minHeight: 44 }}
             >
               <span className="text-[10px] text-fg-muted uppercase font-bold tracking-wider flex items-center gap-1.5">
-                <CircleSlash className="w-3.5 h-3.5 text-fg-subtle" /> Skipped this cycle (
-                {skippedCommitments.length})
+                <CircleSlash className="w-3.5 h-3.5 text-fg-subtle" /> Skipped this cycle ({skippedCommitments.length})
               </span>
-              {showSkipped
-                ? <ChevronUp className="w-4 h-4 text-fg-subtle" />
-                : <ChevronDown className="w-4 h-4 text-fg-subtle" />}
+              {showSkipped ? <ChevronUp className="w-4 h-4 text-fg-subtle" /> : <ChevronDown className="w-4 h-4 text-fg-subtle" />}
             </button>
 
             <Collapse open={showSkipped}>
-              <div className="mt-3 space-y-1.5">
+              <div className="mt-1 flex flex-col">
                 {skippedCommitments.map(({ comm, pmt }) => (
-                  <div
-                    key={comm.id}
-                    className="flex items-center justify-between p-2.5 rounded-xl bg-surface-2/40 border border-line gap-2"
-                  >
+                  <div key={comm.id} className="flex items-center justify-between py-3 border-b border-line/30 last:border-0 gap-2">
                     <div className="flex items-center gap-2 min-w-0 flex-1">
-                      <CircleSlash className="w-3.5 h-3.5 text-fg-subtle shrink-0" />
-                      <span className="text-xs font-medium text-fg-muted truncate">{comm.name}</span>
+                      <CircleSlash className="w-4 h-4 text-fg-subtle shrink-0" />
+                      <span className="text-sm font-bold text-fg-muted truncate">{comm.name}</span>
                     </div>
-                    <div className="flex items-center gap-2 shrink-0">
-                      <span className="text-xs font-bold text-fg-subtle tabular-figures">
+                    <div className="flex items-center gap-3 shrink-0">
+                      <span className="text-sm font-bold text-fg-subtle tabular-figures">
                         {formatMYR(comm.amount)}
                       </span>
                       <button
                         onClick={() => setConfirm({ kind: 'undo', commitment: comm, pmt })}
                         disabled={saving}
-                        className="inline-flex items-center gap-1 text-[11px] font-bold text-fg-subtle hover:text-fg hover:bg-surface px-2.5 py-2 rounded-md transition-colors border border-transparent hover:border-line disabled:opacity-50"
+                        className="inline-flex items-center gap-1 text-[11px] font-bold text-fg-subtle hover:text-fg hover:bg-surface-2 px-2.5 py-2 rounded-lg transition-colors disabled:opacity-50"
                         style={{ minHeight: 44 }}
                       >
                         <Undo2 className="w-3.5 h-3.5" /> Undo
@@ -785,84 +612,51 @@ export const CommitmentRadar = ({
                 <List className="w-3.5 h-3.5 text-fg-subtle" />
                 All bills ({allBillsSummary.totalCount})
               </span>
-              {showAllBills
-                ? <ChevronUp className="w-4 h-4 text-fg-subtle" />
-                : <ChevronDown className="w-4 h-4 text-fg-subtle" />}
+              {showAllBills ? <ChevronUp className="w-4 h-4 text-fg-subtle" /> : <ChevronDown className="w-4 h-4 text-fg-subtle" />}
             </button>
 
             <Collapse open={showAllBills}>
-              <div className="mt-3 animate-fadeIn">
-                <div className="px-1 pb-3 flex flex-col gap-2.5">
+              <div className="mt-2 animate-fadeIn">
+                <div className="pb-3 flex flex-col gap-2.5">
                   <p key={allBillsFilter} className="text-[11px] text-fg-subtle animate-filter">
                     {allBillsFilter === 'all' && (
                       <>
-                        {allBillsSummary.totalCount}{' '}
-                        {allBillsSummary.totalCount === 1 ? 'bill' : 'bills'}
+                        {allBillsSummary.totalCount} {allBillsSummary.totalCount === 1 ? 'bill' : 'bills'}
                         <span className="text-line-strong mx-1.5">·</span>
-                        <span className="font-bold text-fg-muted tabular-figures">
-                          {formatMYR(allBillsSummary.combinedTotal)}/cycle
-                        </span>
+                        <span className="font-bold text-fg-muted tabular-figures">{formatMYR(allBillsSummary.combinedTotal)}/cycle</span>
                         {allBillsSummary.bnplCount > 0 && (
                           <>
                             <span className="text-line-strong mx-1.5">·</span>
-                            <span className="font-bold text-purple">
-                              {allBillsSummary.bnplCount} BNPL
-                            </span>
+                            <span className="font-bold text-purple">{allBillsSummary.bnplCount} BNPL</span>
                           </>
                         )}
                       </>
                     )}
-
                     {allBillsFilter === 'recurring' && (
                       <>
                         {allBillsSummary.recurringCount} recurring
                         <span className="text-line-strong mx-1.5">·</span>
-                        <span className="font-bold text-fg-muted tabular-figures">
-                          {formatMYR(allBillsSummary.recurringTotal)}/cycle
-                        </span>
-                        {allBillsSummary.recurringActiveCount < allBillsSummary.recurringCount && (
-                          <>
-                            <span className="text-line-strong mx-1.5">·</span>
-                            {allBillsSummary.recurringCount - allBillsSummary.recurringActiveCount}{' '}
-                            paused
-                          </>
-                        )}
+                        <span className="font-bold text-fg-muted tabular-figures">{formatMYR(allBillsSummary.recurringTotal)}/cycle</span>
                       </>
                     )}
-
                     {allBillsFilter === 'bnpl' && (
                       <>
                         {allBillsSummary.bnplCount} BNPL
                         <span className="text-line-strong mx-1.5">·</span>
-                        <span className="font-bold text-purple tabular-figures">
-                          {formatMYR(allBillsSummary.bnplTotal)}/cycle
-                        </span>
-                        {allBillsSummary.bnplActiveCount < allBillsSummary.bnplCount && (
-                          <>
-                            <span className="text-line-strong mx-1.5">·</span>
-                            {allBillsSummary.bnplCount - allBillsSummary.bnplActiveCount}{' '}
-                            paused
-                          </>
-                        )}
+                        <span className="font-bold text-purple tabular-figures">{formatMYR(allBillsSummary.bnplTotal)}/cycle</span>
                       </>
                     )}
                   </p>
 
                   {hasAnyBnpl && (
                     <div className="flex items-center gap-1">
-                      {[
-                        { id: 'all', label: 'All' },
-                        { id: 'recurring', label: 'Recurring' },
-                        { id: 'bnpl', label: 'BNPL' }
-                      ].map((opt) => (
+                      {[{ id: 'all', label: 'All' }, { id: 'recurring', label: 'Recurring' }, { id: 'bnpl', label: 'BNPL' }].map((opt) => (
                         <button
                           key={opt.id}
                           type="button"
                           onClick={() => setAllBillsFilter(opt.id)}
                           className={`px-2.5 py-1 rounded-lg text-[10px] font-bold uppercase tracking-wider transition-colors ${
-                            allBillsFilter === opt.id
-                              ? 'bg-fg text-fg-inverse'
-                              : 'bg-surface-2 text-fg-subtle hover:text-fg-muted'
+                            allBillsFilter === opt.id ? 'bg-fg text-fg-inverse' : 'bg-surface-2 text-fg-subtle hover:text-fg-muted'
                           }`}
                           style={{ minHeight: 28 }}
                         >
@@ -873,27 +667,25 @@ export const CommitmentRadar = ({
                   )}
                 </div>
 
-                <div key={`list-${allBillsFilter}`} className="animate-filter">
+                <div key={`list-${allBillsFilter}`} className="animate-filter flex flex-col">
                   {filteredAllBills.length === 0 ? (
                     <div className="text-center py-6 text-xs text-fg-subtle">
                       No {allBillsFilter === 'bnpl' ? 'BNPL plans' : 'recurring bills'} in this list.
                     </div>
                   ) : (
-                    <div className="bg-surface border border-line rounded-2xl divide-y divide-line overflow-hidden">
-                      {filteredAllBills.map((comm, idx) => (
-                        <AllBillsRow
-                          key={`all-${comm.id}`}
-                          commitment={comm}
-                          paidCount={paidCountByCommitment.get(comm.id) || 0}
-                          menuActions={allBillsMenuActions(comm)}
-                          style={{
-                            animation: 'filterChange 0.25s cubic-bezier(0.16,1,0.3,1) forwards',
-                            animationDelay: `${idx * 30}ms`,
-                            opacity: 0,
-                          }}
-                        />
-                      ))}
-                    </div>
+                    filteredAllBills.map((comm, idx) => (
+                      <AllBillsRow
+                        key={`all-${comm.id}`}
+                        commitment={comm}
+                        paidCount={paidCountByCommitment.get(comm.id) || 0}
+                        menuActions={allBillsMenuActions(comm)}
+                        style={{
+                          animation: 'filterChange 0.25s cubic-bezier(0.16,1,0.3,1) forwards',
+                          animationDelay: `${idx * 30}ms`,
+                          opacity: 0,
+                        }}
+                      />
+                    ))
                   )}
                 </div>
               </div>
@@ -901,14 +693,11 @@ export const CommitmentRadar = ({
           </div>
         )}
 
-        {/* Top-level shortfall */}
         {!isSafe && totalRequired > 0 && (
-          <div className="bg-danger-soft border border-danger-border rounded-xl p-3.5 flex items-start gap-2.5">
+          <div className="bg-danger-soft/50 border border-danger-border/50 rounded-xl p-3.5 flex items-start gap-2.5 mt-4">
             <AlertTriangle className="w-4 h-4 text-danger shrink-0 mt-0.5" />
             <div>
-              <p className="text-xs font-bold text-danger-text">
-                You're short by {formatMYR(shortfall)}
-              </p>
+              <p className="text-xs font-bold text-danger-text">You're short by {formatMYR(shortfall)}</p>
               <p className="text-xs text-danger-text/90 mt-0.5 leading-relaxed">
                 Your available balance doesn't cover every unpaid bill this cycle.
               </p>
@@ -917,7 +706,6 @@ export const CommitmentRadar = ({
         )}
       </section>
 
-      {/* Mark-paid sheet */}
       {marking && (
         <MarkPaidSheet
           commitment={marking.commitment}
@@ -926,14 +714,10 @@ export const CommitmentRadar = ({
           saving={saving}
           error={markPaidError}
           onConfirm={handleMarkPaidConfirm}
-          onCancel={() => {
-            setMarking(null)
-            setMarkPaidError(null)
-          }}
+          onCancel={() => { setMarking(null); setMarkPaidError(null) }}
         />
       )}
 
-      {/* Form sheet */}
       {formState && (
         <CommitmentFormSheet
           commitment={formState.mode === 'edit' ? formState.commitment : null}
@@ -945,48 +729,34 @@ export const CommitmentRadar = ({
         />
       )}
 
-      {/* Confirmation sheet */}
       {confirm && (
         <ConfirmSheet
           destructive={confirm.kind !== 'pause'}
           saving={saving}
           title={
-            confirm.kind === 'delete'
-              ? `Delete "${confirm.commitment.name}"?`
-              : confirm.kind === 'pause'
-                ? `Pause "${confirm.commitment.name}"?`
-                : confirm.kind === 'skip'
-                  ? `Skip "${confirm.commitment.name}" for ${monthShortName(confirm.period.dueDate)}?`
-                  : `Undo payment for "${confirm.commitment.name}"?`
+            confirm.kind === 'delete' ? `Delete "${confirm.commitment.name}"?`
+            : confirm.kind === 'pause' ? `Pause "${confirm.commitment.name}"?`
+            : confirm.kind === 'skip' ? `Skip "${confirm.commitment.name}" for ${monthShortName(confirm.period.dueDate)}?`
+            : `Undo payment for "${confirm.commitment.name}"?`
           }
           message={(() => {
             if (confirm.kind === 'delete') {
               const n = paymentCountByCommitment.get(confirm.commitment.id) || 0
               const lines = []
-              if (confirm.commitment.kind === 'bnpl') {
-                lines.push('This BNPL plan and its payment history will be removed.')
-              } else if (n > 0) {
-                lines.push(`This bill has ${n} payment${n === 1 ? '' : 's'} recorded.`)
-              }
+              if (confirm.commitment.kind === 'bnpl') lines.push('This BNPL plan and its payment history will be removed.')
+              else if (n > 0) lines.push(`This bill has ${n} payment${n === 1 ? '' : 's'} recorded.`)
               lines.push('The expenses stay in your history. You can pause it instead.')
               return lines.join(' ')
             }
-            if (confirm.kind === 'pause') {
-              return "It won't count in your radar or burn rate until you reactivate it."
-            }
-            if (confirm.kind === 'skip') {
-              return "It won't count this cycle. The expense will not be created."
-            }
+            if (confirm.kind === 'pause') return "It won't count in your radar or burn rate until you reactivate it."
+            if (confirm.kind === 'skip') return "It won't count this cycle. The expense will not be created."
             return 'The bill will be reset to unpaid for this cycle.'
           })()}
           confirmLabel={
-            confirm.kind === 'delete'
-              ? 'Delete'
-              : confirm.kind === 'pause'
-                ? 'Pause'
-                : confirm.kind === 'skip'
-                  ? 'Skip'
-                  : 'Undo'
+            confirm.kind === 'delete' ? 'Delete'
+            : confirm.kind === 'pause' ? 'Pause'
+            : confirm.kind === 'skip' ? 'Skip'
+            : 'Undo'
           }
           onConfirm={confirmActions[confirm.kind]}
           onCancel={() => setConfirm(null)}

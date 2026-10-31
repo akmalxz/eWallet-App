@@ -4,37 +4,25 @@ import {
   CalendarDays, ChevronDown, ChevronLeft, ChevronRight, ChevronUp
 } from 'lucide-react'
 import { formatMYR } from '../../utils/formatters'
-import {
-  toMYDate, dayKey, dueDateForMonth,
-  daysInMonth, WEEKDAY_LABELS
-} from '../../utils/dateHelpers'
+import { toMYDate, dayKey, dueDateForMonth, daysInMonth, WEEKDAY_LABELS } from '../../utils/dateHelpers'
 
-// ============================================================
-// Helpers
-// ============================================================
-
-const keyFromMY = (d) =>
-  `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, '0')}-${String(d.getUTCDate()).padStart(2, '0')}`
-
+const keyFromMY = (d) => `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, '0')}-${String(d.getUTCDate()).padStart(2, '0')}`
 const weekdayShort = (label) => label.slice(0, 1)
 
-// ============================================================
-// Strip — 7 days centered on the SELECTED date
-// ============================================================
 function StripView({ days, selectedDate, onSelectDate }) {
   return (
-    <div className="flex items-stretch gap-1.5 px-3 py-3 overflow-x-auto scrollbar-hide">
+    <div className="flex items-stretch gap-1.5 py-3 overflow-x-auto scrollbar-hide">
       {days.map((d) => {
         const isSelected = selectedDate === d.key
         const isToday = d.isToday
 
         const containerClasses = [
-          'relative flex-1 min-w-[44px] flex flex-col items-center gap-1 py-2 rounded-xl transition-all shrink-0',
+          'relative flex-1 min-w-[44px] flex flex-col items-center gap-1 py-2.5 rounded-xl transition-all shrink-0',
           isToday
             ? 'bg-fg text-fg-inverse shadow-md'
             : isSelected
-              ? 'bg-surface-2 ring-2 ring-inset ring-brand text-fg'
-              : 'bg-surface border border-line hover:border-line-strong text-fg-muted'
+              ? 'bg-surface-2 text-fg'
+              : 'hover:bg-surface-2 text-fg-muted'
         ].join(' ')
 
         return (
@@ -46,27 +34,15 @@ function StripView({ days, selectedDate, onSelectDate }) {
             aria-pressed={isSelected}
             className={containerClasses}
           >
-            <span className={`text-[9px] font-bold uppercase tracking-wider ${
-              isToday ? 'text-fg-inverse/70' : 'text-fg-subtle'
-            }`}>
+            <span className={`text-[9px] font-bold uppercase tracking-wider ${isToday ? 'text-fg-inverse/70' : 'text-fg-subtle'}`}>
               {weekdayShort(WEEKDAY_LABELS[d.weekday])}
             </span>
-            <span className={`text-sm font-black leading-none ${
-              isToday ? 'text-fg-inverse' : 'text-fg'
-            }`}>
+            <span className={`text-sm font-black leading-none ${isToday ? 'text-fg-inverse' : 'text-fg'}`}>
               {d.day}
             </span>
             <span className="h-1.5 flex items-center justify-center">
-              {d.hasUnpaid && (
-                <span className={`w-1.5 h-1.5 rounded-full ${
-                  isToday ? 'bg-danger-solid ring-1 ring-fg-inverse/50' : 'bg-danger-solid'
-                }`} />
-              )}
-              {!d.hasUnpaid && d.hasPaidOnly && (
-                <span className={`w-1.5 h-1.5 rounded-full ${
-                  isToday ? 'bg-success ring-1 ring-fg-inverse/50' : 'bg-success'
-                }`} />
-              )}
+              {d.hasUnpaid && <span className={`w-1.5 h-1.5 rounded-full ${isToday ? 'bg-danger-solid ring-1 ring-fg-inverse/50' : 'bg-danger-solid'}`} />}
+              {!d.hasUnpaid && d.hasPaidOnly && <span className={`w-1.5 h-1.5 rounded-full ${isToday ? 'bg-success ring-1 ring-fg-inverse/50' : 'bg-success'}`} />}
             </span>
           </button>
         )
@@ -75,32 +51,15 @@ function StripView({ days, selectedDate, onSelectDate }) {
   )
 }
 
-// ============================================================
-// Month grid
-// ============================================================
-function MonthView({
-  cells, monthLabel,
-  selectedDate, onSelectDate,
-  onPrev, onNext
-}) {
+function MonthView({ cells, monthLabel, selectedDate, onSelectDate, onPrev, onNext }) {
   return (
-    <div className="px-3 pb-3 space-y-4">
+    <div className="py-3 space-y-4">
       <div className="flex items-center justify-between">
-        <button
-          type="button"
-          onClick={onPrev}
-          aria-label="Previous month"
-          className="w-10 h-10 flex items-center justify-center rounded-lg text-fg-subtle hover:text-fg hover:bg-surface-2 transition-colors"
-        >
+        <button type="button" onClick={onPrev} className="w-10 h-10 flex items-center justify-center rounded-lg text-fg-subtle hover:text-fg hover:bg-surface-2 transition-colors">
           <ChevronLeft className="w-5 h-5" />
         </button>
         <span className="text-sm font-bold text-fg tracking-tight">{monthLabel}</span>
-        <button
-          type="button"
-          onClick={onNext}
-          aria-label="Next month"
-          className="w-10 h-10 flex items-center justify-center rounded-lg text-fg-subtle hover:text-fg hover:bg-surface-2 transition-colors"
-        >
+        <button type="button" onClick={onNext} className="w-10 h-10 flex items-center justify-center rounded-lg text-fg-subtle hover:text-fg hover:bg-surface-2 transition-colors">
           <ChevronRight className="w-5 h-5" />
         </button>
       </div>
@@ -108,10 +67,7 @@ function MonthView({
       <div className="space-y-2">
         <div className="grid grid-cols-7 gap-1">
           {WEEKDAY_LABELS.map((label) => (
-            <span
-              key={label}
-              className="text-[10px] font-bold text-fg-subtle text-center uppercase tracking-wider"
-            >
+            <span key={label} className="text-[10px] font-bold text-fg-subtle text-center uppercase tracking-wider">
               {weekdayShort(label)}
             </span>
           ))}
@@ -120,39 +76,24 @@ function MonthView({
         <div className="grid grid-cols-7 gap-1">
           {cells.map((cell, i) => {
             if (!cell) return <div key={`blank-${i}`} className="aspect-square" />
-
             const isSelected = selectedDate === cell.key
             const isToday = cell.isToday
             const hasData = cell.total > 0
 
-            const borderClasses = isToday
-              ? 'border-2 border-brand'
-              : isSelected
-                ? 'border-2 border-fg'
-                : 'border-2 border-line hover:border-line-strong'
-
             return (
-              <div key={cell.key} className="aspect-square p-1">
+              <div key={cell.key} className="aspect-square p-0.5">
                 <button
                   type="button"
                   onClick={() => onSelectDate(cell.key)}
-                  aria-label={`${cell.day}${hasData ? `, ${formatMYR(cell.total)} due` : ''}`}
-                  aria-pressed={isSelected}
-                  className={`relative w-full h-full rounded-lg flex items-center justify-center bg-surface transition-all ${borderClasses}`}
+                  className={`relative w-full h-full rounded-xl flex items-center justify-center transition-all ${
+                    isToday ? 'bg-brand-soft text-brand' 
+                    : isSelected ? 'bg-surface-2 text-fg' 
+                    : 'text-fg-muted hover:bg-surface-2'
+                  }`}
                 >
-                  <span className={`text-[13px] font-bold leading-none ${
-                    isToday ? 'text-brand' : 'text-fg'
-                  }`}>
-                    {cell.day}
-                  </span>
-
+                  <span className="text-[13px] font-bold leading-none">{cell.day}</span>
                   {hasData && (
-                    <span
-                      className={`absolute top-1 right-1 w-1.5 h-1.5 rounded-full ${
-                        cell.hasUnpaid ? 'bg-danger-solid' : 'bg-success'
-                      }`}
-                      aria-hidden="true"
-                    />
+                    <span className={`absolute top-1.5 right-1.5 w-1.5 h-1.5 rounded-full ${cell.hasUnpaid ? 'bg-danger-solid' : 'bg-success'}`} />
                   )}
                 </button>
               </div>
@@ -164,17 +105,7 @@ function MonthView({
   )
 }
 
-// ============================================================
-// BillsCalendar
-// ============================================================
-export const BillsCalendar = ({
-  schedule,
-  payments = [],
-  commitments = [],
-  selectedDate,
-  onSelectDate,
-  todayKey
-}) => {
+export const BillsCalendar = ({ schedule, payments = [], commitments = [], selectedDate, onSelectDate, todayKey }) => {
   const [expanded, setExpanded] = useState(false)
   const [expandedMonth, setExpandedMonth] = useState(() => {
     const now = toMYDate(new Date())
@@ -185,21 +116,16 @@ export const BillsCalendar = ({
 
   const daysWithBills = useMemo(() => {
     const map = new Map()
-
     const get = (key) => {
-      if (!map.has(key)) {
-        map.set(key, { unpaid: 0, paid: 0, unpaidTotal: 0, paidTotal: 0 })
-      }
+      if (!map.has(key)) map.set(key, { unpaid: 0, paid: 0, unpaidTotal: 0, paidTotal: 0 })
       return map.get(key)
     }
-
     for (const p of schedule?.unpaidPeriods || []) {
       const k = dayKey(p.dueDate)
       const entry = get(k)
       entry.unpaid += 1
       entry.unpaidTotal += p.amount
     }
-
     for (const pmt of payments) {
       if (pmt.status !== 'paid') continue
       const comm = commitments.find(c => c.id === pmt.commitment_id)
@@ -210,19 +136,13 @@ export const BillsCalendar = ({
       entry.paid += 1
       entry.paidTotal += Number(comm.amount) || 0
     }
-
     return map
   }, [schedule, payments, commitments])
 
-  // Strip is anchored on the SELECTED date, not on today. On fresh load
-  // selectedDate === today, so this looks identical to the previous
-  // behaviour. After the user taps a different day, the strip follows,
-  // keeping the visible selection in sync with the section below.
   const stripDays = useMemo(() => {
     const parts = String(selectedDate || '').split('-').map(Number)
     const [sy, sm, sd] = parts
     if (!sy || !sm || !sd) return []
-
     const out = []
     for (let offset = -3; offset <= 3; offset++) {
       const d = new Date(Date.UTC(sy, sm - 1, sd + offset))
@@ -246,77 +166,45 @@ export const BillsCalendar = ({
     const dim = daysInMonth(year, monthIdx)
     const firstDow = new Date(Date.UTC(year, monthIdx, 1)).getUTCDay()
     const leadingBlanks = firstDow === 0 ? 6 : firstDow - 1
-
     const cells = []
     for (let i = 0; i < leadingBlanks; i++) cells.push(null)
     for (let d = 1; d <= dim; d++) {
       const key = `${year}-${String(monthIdx + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`
       const info = daysWithBills.get(key) || { unpaid: 0, paid: 0, unpaidTotal: 0, paidTotal: 0 }
       cells.push({
-        day: d,
-        key,
+        day: d, key,
         isToday: key === today,
         hasUnpaid: info.unpaid > 0,
         hasPaidOnly: info.unpaid === 0 && info.paid > 0,
         total: info.unpaidTotal + info.paidTotal
       })
     }
-
-    const monthLabel = new Date(Date.UTC(year, monthIdx, 1)).toLocaleString('en-MY', {
-      month: 'long', year: 'numeric', timeZone: 'UTC'
-    })
-
+    const monthLabel = new Date(Date.UTC(year, monthIdx, 1)).toLocaleString('en-MY', { month: 'long', year: 'numeric', timeZone: 'UTC' })
     return { cells, monthLabel }
   }, [expandedMonth, daysWithBills, today])
 
-  const goPrevMonth = () => {
-    setExpandedMonth(prev =>
-      prev.monthIdx === 0
-        ? { year: prev.year - 1, monthIdx: 11 }
-        : { year: prev.year, monthIdx: prev.monthIdx - 1 }
-    )
-  }
-
-  const goNextMonth = () => {
-    setExpandedMonth(prev =>
-      prev.monthIdx === 11
-        ? { year: prev.year + 1, monthIdx: 0 }
-        : { year: prev.year, monthIdx: prev.monthIdx + 1 }
-    )
-  }
+  const goPrevMonth = () => setExpandedMonth(prev => prev.monthIdx === 0 ? { year: prev.year - 1, monthIdx: 11 } : { year: prev.year, monthIdx: prev.monthIdx - 1 })
+  const goNextMonth = () => setExpandedMonth(prev => prev.monthIdx === 11 ? { year: prev.year + 1, monthIdx: 0 } : { year: prev.year, monthIdx: prev.monthIdx + 1 })
 
   return (
-    <div className="bg-surface-2/40 border border-line rounded-2xl overflow-hidden">
+    <div>
       <button
         type="button"
         onClick={() => setExpanded(e => !e)}
         aria-expanded={expanded}
-        className="w-full flex items-center justify-between px-3 py-2.5 text-[10px] font-bold text-fg-subtle uppercase tracking-wider hover:bg-surface-2/60 transition-colors"
+        className="w-full flex items-center justify-between py-2 text-[10px] font-bold text-fg-subtle uppercase tracking-wider hover:opacity-80 transition-opacity"
       >
         <span className="flex items-center gap-1.5">
           <CalendarDays className="w-3.5 h-3.5" />
           {expanded ? 'Month view' : 'This week'}
         </span>
-        {expanded
-          ? <ChevronUp className="w-4 h-4" />
-          : <ChevronDown className="w-4 h-4" />}
+        {expanded ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
       </button>
 
       {expanded ? (
-        <MonthView
-          cells={monthGrid.cells}
-          monthLabel={monthGrid.monthLabel}
-          selectedDate={selectedDate}
-          onSelectDate={onSelectDate}
-          onPrev={goPrevMonth}
-          onNext={goNextMonth}
-        />
+        <MonthView cells={monthGrid.cells} monthLabel={monthGrid.monthLabel} selectedDate={selectedDate} onSelectDate={onSelectDate} onPrev={goPrevMonth} onNext={goNextMonth} />
       ) : (
-        <StripView
-          days={stripDays}
-          selectedDate={selectedDate}
-          onSelectDate={onSelectDate}
-        />
+        <StripView days={stripDays} selectedDate={selectedDate} onSelectDate={onSelectDate} />
       )}
     </div>
   )

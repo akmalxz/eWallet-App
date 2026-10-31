@@ -1,74 +1,100 @@
 // src/components/shared/RowMenu.jsx
-import { useState, useEffect, useRef } from 'react'
+import { useState, useRef, useEffect } from 'react'
+import { createPortal } from 'react-dom'
 import { MoreVertical } from 'lucide-react'
 
-/**
- * Generic kebab-menu dropdown. Actions are supplied by the caller.
- * Handles:
- *   - open/close state
- *   - close on outside click
- *   - close on Escape
- *
- * actions: [{ label, icon, onClick, danger?, disabled? }]
- */
-export const RowMenu = ({ actions, ariaLabel = 'Actions' }) => {
+export const RowMenu = ({ actions = [], ariaLabel = 'Options' }) => {
   const [open, setOpen] = useState(false)
-  const ref = useRef(null)
+  const [coords, setCoords] = useState({ top: 0, right: 0 })
+  const buttonRef = useRef(null)
+  const menuRef = useRef(null)
+
+  const handleOpen = (e) => {
+    e.stopPropagation()
+    if (buttonRef.current) {
+      const rect = buttonRef.current.getBoundingClientRect()
+      // Calculate fixed position based on the button's viewport position
+      setCoords({
+        top: rect.bottom + 4,
+        right: window.innerWidth - rect.right
+      })
+    }
+    setOpen(true)
+  }
 
   useEffect(() => {
     if (!open) return
-    const onDown = (e) => {
-      if (ref.current && !ref.current.contains(e.target)) setOpen(false)
+
+    const handleClickOutside = (e) => {
+      if (
+        menuRef.current && 
+        !menuRef.current.contains(e.target) && 
+        buttonRef.current && 
+        !buttonRef.current.contains(e.target)
+      ) {
+        setOpen(false)
+      }
     }
-    const onKey = (e) => {
-      if (e.key === 'Escape') setOpen(false)
-    }
-    document.addEventListener('mousedown', onDown)
-    document.addEventListener('keydown', onKey)
+    
+    // Close the menu when scrolling to avoid it floating detached from the button
+    const handleScroll = () => setOpen(false)
+
+    document.addEventListener('mousedown', handleClickOutside)
+    window.addEventListener('scroll', handleScroll, true)
+    
     return () => {
-      document.removeEventListener('mousedown', onDown)
-      document.removeEventListener('keydown', onKey)
+      document.removeEventListener('mousedown', handleClickOutside)
+      window.removeEventListener('scroll', handleScroll, true)
     }
   }, [open])
 
+  if (actions.length === 0) return null
+
   return (
-    <div ref={ref} className="relative shrink-0">
+    <>
       <button
-        type="button"
-        onClick={() => setOpen((o) => !o)}
-        aria-haspopup="menu"
-        aria-expanded={open}
+        ref={buttonRef}
+        onClick={handleOpen}
+        // ADDED: flex items-center justify-center w-8 h-8
+        className={`flex items-center justify-center w-8 h-8 rounded-lg transition-colors ${
+          open ? 'bg-surface-2 text-fg' : 'text-fg-subtle hover:text-fg hover:bg-surface-2'
+        }`}
         aria-label={ariaLabel}
-        className="inline-flex h-11 w-11 items-center justify-center rounded-lg text-fg-subtle hover:text-fg hover:bg-surface-2 transition-colors"
+        aria-expanded={open}
       >
         <MoreVertical className="w-4 h-4" />
       </button>
-      {open && (
-        <div
-          role="menu"
-          className="absolute right-0 top-full mt-1 z-30 min-w-[170px] bg-surface border border-line rounded-xl shadow-xl overflow-hidden animate-in fade-in slide-in-from-top-1 duration-150"
-        >
-          {actions.map((a) => (
-            <button
-              key={a.label}
-              role="menuitem"
-              type="button"
-              disabled={a.disabled}
-              onClick={() => {
-                setOpen(false)
-                a.onClick()
-              }}
-              className={`w-full flex items-center gap-2 px-3 py-2.5 text-xs font-semibold text-left transition-colors disabled:opacity-50 ${
-                a.danger ? 'text-danger hover:bg-danger-soft' : 'text-fg-muted hover:bg-surface-2'
-              }`}
-              style={{ minHeight: 44 }}
-            >
-              {a.icon}
-              {a.label}
-            </button>
-          ))}
-        </div>
+
+      {/* Render the menu into document.body to escape any overflow-hidden parents */}
+      {open && typeof document !== 'undefined' && createPortal(
+        <div className="fixed inset-0 z-[999]" onClick={() => setOpen(false)}>
+          <div
+            ref={menuRef}
+            className="absolute w-44 bg-surface border border-line rounded-xl shadow-xl py-1 animate-fadeIn"
+            style={{ top: coords.top, right: coords.right }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            {actions.map((action, i) => (
+              <button
+                key={i}
+                onClick={() => {
+                  action.onClick()
+                  setOpen(false)
+                }}
+                className={`w-full text-left px-3 py-2 text-xs font-semibold flex items-center gap-2 transition-colors ${
+                  action.danger 
+                    ? 'text-danger hover:bg-danger-soft' 
+                    : 'text-fg hover:bg-surface-2'
+                }`}
+              >
+                {action.icon}
+                {action.label}
+              </button>
+            ))}
+          </div>
+        </div>,
+        document.body
       )}
-    </div>
+    </>
   )
 }
