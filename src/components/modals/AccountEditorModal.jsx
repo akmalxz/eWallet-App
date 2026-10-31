@@ -11,7 +11,7 @@ import { PatternPicker } from '../shared/PatternPicker'
 import { IconPicker } from '../shared/IconPicker'
 import { ConfirmSheet } from '../shared/ConfirmSheet'
 import { COLOR_THEMES, PATTERNS, ICONS } from '../../utils/theme/themeRegistry'
-import { detectBankLogo } from '../../utils/theme/bankRegistry' // <-- NEW
+import { detectBankLogo } from '../../utils/theme/bankRegistry'
 import { useBodyScrollLock } from '../../hooks/useBodyScrollLock'
 
 const NAME_MAX = 30
@@ -49,6 +49,9 @@ export const AccountEditorModal = ({
   const isNew = !account
   const nameInputRef = useRef(null)
   const [showDiscardConfirm, setShowDiscardConfirm] = useState(false)
+  
+  // Track if the user has manually picked an icon
+  const [hasManuallyPickedIcon, setHasManuallyPickedIcon] = useState(false)
 
   useBodyScrollLock(true)
 
@@ -83,25 +86,30 @@ export const AccountEditorModal = ({
     if (error) setError('')
   }
 
-  // --- NEW: Auto-detect bank logo on name change ---
   const handleNameChange = (e) => {
     const newName = e.target.value
-    const detectedLogo = detectBankLogo(newName)
     
     setDraft(d => {
       const next = { ...d, account_name: newName }
-      // If a bank is detected, auto-update the icon.
-      // If they clear the name or type something else, fallback to 'bank' if it was previously a bank logo.
-      if (detectedLogo) {
-        next.icon = detectedLogo
-      } else if (d.icon && d.icon.startsWith('/banks/')) {
-        next.icon = 'bank'
+      
+      // Only auto-detect if the user hasn't manually picked an icon
+      if (!hasManuallyPickedIcon) {
+        const detectedLogo = detectBankLogo(newName)
+        if (detectedLogo) {
+          next.icon = detectedLogo
+        } else if (d.icon && d.icon.startsWith('/banks/')) {
+          next.icon = 'bank'
+        }
       }
       return next
     })
     if (error) setError('')
   }
-  // ------------------------------------------------
+
+  const handleManualIconChange = (key) => {
+    setHasManuallyPickedIcon(true)
+    update('icon', key)
+  }
 
   const validate = () => {
     const name = draft.account_name.trim()
@@ -179,20 +187,20 @@ export const AccountEditorModal = ({
 
   const handleReset = () => {
     setDraft(isNew ? buildDefaults(classifications) : fromAccount(account))
+    setHasManuallyPickedIcon(false)
     setError('')
   }
 
   const handleSurprise = () => {
+    // Only randomize the color/pattern, leave the user's icon choice intact
     const activeThemes = COLOR_THEMES.filter(t => !t.retired)
     const randomTheme = activeThemes[Math.floor(Math.random() * activeThemes.length)]
     const randomPattern = PATTERNS[Math.floor(Math.random() * PATTERNS.length)]
-    const randomIcon = ICONS[Math.floor(Math.random() * ICONS.length)]
 
     setDraft(d => ({
       ...d,
       color_theme: randomTheme.key,
-      pattern: randomPattern.key,
-      icon: randomIcon.key
+      pattern: randomPattern.key
     }))
   }
 
@@ -233,7 +241,7 @@ export const AccountEditorModal = ({
           className="w-full md:max-w-lg bg-surface border border-line-strong rounded-3xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh] animate-in zoom-in-95 duration-200"
           onClick={e => e.stopPropagation()}
         >
-          <div className="flex items-center justify-between px-5 py-4 border-b border-line shrink-0">
+          <div className="flex items-center justify-between px-5 py-4 border-b border-line shrink-0 z-20">
             <h2 className="text-base font-bold text-fg">
               {isNew ? 'New account' : 'Edit account'}
             </h2>
@@ -247,7 +255,8 @@ export const AccountEditorModal = ({
             </button>
           </div>
 
-          <div className="px-5 py-4 bg-surface-2 border-b border-line shrink-0">
+          {/* STICKY PREVIEW */}
+          <div className="sticky top-0 z-10 px-5 py-4 bg-surface-2 border-b border-line shrink-0 shadow-sm">
             <div className="max-w-[240px] mx-auto">
               <AccountCard
                 account={previewAccount}
@@ -281,7 +290,7 @@ export const AccountEditorModal = ({
                 ref={nameInputRef}
                 type="text"
                 value={draft.account_name}
-                onChange={handleNameChange} // <-- Changed to handleNameChange
+                onChange={handleNameChange}
                 maxLength={NAME_MAX + 5}
                 placeholder="e.g. Maybank"
                 className={`w-full bg-surface border ${
@@ -296,43 +305,45 @@ export const AccountEditorModal = ({
               )}
             </section>
 
-            <section>
-              <label
-                htmlFor="editor-class"
-                className="block text-[11px] font-bold text-fg-subtle uppercase tracking-wider mb-2"
-              >
-                Type
-              </label>
-              <select
-                id="editor-class"
-                value={draft.classification}
-                onChange={e => update('classification', e.target.value)}
-                className="w-full bg-surface border border-line-strong rounded-xl py-3 px-3 text-sm text-fg outline-none focus:border-brand transition-colors"
-              >
-                {classifications.map(c => (
-                  <option key={c.key_name} value={c.key_name}>{c.label}</option>
-                ))}
-              </select>
-            </section>
+            <div className="grid grid-cols-2 gap-3">
+              <section>
+                <label
+                  htmlFor="editor-class"
+                  className="block text-[11px] font-bold text-fg-subtle uppercase tracking-wider mb-2 truncate"
+                >
+                  Type
+                </label>
+                <select
+                  id="editor-class"
+                  value={draft.classification}
+                  onChange={e => update('classification', e.target.value)}
+                  className="w-full bg-surface border border-line-strong rounded-xl py-3 px-3 text-sm text-fg outline-none focus:border-brand transition-colors"
+                >
+                  {classifications.map(c => (
+                    <option key={c.key_name} value={c.key_name}>{c.label}</option>
+                  ))}
+                </select>
+              </section>
 
-            <section>
-              <label
-                htmlFor="editor-balance"
-                className="block text-[11px] font-bold text-fg-subtle uppercase tracking-wider mb-2"
-              >
-                {isNew ? 'Current balance (RM)' : 'Opening balance (RM)'}
-              </label>
-              <input
-                id="editor-balance"
-                type="number"
-                step="0.01"
-                inputMode="decimal"
-                value={draft.starting_balance}
-                onChange={e => update('starting_balance', e.target.value)}
-                placeholder="0.00"
-                className="w-full bg-surface border border-line-strong rounded-xl py-3 px-3 text-sm text-fg placeholder:text-fg-subtle outline-none focus:border-brand transition-colors"
-              />
-            </section>
+              <section>
+                <label
+                  htmlFor="editor-balance"
+                  className="block text-[11px] font-bold text-fg-subtle uppercase tracking-wider mb-2 truncate"
+                >
+                  {isNew ? 'Balance (RM)' : 'Opening bal. (RM)'}
+                </label>
+                <input
+                  id="editor-balance"
+                  type="number"
+                  step="0.01"
+                  inputMode="decimal"
+                  value={draft.starting_balance}
+                  onChange={e => update('starting_balance', e.target.value)}
+                  placeholder="0.00"
+                  className="w-full bg-surface border border-line-strong rounded-xl py-3 px-3 text-sm text-fg placeholder:text-fg-subtle outline-none focus:border-brand transition-colors"
+                />
+              </section>
+            </div>
 
             <section>
               <div className="flex items-center justify-between mb-2">
@@ -373,14 +384,14 @@ export const AccountEditorModal = ({
                 value={draft.icon}
                 colorThemeKey={draft.color_theme}
                 previewLetter={previewLetter}
-                onChange={(key) => update('icon', key)}
+                onChange={handleManualIconChange}
               />
             </section>
 
           </div>
 
           <div
-            className="px-5 pt-4 border-t border-line bg-surface shrink-0 space-y-2"
+            className="px-5 pt-4 border-t border-line bg-surface shrink-0 space-y-2 z-20"
             style={{ paddingBottom: 'max(1rem, env(safe-area-inset-bottom, 0px))' }}
           >
             <button

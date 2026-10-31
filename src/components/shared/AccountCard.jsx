@@ -134,6 +134,11 @@ export const AccountCard = memo(function AccountCard({
   const patternSvg = hasPattern ? getPatternSvg(data.pattern, theme.tone) : 'none'
   const balanceLabel = getBalanceLabel(data.classification)
 
+  const patternOpacity = 
+    theme.category === 'shiny' ? 0.15 : 
+    theme.category === 'matte' ? 0.18 : 
+    0.10
+
   return (
     <div
       onClick={onClick}
@@ -147,6 +152,7 @@ export const AccountCard = memo(function AccountCard({
         borderColor: 'rgba(255,255,255,0.3)'
       }}
     >
+      {/* 1. Base dark gradient for depth */}
       <div
         className="absolute inset-0 pointer-events-none"
         style={{
@@ -154,12 +160,24 @@ export const AccountCard = memo(function AccountCard({
         }}
       />
 
+      {/* 2. Shiny specular gloss overlay */}
+      {theme.highlight && (
+        <div
+          className="absolute inset-0 pointer-events-none"
+          style={{
+            background: 'linear-gradient(135deg, rgba(255,255,255,0.4) 0%, rgba(255,255,255,0) 40%, rgba(0,0,0,0.1) 100%)',
+            mixBlendMode: 'overlay'
+          }}
+        />
+      )}
+
+      {/* 3. Pattern Overlay */}
       {hasPattern && (
         <div
           className="absolute inset-0 pointer-events-none"
           style={{
             backgroundImage: patternSvg,
-            opacity: 0.12,
+            opacity: patternOpacity, // <-- Now uses the dynamic value
             WebkitMaskImage: 'radial-gradient(circle at 82% 18%, black 0%, transparent 72%)',
             maskImage: 'radial-gradient(circle at 82% 18%, black 0%, transparent 72%)'
           }}

@@ -1,4 +1,5 @@
 // src/components/shared/IconPicker.jsx
+import { useState } from 'react'
 import { Check } from 'lucide-react'
 import { getIconsByCategory, getColorTheme } from '../../utils/theme/themeRegistry'
 import { BANK_REGISTRY } from '../../utils/theme/bankRegistry'
@@ -9,6 +10,8 @@ export const IconPicker = ({
   previewLetter = 'A',
   onChange
 }) => {
+  const [activeTab, setActiveTab] = useState('logos') // 'logos' | 'icons'
+  
   const theme = getColorTheme(colorThemeKey)
   const [c1, c2] = theme.gradient
   const groups = getIconsByCategory()
@@ -43,19 +46,13 @@ export const IconPicker = ({
         }
       >
         {isLetter ? (
-          <span
-            className="text-sm font-black"
-            style={{ color: letterTextColor }}
-          >
+          <span className="text-sm font-black" style={{ color: letterTextColor }}>
             {previewLetter}
           </span>
         ) : icon.logo ? (
-          <img src={icon.logo} alt={icon.label} className="w-8 h-8 object-contain p-1" />
+          <img src={icon.logo} alt={icon.label} className="w-full h-full object-cover rounded-xl" />
         ) : IconComponent ? (
-          <IconComponent
-            className="w-5 h-5 text-fg-muted"
-            aria-hidden="true"
-          />
+          <IconComponent className="w-5 h-5 text-fg-muted" aria-hidden="true" />
         ) : null}
 
         {isSelected && (
@@ -68,29 +65,48 @@ export const IconPicker = ({
   }
 
   return (
-    <div role="radiogroup" aria-label="Card icon" className="space-y-4">
+    <div role="radiogroup" aria-label="Card icon">
       
-      {/* Bank Logos Section */}
-      <div>
-        <h4 className="text-[10px] font-bold text-fg-subtle uppercase tracking-wider mb-2">
+      {/* Tab Switcher */}
+      <div className="flex gap-2 mb-4 bg-surface-2 p-1 rounded-xl">
+        <button
+          type="button"
+          onClick={() => setActiveTab('logos')}
+          className={`flex-1 py-2 text-xs font-bold rounded-lg transition-all ${
+            activeTab === 'logos'
+              ? 'bg-surface text-fg shadow-sm'
+              : 'text-fg-subtle hover:text-fg'
+          }`}
+        >
           Bank Logos
-        </h4>
-        <div className="flex flex-wrap gap-2">
-          {BANK_REGISTRY.map(renderButton)}
-        </div>
+        </button>
+        <button
+          type="button"
+          onClick={() => setActiveTab('icons')}
+          className={`flex-1 py-2 text-xs font-bold rounded-lg transition-all ${
+            activeTab === 'icons'
+              ? 'bg-surface text-fg shadow-sm'
+              : 'text-fg-subtle hover:text-fg'
+          }`}
+        >
+          Standard Icons
+        </button>
       </div>
 
-      {/* Standard Icons Section */}
-      {Object.entries(groups).map(([category, icons]) => (
-        <div key={category}>
-          <h4 className="text-[10px] font-bold text-fg-subtle uppercase tracking-wider mb-2">
-            {category}
-          </h4>
-          <div className="flex flex-wrap gap-2">
-            {icons.map(renderButton)}
-          </div>
+      {/* Bank Logos Tab */}
+      {activeTab === 'logos' && (
+        <div className="flex flex-wrap gap-2 animate-fadeIn">
+          {BANK_REGISTRY.map(renderButton)}
         </div>
-      ))}
+      )}
+
+      {/* Standard Icons Tab */}
+      {activeTab === 'icons' && (
+        <div className="flex flex-wrap gap-2 animate-fadeIn">
+          {Object.values(groups).flat().map(renderButton)}
+        </div>
+      )}
+      
     </div>
   )
 }
