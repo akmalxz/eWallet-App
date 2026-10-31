@@ -11,6 +11,7 @@ import { PatternPicker } from '../shared/PatternPicker'
 import { IconPicker } from '../shared/IconPicker'
 import { ConfirmSheet } from '../shared/ConfirmSheet'
 import { COLOR_THEMES, PATTERNS, ICONS } from '../../utils/theme/themeRegistry'
+import { detectBankLogo } from '../../utils/theme/bankRegistry' // <-- NEW
 import { useBodyScrollLock } from '../../hooks/useBodyScrollLock'
 
 const NAME_MAX = 30
@@ -81,6 +82,26 @@ export const AccountEditorModal = ({
     setDraft(d => ({ ...d, [field]: value }))
     if (error) setError('')
   }
+
+  // --- NEW: Auto-detect bank logo on name change ---
+  const handleNameChange = (e) => {
+    const newName = e.target.value
+    const detectedLogo = detectBankLogo(newName)
+    
+    setDraft(d => {
+      const next = { ...d, account_name: newName }
+      // If a bank is detected, auto-update the icon.
+      // If they clear the name or type something else, fallback to 'bank' if it was previously a bank logo.
+      if (detectedLogo) {
+        next.icon = detectedLogo
+      } else if (d.icon && d.icon.startsWith('/banks/')) {
+        next.icon = 'bank'
+      }
+      return next
+    })
+    if (error) setError('')
+  }
+  // ------------------------------------------------
 
   const validate = () => {
     const name = draft.account_name.trim()
@@ -260,7 +281,7 @@ export const AccountEditorModal = ({
                 ref={nameInputRef}
                 type="text"
                 value={draft.account_name}
-                onChange={e => update('account_name', e.target.value)}
+                onChange={handleNameChange} // <-- Changed to handleNameChange
                 maxLength={NAME_MAX + 5}
                 placeholder="e.g. Maybank"
                 className={`w-full bg-surface border ${
@@ -289,7 +310,7 @@ export const AccountEditorModal = ({
                 className="w-full bg-surface border border-line-strong rounded-xl py-3 px-3 text-sm text-fg outline-none focus:border-brand transition-colors"
               >
                 {classifications.map(c => (
-                  <option key={c.id} value={c.key_name}>{c.label}</option>
+                  <option key={c.key_name} value={c.key_name}>{c.label}</option>
                 ))}
               </select>
             </section>

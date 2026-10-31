@@ -8,9 +8,6 @@ import { formatMYR } from '../../utils/formatters'
 import { getColorTheme, getIcon, getPattern } from '../../utils/theme/themeRegistry'
 import { AnimatedNumber } from './AnimatedNumber'
 
-// ---------------------------------------------------------------------------
-// Pattern SVG cache — one data URI per (patternKey, tone) combo.
-// ---------------------------------------------------------------------------
 const patternCache = new Map()
 const getPatternSvg = (patternKey, tone) => {
   const key = `${patternKey}-${tone}`
@@ -45,6 +42,9 @@ export const AccountCard = memo(function AccountCard({
   const isLetterIcon = iconEntry.key === 'letter'
   const IconComponent = isLetterIcon ? null : iconEntry.component
 
+  // NEW: Check if the icon is a bank logo image path
+  const isImageIcon = typeof data.icon === 'string' && data.icon.startsWith('/banks/')
+
   const [c1, c2] = theme.gradient
   const gradient = `linear-gradient(135deg, ${c1}, ${c2})`
   const textColor = theme.tone === 'light' ? '#ffffff' : '#0f172a'
@@ -52,6 +52,27 @@ export const AccountCard = memo(function AccountCard({
   const isPinned = !!data.is_pinned
 
   const firstLetter = (data.account_name || '?').trim().charAt(0).toUpperCase() || '?'
+
+  // Helper for rendering the icon based on type
+  const renderIcon = (className = "w-5 h-5") => {
+    if (isImageIcon) {
+      return (
+        <img 
+          src={data.icon} 
+          alt={data.account_name} 
+          // Fill the container completely
+          className="w-full h-full object-cover" 
+        />
+      )
+    }
+    if (isLetterIcon) {
+      return <span className="text-sm font-bold" style={{ color: textColor }}>{firstLetter}</span>
+    }
+    if (IconComponent) {
+      return <IconComponent className={className} style={{ color: textColor }} />
+    }
+    return null
+  }
 
   // ------------------------------------------------------------
   // DOT
@@ -79,16 +100,11 @@ export const AccountCard = memo(function AccountCard({
       >
         {showIcon && (
           <span
-            className="w-5 h-5 rounded-md flex items-center justify-center shrink-0"
-            style={{ background: 'rgba(255,255,255,0.18)' }}
+            className="w-5 h-5 rounded-md flex items-center justify-center shrink-0 overflow-hidden"
+            // Changed #ffffff to transparent
+            style={{ background: isImageIcon ? 'transparent' : 'rgba(255,255,255,0.18)' }}
           >
-            {isLetterIcon ? (
-              <span className="text-[10px] font-bold" style={{ color: textColor }}>
-                {firstLetter}
-              </span>
-            ) : IconComponent ? (
-              <IconComponent className="w-3 h-3" style={{ color: textColor }} />
-            ) : null}
+            {renderIcon("w-3 h-3")}
           </span>
         )}
         <span className="truncate">{data.account_name}</span>
@@ -140,16 +156,10 @@ export const AccountCard = memo(function AccountCard({
           <div className="flex items-center justify-between mb-3">
             <div className="flex items-center gap-3 min-w-0">
               <div
-                className="flex items-center justify-center w-9 h-9 rounded-xl shrink-0"
-                style={{ background: 'rgba(255,255,255,0.18)' }}
+                className="flex items-center justify-center w-9 h-9 rounded-xl shrink-0 overflow-hidden"
+                style={{ background: isImageIcon ? '#ffffff' : 'rgba(255,255,255,0.18)' }}
               >
-                {isLetterIcon ? (
-                  <span className="text-sm font-bold" style={{ color: textColor }}>
-                    {firstLetter}
-                  </span>
-                ) : IconComponent ? (
-                  <IconComponent className="w-5 h-5" style={{ color: textColor }} />
-                ) : null}
+                {renderIcon("w-5 h-5")}
               </div>
               <div className="min-w-0">
                 <p className="text-xs font-medium truncate" style={{ color: textMuted }}>

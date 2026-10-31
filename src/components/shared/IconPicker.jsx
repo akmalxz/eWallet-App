@@ -1,6 +1,7 @@
 // src/components/shared/IconPicker.jsx
 import { Check } from 'lucide-react'
 import { getIconsByCategory, getColorTheme } from '../../utils/theme/themeRegistry'
+import { BANK_REGISTRY } from '../../utils/theme/bankRegistry'
 
 export const IconPicker = ({
   value,
@@ -12,25 +13,24 @@ export const IconPicker = ({
   const [c1, c2] = theme.gradient
   const groups = getIconsByCategory()
 
-  // Icon color inside the tile: slate on light tiles, white on the letter tile
   const letterTextColor = theme.tone === 'light' ? '#ffffff' : '#0f172a'
 
   const renderButton = (icon) => {
-    const isSelected = value === icon.key
+    const isSelected = value === icon.key || value === icon.logo
     const isLetter = icon.key === 'letter'
     const IconComponent = icon.component
 
     return (
       <button
-        key={icon.key}
+        key={icon.key || icon.logo}
         type="button"
         role="radio"
         aria-checked={isSelected}
-        aria-label={icon.name}
-        title={icon.name}
-        onClick={() => onChange(icon.key)}
-        className={`relative w-11 h-11 rounded-xl flex items-center justify-center transition-all duration-200 ${
-          isLetter ? '' : 'bg-surface-2'
+        aria-label={icon.name || icon.label}
+        title={icon.name || icon.label}
+        onClick={() => onChange(icon.logo || icon.key)}
+        className={`relative w-11 h-11 rounded-xl flex items-center justify-center transition-all duration-200 overflow-hidden ${
+          isLetter || icon.logo ? '' : 'bg-surface-2'
         } ${
           isSelected
             ? 'ring-2 ring-fg ring-offset-2 ring-offset-surface'
@@ -39,7 +39,7 @@ export const IconPicker = ({
         style={
           isLetter
             ? { background: `linear-gradient(135deg, ${c1}, ${c2})` }
-            : undefined
+            : icon.logo ? { background: '#ffffff' } : undefined
         }
       >
         {isLetter ? (
@@ -49,6 +49,8 @@ export const IconPicker = ({
           >
             {previewLetter}
           </span>
+        ) : icon.logo ? (
+          <img src={icon.logo} alt={icon.label} className="w-8 h-8 object-contain p-1" />
         ) : IconComponent ? (
           <IconComponent
             className="w-5 h-5 text-fg-muted"
@@ -56,9 +58,8 @@ export const IconPicker = ({
           />
         ) : null}
 
-        {/* Selected check — corner badge so it doesn't cover the icon */}
         {isSelected && (
-          <span className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-fg flex items-center justify-center shadow-sm">
+          <span className="absolute top-0 right-0 w-4 h-4 rounded-bl-lg bg-fg flex items-center justify-center shadow-sm">
             <Check className="w-2.5 h-2.5 text-fg-inverse" strokeWidth={3} />
           </span>
         )}
@@ -68,6 +69,18 @@ export const IconPicker = ({
 
   return (
     <div role="radiogroup" aria-label="Card icon" className="space-y-4">
+      
+      {/* Bank Logos Section */}
+      <div>
+        <h4 className="text-[10px] font-bold text-fg-subtle uppercase tracking-wider mb-2">
+          Bank Logos
+        </h4>
+        <div className="flex flex-wrap gap-2">
+          {BANK_REGISTRY.map(renderButton)}
+        </div>
+      </div>
+
+      {/* Standard Icons Section */}
       {Object.entries(groups).map(([category, icons]) => (
         <div key={category}>
           <h4 className="text-[10px] font-bold text-fg-subtle uppercase tracking-wider mb-2">
