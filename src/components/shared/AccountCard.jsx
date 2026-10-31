@@ -2,7 +2,7 @@
 import { memo } from 'react'
 import {
   Plus, ChevronDown, ChevronUp, ChevronLeft, ChevronRight,
-  CreditCard, Settings, Pin
+  CreditCard, Settings, Pin, QrCode, TrendingUp, Landmark, Wallet
 } from 'lucide-react'
 import { formatMYR } from '../../utils/formatters'
 import { getColorTheme, getIcon, getPattern } from '../../utils/theme/themeRegistry'
@@ -16,6 +16,34 @@ const getPatternSvg = (patternKey, tone) => {
   const svg = pattern.svg ? pattern.svg(tone) : 'none'
   patternCache.set(key, svg)
   return svg
+}
+
+// ---------------------------------------------------------
+// HELPER 1: Smart Balance Labels
+// ---------------------------------------------------------
+const getBalanceLabel = (classification) => {
+  switch (classification) {
+    case 'credit': return 'Available Credit'
+    case 'fixed_price_ut':
+    case 'investment':
+    case 'pilgrimage': return 'Portfolio Value'
+    case 'ewallet': return 'Available to spend'
+    default: return 'Balance'
+  }
+}
+
+// ---------------------------------------------------------
+// HELPER 2: Contextual Physical Elements
+// ---------------------------------------------------------
+const getPhysicalElement = (classification, className, style) => {
+  switch (classification) {
+    case 'credit': return <CreditCard className={className} style={style} />
+    case 'ewallet': return <QrCode className={className} style={style} />
+    case 'fixed_price_ut':
+    case 'investment': return <TrendingUp className={className} style={style} />
+    case 'hub': return <Landmark className={className} style={style} />
+    default: return <Wallet className={className} style={style} />
+  }
 }
 
 export const AccountCard = memo(function AccountCard({
@@ -42,7 +70,6 @@ export const AccountCard = memo(function AccountCard({
   const isLetterIcon = iconEntry.key === 'letter'
   const IconComponent = isLetterIcon ? null : iconEntry.component
 
-  // NEW: Check if the icon is a bank logo image path
   const isImageIcon = typeof data.icon === 'string' && data.icon.startsWith('/banks/')
 
   const [c1, c2] = theme.gradient
@@ -53,14 +80,12 @@ export const AccountCard = memo(function AccountCard({
 
   const firstLetter = (data.account_name || '?').trim().charAt(0).toUpperCase() || '?'
 
-  // Helper for rendering the icon based on type
   const renderIcon = (className = "w-5 h-5") => {
     if (isImageIcon) {
       return (
         <img 
           src={data.icon} 
           alt={data.account_name} 
-          // Fill the container completely
           className="w-full h-full object-cover" 
         />
       )
@@ -74,9 +99,6 @@ export const AccountCard = memo(function AccountCard({
     return null
   }
 
-  // ------------------------------------------------------------
-  // DOT
-  // ------------------------------------------------------------
   if (size === 'dot') {
     return (
       <span
@@ -87,9 +109,6 @@ export const AccountCard = memo(function AccountCard({
     )
   }
 
-  // ------------------------------------------------------------
-  // CHIP
-  // ------------------------------------------------------------
   if (size === 'chip') {
     return (
       <span
@@ -101,7 +120,6 @@ export const AccountCard = memo(function AccountCard({
         {showIcon && (
           <span
             className="w-5 h-5 rounded-md flex items-center justify-center shrink-0 overflow-hidden"
-            // Changed #ffffff to transparent
             style={{ background: isImageIcon ? 'transparent' : 'rgba(255,255,255,0.18)' }}
           >
             {renderIcon("w-3 h-3")}
@@ -112,11 +130,9 @@ export const AccountCard = memo(function AccountCard({
     )
   }
 
-  // ------------------------------------------------------------
-  // FULL CARD
-  // ------------------------------------------------------------
   const hasPattern = data.pattern && data.pattern !== 'none'
   const patternSvg = hasPattern ? getPatternSvg(data.pattern, theme.tone) : 'none'
+  const balanceLabel = getBalanceLabel(data.classification)
 
   return (
     <div
@@ -157,7 +173,7 @@ export const AccountCard = memo(function AccountCard({
             <div className="flex items-center gap-3 min-w-0">
               <div
                 className="flex items-center justify-center w-9 h-9 rounded-xl shrink-0 overflow-hidden"
-                style={{ background: isImageIcon ? '#ffffff' : 'rgba(255,255,255,0.18)' }}
+                style={{ background: isImageIcon ? 'transparent' : 'rgba(255,255,255,0.18)' }}
               >
                 {renderIcon("w-5 h-5")}
               </div>
@@ -171,36 +187,12 @@ export const AccountCard = memo(function AccountCard({
               </div>
             </div>
 
-            <div className="flex items-center gap-1 shrink-0 ml-2">
-              {onTogglePin && (
-                <button
-                  onClick={(e) => { e.stopPropagation(); onTogglePin(data) }}
-                  className={`flex items-center justify-center w-11 h-11 rounded-full transition-all duration-300 ${
-                    isPinned ? 'ring-2 ring-white/60 shadow-lg' : ''
-                  }`}
-                  style={{
-                    background: isPinned ? 'rgba(255,255,255,0.45)' : 'rgba(255,255,255,0.15)'
-                  }}
-                  aria-label={isPinned ? `Unpin ${data.account_name}` : `Pin ${data.account_name} to top`}
-                  title={isPinned ? 'Unpin' : 'Pin to top'}
-                >
-                  <Pin
-                    className={`w-3.5 h-3.5 transition-transform duration-300 ${
-                      isPinned ? 'rotate-0' : 'rotate-45'
-                    }`}
-                    style={{
-                      color: textColor,
-                      fill: isPinned ? textColor : 'transparent'
-                    }}
-                  />
-                </button>
-              )}
-
+            {/* SINGLE CHEVRON CONTROL */}
+            <div className="flex items-center shrink-0 ml-2">
               {onToggleExpand && (
                 <button
                   onClick={(e) => { e.stopPropagation(); onToggleExpand() }}
-                  className="flex items-center justify-center w-11 h-11 rounded-full transition-all duration-300"
-                  style={{ background: 'rgba(255,255,255,0.15)' }}
+                  className="flex items-center justify-center w-8 h-8 rounded-full bg-black/10 backdrop-blur-md border border-white/10 hover:bg-black/20 transition-all duration-300"
                   aria-label={isExpanded ? `Collapse ${data.account_name}` : `Expand ${data.account_name}`}
                   aria-expanded={isExpanded}
                 >
@@ -215,7 +207,7 @@ export const AccountCard = memo(function AccountCard({
           </div>
 
           <div className="mb-2">
-            <p className="text-xs" style={{ color: textMuted }}>Balance</p>
+            <p className="text-xs" style={{ color: textMuted }}>{balanceLabel}</p>
             <p className="text-2xl font-bold tracking-tight break-all" style={{ color: textColor }}>
               {showBalance ? (
                 <AnimatedNumber 
@@ -236,17 +228,36 @@ export const AccountCard = memo(function AccountCard({
                 className="pt-4 space-y-2"
                 style={{ borderTop: '1px solid rgba(255,255,255,0.2)' }}
               >
-                <div className="flex flex-col sm:flex-row gap-2">
+                <div className="grid grid-cols-3 gap-2">
                   <button
-                    className="flex-1 text-xs font-medium py-3 rounded-xl transition-colors flex items-center justify-center gap-1.5"
+                    className="text-xs font-medium py-3 rounded-xl transition-colors flex items-center justify-center gap-1.5"
                     style={{ background: 'rgba(255,255,255,0.22)', color: textColor, minHeight: 44 }}
                     onClick={(e) => { e.stopPropagation(); onLogTransaction?.(data) }}
                   >
                     <Plus className="w-3.5 h-3.5" />
-                    Transaction
+                    Log
                   </button>
+                  
+                  {onTogglePin && (
+                    <button
+                      onClick={(e) => { e.stopPropagation(); onTogglePin(data) }}
+                      className="text-xs font-medium py-3 rounded-xl transition-colors flex items-center justify-center gap-1.5"
+                      style={{ 
+                        background: isPinned ? 'rgba(255,255,255,0.3)' : 'rgba(255,255,255,0.1)', 
+                        color: textColor, 
+                        minHeight: 44 
+                      }}
+                    >
+                      <Pin
+                        className={`w-3.5 h-3.5 transition-transform duration-300 ${isPinned ? 'rotate-0' : 'rotate-45'}`}
+                        style={{ fill: isPinned ? textColor : 'transparent' }}
+                      />
+                      {isPinned ? 'Unpin' : 'Pin'}
+                    </button>
+                  )}
+
                   <button
-                    className="flex-1 text-xs font-medium py-3 rounded-xl transition-colors flex items-center justify-center gap-1.5"
+                    className="text-xs font-medium py-3 rounded-xl transition-colors flex items-center justify-center gap-1.5"
                     style={{ background: 'rgba(255,255,255,0.1)', color: textColor, minHeight: 44 }}
                     onClick={(e) => { e.stopPropagation(); onManageAccount?.(data) }}
                   >
@@ -304,14 +315,22 @@ export const AccountCard = memo(function AccountCard({
         )}
       </div>
 
+      {/* BOTTOM FOOTER ROW */}
       <div className="relative px-4 pb-3 flex items-center justify-between mt-auto">
+        
+        {/* Restored dots */}
         <div className="flex gap-1.5" style={{ color: textColor, opacity: 0.3 }}>
           <span className="text-[10px] font-mono">••••</span>
           <span className="text-[10px] font-mono">••••</span>
           <span className="text-[10px] font-mono">••••</span>
           <span className="text-[10px] font-mono">••••</span>
         </div>
-        <CreditCard className="w-4 h-4" style={{ color: textColor, opacity: 0.3 }} />
+
+        {/* Contextual Physical Element */}
+        <div style={{ color: textColor, opacity: 0.3 }}>
+          {getPhysicalElement(data.classification, "w-4 h-4")}
+        </div>
+        
       </div>
     </div>
   )
