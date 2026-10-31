@@ -3,7 +3,7 @@ import { useMemo, useState } from 'react'
 import { ChevronDown, ChevronUp } from 'lucide-react'
 import { formatMYR } from '../../utils/formatters'
 import { useChartTheme } from '../../hooks/useChartTheme'
-import { Collapse } from '../shared/Collapse' // <-- Import
+import { Collapse } from '../shared/Collapse'
 
 export const TopCategories = ({ expenses, accounts = [] }) => {
   const theme = useChartTheme()
@@ -66,7 +66,7 @@ export const TopCategories = ({ expenses, accounts = [] }) => {
         </p>
       </div>
 
-      <div className="bg-surface border border-line rounded-2xl divide-y divide-line overflow-hidden">
+      <div className="flex flex-col border-t border-line/40">
         {topCategories.map((cat, i) => {
           const pct = (cat.total / total) * 100
           const isExpanded = expandedMain === cat.name
@@ -77,10 +77,10 @@ export const TopCategories = ({ expenses, accounts = [] }) => {
               {/* Main Category Row */}
               <button
                 onClick={() => toggleMain(cat.name)}
-                className="w-full text-left px-4 py-3.5 hover:bg-surface-2 transition-colors flex items-center gap-3"
+                className="w-full text-left py-4 border-b border-line/30 hover:bg-surface-2/30 transition-all flex items-center gap-4 px-1"
               >
                 <div className="flex-1 min-w-0">
-                  <div className="flex justify-between text-xs items-end mb-1.5">
+                  <div className="flex justify-between text-sm items-end mb-2">
                     <span className="font-bold text-fg truncate pr-2">{cat.name}</span>
                     <span className="font-black text-fg tabular-figures shrink-0">
                       {formatMYR(cat.total)}
@@ -103,7 +103,7 @@ export const TopCategories = ({ expenses, accounts = [] }) => {
 
               {/* Sub Categories Accordion */}
               <Collapse open={isExpanded}>
-                <div className="bg-surface-2/30 border-t border-line divide-y divide-line/50">
+                <div className="flex flex-col">
                   {cat.subs.map((sub) => {
                     const isSubExpanded = expandedSub === sub.name
                     const subPct = (sub.total / cat.total) * 100
@@ -112,12 +112,12 @@ export const TopCategories = ({ expenses, accounts = [] }) => {
                       <div key={sub.name}>
                         <button
                           onClick={() => toggleSub(sub.name)}
-                          className="w-full flex items-center justify-between px-4 py-2.5 pl-8 hover:bg-surface-2 transition-colors"
+                          className="w-full flex items-center justify-between py-3 pl-6 pr-1 border-b border-line/20 hover:bg-surface-2/20 transition-all"
                         >
                           <div className="flex items-center gap-2">
                             <ChevronDown className={`w-3.5 h-3.5 text-fg-subtle transition-transform ${isSubExpanded ? 'rotate-180' : ''}`} />
                             <span className="text-xs font-bold text-fg">{sub.name}</span>
-                            <span className="text-[10px] font-bold text-fg-subtle bg-surface-2 px-1.5 py-0.5 rounded">
+                            <span className="text-[10px] font-bold text-fg-subtle">
                               {subPct.toFixed(0)}%
                             </span>
                           </div>
@@ -128,16 +128,16 @@ export const TopCategories = ({ expenses, accounts = [] }) => {
 
                         {/* Transactions inside Sub Category */}
                         <Collapse open={isSubExpanded}>
-                          <div className="bg-surface border-t border-line/50 divide-y divide-line/50">
+                          <div className="flex flex-col">
                             {sub.txns.map((tx) => {
                               const account = accounts.find((a) => a.id === tx.source_account_id)
                               return (
-                                <div key={tx.id} className="flex items-center justify-between px-4 py-2 pl-14">
+                                <div key={tx.id} className="flex items-center justify-between py-2.5 pl-12 pr-1 border-b border-line/10 hover:bg-surface-2/10 transition-colors">
                                   <div className="min-w-0 pr-2">
-                                    <p className="text-xs font-bold text-fg truncate">
+                                    <p className="text-xs font-bold text-fg-muted truncate">
                                       {tx.description || 'Untitled'}
                                     </p>
-                                    <p className="text-[10px] text-fg-subtle">
+                                    <p className="text-[10px] text-fg-subtle mt-0.5">
                                       {new Date(tx.transaction_date).toLocaleDateString('en-MY', {
                                         day: 'numeric',
                                         month: 'short'
@@ -145,7 +145,7 @@ export const TopCategories = ({ expenses, accounts = [] }) => {
                                       {account && ` · ${account.account_name}`}
                                     </p>
                                   </div>
-                                  <span className="text-xs font-black text-fg shrink-0 tabular-figures">
+                                  <span className="text-xs font-black text-fg-muted shrink-0 tabular-figures">
                                     {formatMYR(tx.amount)}
                                   </span>
                                 </div>

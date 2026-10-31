@@ -20,23 +20,24 @@ export const SmallLeaks = ({ expenses, periodMonths, accounts = [] }) => {
         </p>
       </div>
       
-      <div className="bg-surface border border-line rounded-2xl divide-y divide-line overflow-hidden">
+      {/* Removed card wrapper, added top border */}
+      <div className="flex flex-col border-t border-line/40">
         {leaks.map((l) => (
           <button
             key={l.key}
             onClick={() => setOpenKey((prev) => (prev === l.key ? null : l.key))}
-            className="w-full text-left px-4 py-3 hover:bg-surface-2 transition-colors flex items-center justify-between gap-3"
+            className="w-full text-left py-3 border-b border-line/30 last:border-0 hover:bg-surface-2/30 transition-all flex items-center justify-between gap-3 px-1"
           >
             <div className="min-w-0">
               <p className="text-sm font-bold text-fg truncate">{l.name}</p>
-              <p className="text-[11px] text-fg-subtle tabular-figures">
+              <p className="text-[11px] text-fg-subtle tabular-figures mt-0.5">
                 {l.count} purchases · about {formatMYR(l.avg)} each
               </p>
             </div>
             <div className="text-right shrink-0">
               <p className="text-sm font-black text-fg tabular-figures">{formatMYR(l.total)}</p>
-              <p className="text-[10px] text-fg-subtle tabular-figures">
-                ≈ {formatMYR(l.total / periodMonths)} a month
+              <p className="text-[10px] text-fg-subtle tabular-figures mt-0.5">
+                ≈ {formatMYR(l.total / periodMonths)} / mo
               </p>
             </div>
           </button>

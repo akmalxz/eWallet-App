@@ -145,7 +145,7 @@ export const ChartTooltip = ({ active, payload, title, rows, footer }) => {
 }
 
 // ============================================================
-// TRANSACTION DRILL-DOWN
+// TRANSACTION DRILL-DOWN (Updated cardless style)
 // ============================================================
 export const TransactionDrilldown = ({
   title,
@@ -169,16 +169,16 @@ export const TransactionDrilldown = ({
   const accountFor = (id) => accounts.find(a => a.id === id)
 
   const listBody = (
-    <div className="divide-y divide-line">
+    <div className="flex flex-col border-t border-line/40">
       {visible.map(tx => {
         const sourceAccount = accountFor(tx.source_account_id)
         return (
           <div
             key={tx.id}
-            className="flex items-center justify-between px-3 py-2.5"
+            className="flex items-center justify-between py-2.5 pl-6 pr-1 border-b border-line/20 last:border-0"
           >
             <div className="min-w-0 flex-1 pr-2">
-              <p className="text-xs font-bold text-fg truncate">
+              <p className="text-xs font-bold text-fg-muted truncate">
                 {tx.description || 'Untitled'}
               </p>
               <div className="flex items-center gap-2 mt-0.5 min-w-0">
@@ -200,13 +200,13 @@ export const TransactionDrilldown = ({
   )
 
   return (
-    <div className="mt-4 bg-surface border border-line rounded-2xl overflow-hidden animate-fadeIn">
-      <div className="flex items-start justify-between px-4 pt-4 pb-3 border-b border-line">
+    <div className="animate-fadeIn mt-2">
+      <div className="flex items-start justify-between pl-6 pr-1 py-3 bg-surface-2/30 rounded-lg">
         <div>
           <p className="text-[10px] font-bold text-fg-subtle uppercase tracking-wider">
-            {title}
+            {title} Breakdown
           </p>
-          <p className="text-base font-black text-fg mt-0.5 tabular-figures">
+          <p className="text-sm font-black text-fg mt-0.5 tabular-figures">
             {formatMYR(total)}
           </p>
         </div>
@@ -227,7 +227,7 @@ export const TransactionDrilldown = ({
         <>
           {listBody}
           {hidden > 0 && (
-            <p className="text-[11px] font-semibold text-fg-subtle text-center py-3 border-t border-line">
+            <p className="text-[11px] font-semibold text-fg-subtle text-center py-3 border-t border-line/30">
               + {hidden} more transactions
             </p>
           )}
