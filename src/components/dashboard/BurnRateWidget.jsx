@@ -47,7 +47,7 @@ export const BurnRateWidget = ({
   isLoading = false,
   onSeeTrends,
   onOpenHelp,
-  hideFreeMoney = false // masks ONLY the "Free money" figures (hero + equation row)
+  hideFreeMoney = false
 }) => {
   const [showDetails, setShowDetails] = useState(() => {
     try { return localStorage.getItem('burnRateExpanded') === 'true' } catch { return false }
@@ -126,7 +126,6 @@ export const BurnRateWidget = ({
     return 'linear-gradient(to right, #f59e0b, #f97316)'
   })()
 
-  // All advice copy is unmasked — only the "Free money" figure itself is hidden.
   const advice = (() => {
     if (status === 'bills_exceed_balance') {
       return {
@@ -186,7 +185,6 @@ export const BurnRateWidget = ({
             disabled={!onOpenHelp}
             className="w-11 h-11 flex items-center justify-center rounded-full text-fg-subtle hover:text-fg hover:bg-surface-2 transition-colors disabled:opacity-50"
             aria-label="How this is calculated"
-            title="How this is calculated"
           >
             <HelpCircle className="w-4 h-4" />
           </button>
@@ -214,7 +212,6 @@ export const BurnRateWidget = ({
         </div>
       ) : (
         <>
-          {/* HERO — Free money: MASKED */}
           <div className="mb-5">
             <p className="text-[11px] text-fg-subtle uppercase font-bold tracking-wider mb-1">Free money</p>
             <div
@@ -230,7 +227,6 @@ export const BurnRateWidget = ({
             <div>
               <p className="text-[10px] text-fg-subtle uppercase font-bold tracking-wider mb-0.5">Daily avg</p>
               <div className="flex items-baseline gap-1.5">
-                {/* Daily avg — VISIBLE */}
                 <p className="text-lg font-bold text-fg tabular-figures">
                   {!hasEverydayData ? '—' : <AnimatedNumber value={dailyAverage} format={formatMYR} />}
                 </p>
@@ -279,14 +275,13 @@ export const BurnRateWidget = ({
                   At this pace, your money runs out on <strong className="text-fg">{formatDate(runoutDate)}</strong>, {daysToPayday - runwayDays} day{daysToPayday - runwayDays === 1 ? '' : 's'} before payday.
                 </p>
               ) : (
-                // "Lasts until payday" — VISIBLE
                 <p className="text-xs text-success mt-3 leading-relaxed font-medium">
                   Lasts until payday, with about {formatMYR(Math.max(0, expectedBalanceAtPayday))} to spare.
                 </p>
               )}
             </div>
           ) : (
-            <div className="bg-surface-2/30 border border-line rounded-2xl mt-2 py-4">
+            <div className="py-2">
               <EmptyState
                 icon={Coffee}
                 title="No everyday spending yet"
@@ -325,87 +320,91 @@ export const BurnRateWidget = ({
             showDetails ? 'grid-rows-[1fr] opacity-100 mt-4' : 'grid-rows-[0fr] opacity-0'
           }`}
         >
-          <div className="overflow-hidden space-y-3">
+          <div className="overflow-hidden">
+            
+            {/* Flat list layout for details */}
+            <div className="flex flex-col border-t border-line/60">
+              
+              {/* The Equation */}
+              <div className="flex items-center justify-between py-3 border-b border-line/40">
+                <div className="text-center flex-1">
+                  <p className="text-[10px] text-fg-subtle uppercase font-bold tracking-wider">Balance</p>
+                  <p className="text-sm font-black text-fg mt-0.5 tabular-figures">{formatMYR(balance)}</p>
+                </div>
+                <span className="text-fg-subtle font-bold">−</span>
+                <div className="text-center flex-1">
+                  <p className="text-[10px] text-fg-subtle uppercase font-bold tracking-wider">Bills ({billCount})</p>
+                  <p className="text-sm font-black text-fg mt-0.5 tabular-figures">{formatMYR(billsBeforePayday)}</p>
+                </div>
+                <span className="text-fg-subtle font-bold">=</span>
+                <div className="text-center flex-1">
+                  <p className="text-[10px] text-brand uppercase font-bold tracking-wider">Free</p>
+                  <p className={`text-sm font-black mt-0.5 tabular-figures ${freeMoneyNegative ? 'text-danger' : 'text-brand'}`}>
+                    {formatMYR(freeMoney)}
+                  </p>
+                </div>
+              </div>
 
-            {/* The Equation — always fully visible */}
-            <div className="bg-surface-2/60 p-3.5 rounded-xl border border-line flex items-center justify-between gap-2">
-              <div className="text-center flex-1">
-                <p className="text-[10px] text-fg-subtle uppercase font-bold tracking-wider">Balance</p>
-                <p className="text-xs font-black text-fg mt-1 tabular-figures">{formatMYR(balance)}</p>
+              {/* Side-by-side daily spend comparison */}
+              <div className="grid grid-cols-2 gap-4 py-3 border-b border-line/40">
+                <div>
+                  <p className="text-[10px] text-fg-subtle uppercase font-bold tracking-wider">Safe limit</p>
+                  <p className="text-sm font-black text-fg mt-0.5 tabular-figures">
+                    {safeDailySpend > 0 ? formatMYR(safeDailySpend) : '—'}
+                  </p>
+                </div>
+                <div>
+                  <p className="text-[10px] text-fg-subtle uppercase font-bold tracking-wider">Your avg</p>
+                  <p className={`text-sm font-black mt-0.5 tabular-figures ${
+                    safeDailySpend > 0 && dailyAverage > safeDailySpend ? 'text-danger' : 'text-success'
+                  }`}>
+                    {formatMYR(dailyAverage)}
+                  </p>
+                </div>
               </div>
-              <span className="text-fg-subtle font-bold">−</span>
-              <div className="text-center flex-1">
-                <p className="text-[10px] text-fg-subtle uppercase font-bold tracking-wider">Bills ({billCount})</p>
-                <p className="text-xs font-black text-fg mt-1 tabular-figures">{formatMYR(billsBeforePayday)}</p>
-              </div>
-              <span className="text-fg-subtle font-bold">=</span>
-              <div className="text-center flex-1">
-                <p className="text-[10px] text-brand uppercase font-bold tracking-wider">Free</p>
-                <p className={`text-xs font-black mt-1 tabular-figures ${freeMoneyNegative ? 'text-danger' : 'text-brand'}`}>
-                  {formatMYR(freeMoney)}
-                </p>
-              </div>
-            </div>
 
-            {/* Side-by-side daily spend comparison — VISIBLE */}
-            <div className="grid grid-cols-2 gap-3">
-              <div className="bg-surface-2/60 p-3.5 rounded-xl border border-line">
-                <p className="text-[10px] text-fg-subtle uppercase font-bold tracking-wider">Safe limit</p>
-                <p className="text-sm font-black text-fg mt-1 tabular-figures">
-                  {safeDailySpend > 0 ? formatMYR(safeDailySpend) : '—'}
-                </p>
-              </div>
-              <div className="bg-surface-2/60 p-3.5 rounded-xl border border-line">
-                <p className="text-[10px] text-fg-subtle uppercase font-bold tracking-wider">Your avg</p>
-                <p className={`text-sm font-black mt-1 tabular-figures ${
-                  safeDailySpend > 0 && dailyAverage > safeDailySpend ? 'text-danger' : 'text-success'
+              {/* Owed back */}
+              {receivablesOffset > 0 && (
+                <div className="flex items-center justify-between py-3 border-b border-line/40">
+                  <div>
+                    <p className="text-[10px] text-success-text uppercase font-bold tracking-wider">Owed back to you</p>
+                    <p className="text-[10px] text-fg-subtle mt-0.5">Net spend: {formatMYR(everydaySpentThisMonth)}</p>
+                  </div>
+                  <p className="text-sm font-black text-success-text tabular-figures">
+                    − {formatMYR(receivablesOffset)}
+                  </p>
+                </div>
+              )}
+
+              {/* At payday */}
+              <div className="flex items-center justify-between py-3 border-b border-line/40">
+                <div>
+                  <p className="text-[10px] text-fg-subtle uppercase font-bold tracking-wider">At payday</p>
+                  <p className={`text-base font-black mt-0.5 tabular-figures ${expectedBalanceAtPayday < 0 ? 'text-danger' : 'text-fg'}`}>
+                    {formatMYR(expectedBalanceAtPayday)}
+                  </p>
+                </div>
+                <div className={`px-2.5 py-1 rounded-md text-[10px] font-bold tracking-wider shrink-0 border ${
+                  expectedBalanceAtPayday < 0 ? 'bg-danger-soft text-danger-text border-danger-border' : 'bg-success-soft text-success-text border-success-border'
                 }`}>
-                  {formatMYR(dailyAverage)}
-                </p>
-              </div>
-            </div>
-
-            {/* Owed back — VISIBLE */}
-            {receivablesOffset > 0 && (
-              <div className="bg-success-soft p-3.5 rounded-xl border border-success-border flex items-center justify-between gap-3">
-                <div>
-                  <p className="text-[10px] text-success-text uppercase font-bold tracking-wider">Owed back to you</p>
-                  <p className="text-[10px] text-success-text/80 mt-0.5">Net spend: {formatMYR(everydaySpentThisMonth)}</p>
-                </div>
-                <p className="text-sm font-black text-success-text tabular-figures">
-                  − {formatMYR(receivablesOffset)}
-                </p>
-              </div>
-            )}
-
-            {/* At payday — VISIBLE */}
-            <div className="bg-surface-2/60 p-3.5 rounded-xl border border-line flex items-center justify-between gap-3">
-              <div>
-                <p className="text-[10px] text-fg-subtle uppercase font-bold tracking-wider">At payday</p>
-                <p className={`text-base font-black mt-0.5 tabular-figures ${expectedBalanceAtPayday < 0 ? 'text-danger' : 'text-fg'}`}>
-                  {formatMYR(expectedBalanceAtPayday)}
-                </p>
-              </div>
-              <div className={`px-2.5 py-1 rounded-md text-[10px] font-bold tracking-wider shrink-0 border ${
-                expectedBalanceAtPayday < 0 ? 'bg-danger-soft text-danger-text border-danger-border' : 'bg-success-soft text-success-text border-success-border'
-              }`}>
-                {expectedBalanceAtPayday < 0 ? 'Deficit' : 'Surplus'}
-              </div>
-            </div>
-
-            {advice && (
-              <div className={`rounded-xl p-3.5 flex items-start gap-2.5 border ${
-                advice.type === 'risk' ? 'bg-danger-soft border-danger-border'
-                : advice.type === 'over' ? 'bg-warning-soft border-warning-border'
-                : 'bg-success-soft border-success-border'
-              }`}>
-                {advice.type === 'good' ? <Check className="w-4 h-4 text-success shrink-0 mt-0.5" /> : <AlertCircle className={`w-4 h-4 shrink-0 mt-0.5 ${advice.type === 'risk' ? 'text-danger' : 'text-warning'}`} />}
-                <div>
-                  <p className={`text-xs font-bold ${advice.type === 'risk' ? 'text-danger-text' : advice.type === 'over' ? 'text-warning-text' : 'text-success-text'}`}>{advice.title}</p>
-                  <p className={`text-xs mt-0.5 leading-relaxed ${advice.type === 'risk' ? 'text-danger-text/90' : advice.type === 'over' ? 'text-warning-text/90' : 'text-success-text/90'}`}>{advice.body} {advice.action}</p>
+                  {expectedBalanceAtPayday < 0 ? 'Deficit' : 'Surplus'}
                 </div>
               </div>
-            )}
+
+              {/* Advice Block */}
+              {advice && (
+                <div className={`flex items-start gap-2.5 py-3 ${
+                  advice.type === 'risk' ? 'text-danger-text' : advice.type === 'over' ? 'text-warning-text' : 'text-success-text'
+                }`}>
+                  {advice.type === 'good' ? <Check className="w-4 h-4 shrink-0 mt-0.5" /> : <AlertCircle className={`w-4 h-4 shrink-0 mt-0.5 ${advice.type === 'risk' ? 'text-danger' : 'text-warning'}`} />}
+                  <div>
+                    <p className="text-xs font-bold">{advice.title}</p>
+                    <p className="text-xs mt-0.5 leading-relaxed opacity-90">{advice.body} {advice.action}</p>
+                  </div>
+                </div>
+              )}
+            </div>
+
           </div>
         </div>
       )}
