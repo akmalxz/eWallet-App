@@ -45,13 +45,13 @@ export const AccountChipRow = ({
   return (
     <div
       ref={containerRef}
-      className="relative flex items-center h-11 rounded-2xl bg-glass-bg backdrop-blur-2xl border border-glass-border shadow-[0_4px_16px_rgba(0,0,0,0.05)] dark:shadow-[0_4px_16px_rgba(0,0,0,0.4)] overflow-x-auto scrollbar-hide"
+      // ADDED: p-1 and changed rounded-2xl to rounded-full
+      className="relative flex items-center h-11 p-1 rounded-full bg-glass-bg backdrop-blur-2xl border border-glass-border shadow-[0_4px_16px_rgba(0,0,0,0.05)] dark:shadow-[0_4px_16px_rgba(0,0,0,0.4)] overflow-x-auto scrollbar-hide"
     >
-      {/* Sliding active pill — bg-fg inverts to near-white in dark mode,
-          text-fg-inverse flips with it so labels stay legible. */}
+      {/* Sliding active pill — changed to rounded-full to match the container */}
       {indicator.ready && (
         <div
-          className="absolute top-1 bottom-1 rounded-xl bg-fg shadow-[0_4px_16px_rgba(0,0,0,0.18),inset_0_1px_0_rgba(255,255,255,0.08)] dark:shadow-[0_4px_16px_rgba(0,0,0,0.5),inset_0_1px_0_rgba(0,0,0,0.06)] pointer-events-none transition-all duration-500 ease-[cubic-bezier(0.34,1.56,0.64,1)]"
+          className="absolute top-1 bottom-1 rounded-full bg-fg shadow-[0_4px_16px_rgba(0,0,0,0.18),inset_0_1px_0_rgba(255,255,255,0.08)] dark:shadow-[0_4px_16px_rgba(0,0,0,0.5),inset_0_1px_0_rgba(0,0,0,0.06)] pointer-events-none transition-all duration-500 ease-[cubic-bezier(0.34,1.56,0.64,1)]"
           style={{ left: indicator.left, width: indicator.width }}
         />
       )}
