@@ -513,3 +513,8 @@ a:active:not(.no-tap-scale) {
     animation: none;
   }
 }
+
+@keyframes enter-desktop {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; } /* Removed transform: translateY(0) */
+}

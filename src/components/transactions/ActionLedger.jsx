@@ -1,8 +1,8 @@
 // src/components/transactions/ActionLedger.jsx
 import { useState, useMemo } from 'react'
 import {
-  ArrowDownRight, ArrowUpRight, RefreshCw,
-  Trash2, Edit2, Plus, Inbox, Calendar, ChevronDown, ChevronUp, Search, X, Loader2
+  RefreshCw, Trash2, Edit2, Plus, Inbox, Calendar,
+  ChevronDown, ChevronUp, Search, X, Loader2, MoreVertical
 } from 'lucide-react'
 import { formatMYR } from '../../utils/formatters'
 import { toMYDate, dayKey } from '../../utils/dateHelpers'
@@ -11,8 +11,7 @@ import { ConfirmSheet } from '../shared/ConfirmSheet'
 import { ModalWrapper } from '../modals/ModalWrapper'
 import { LedgerEditForm } from './LedgerEditForm'
 import { Collapse } from '../shared/Collapse'
-
-// ... (Keep formatGroupLabel, getDailyTotals, AccountPill exactly the same) ...
+import { RowMenu } from '../shared/RowMenu'
 
 const formatGroupLabel = (dateKey, todayKey, yesterdayKey) => {
   if (dateKey === todayKey) return 'Today'
@@ -21,17 +20,13 @@ const formatGroupLabel = (dateKey, todayKey, yesterdayKey) => {
   const date = new Date(Date.UTC(y, m - 1, d))
   const isThisYear = y === toMYDate(new Date()).getUTCFullYear()
   return date.toLocaleDateString('en-MY', {
-    weekday: 'short',
-    day: 'numeric',
-    month: 'short',
-    year: isThisYear ? undefined : 'numeric',
-    timeZone: 'UTC'
+    weekday: 'short', day: 'numeric', month: 'short',
+    year: isThisYear ? undefined : 'numeric', timeZone: 'UTC'
   })
 }
 
 const getDailyTotals = (transactions) => {
-  let moneyIn = 0
-  let moneyOut = 0
+  let moneyIn = 0, moneyOut = 0
   for (const tx of transactions) {
     const hasSource = !!tx.source_account_id
     const hasDest = !!tx.destination_account_id
@@ -74,7 +69,7 @@ export const ActionLedger = ({
   hasMore,
   onLoadMore,
   isLoadingMore,
-  isSearching // <-- Added
+  isSearching
 }) => {
   const [editingTx, setEditingTx] = useState(null)
   const [expandedGroups, setExpandedGroups] = useState({})
@@ -111,37 +106,35 @@ export const ActionLedger = ({
   const endEdit = () => setEditingTx(null)
   const accountFor = (id) => accounts.find((a) => a.id === id)
 
-  // Only show full empty state if NOT searching
-  if (!recentTransactions || recentTransactions.length === 0) {
-    if (!searchQuery && !isSearching) {
-      return (
-        <section className="flex flex-col items-center justify-center p-12 text-fg-subtle border border-dashed border-line-strong rounded-3xl">
-          <div className="w-14 h-14 bg-surface-2 border border-line rounded-2xl flex items-center justify-center mb-4 text-fg-subtle">
-            <Inbox className="w-6 h-6" />
-          </div>
-          <p className="text-sm font-bold text-fg">No Transactions Found</p>
-          <p className="text-xs text-fg-subtle text-center mt-1 max-w-xs leading-relaxed">
-            Record a fast entry with the platform omnibar tools or choose the transaction button below.
-          </p>
-          <button
-            onClick={onAddTransaction}
-            className="mt-4 inline-flex items-center justify-center gap-2 px-4 py-2.5 bg-brand-solid hover:bg-brand-solid-hover text-white text-xs font-bold rounded-xl shadow-sm transition-all"
-            style={{ minHeight: 44 }}
-          >
-            <Plus className="w-4 h-4" /> Log Transaction
-          </button>
-        </section>
-      )
-    }
+  if ((!recentTransactions || recentTransactions.length === 0) && !searchQuery && !isSearching) {
+    return (
+      <section className="flex flex-col items-center justify-center py-16 text-fg-subtle">
+        <div className="w-14 h-14 bg-surface-2 border border-line rounded-2xl flex items-center justify-center mb-4 text-fg-subtle">
+          <Inbox className="w-6 h-6" />
+        </div>
+        <p className="text-sm font-bold text-fg">No Transactions Found</p>
+        <p className="text-xs text-fg-subtle text-center mt-1 max-w-xs leading-relaxed">
+          Record a fast entry with the platform omnibar tools or choose the transaction button below.
+        </p>
+        <button
+          onClick={onAddTransaction}
+          className="mt-4 inline-flex items-center justify-center gap-2 px-4 py-2.5 bg-brand-solid hover:bg-brand-solid-hover text-white text-xs font-bold rounded-xl shadow-sm transition-all"
+          style={{ minHeight: 44 }}
+        >
+          <Plus className="w-4 h-4" /> Log Transaction
+        </button>
+      </section>
+    )
   }
 
   return (
     <>
-      <section className="flex flex-col flex-1">
-        {/* Header and Search Bar (same as before) */}
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
-          <h2 className="text-base font-bold text-fg tracking-tight flex items-center gap-2">
-            Action Ledger
+      <div>
+        
+        {/* STICKY HEADER & SEARCH (Sticky on mobile, static on desktop) */}
+        <div className="sticky md:static top-[64px] z-30 md:z-auto bg-page/95 md:bg-transparent backdrop-blur-md md:backdrop-blur-none flex flex-col sm:flex-row sm:items-center justify-between gap-3 py-3 md:pt-0 -mx-2 md:mx-0 px-2 md:px-0 border-b border-line/30 md:border-none">
+          <h2 className="text-sm font-bold text-fg tracking-tight flex items-center gap-2">
+            History
             <span className="text-[10px] font-bold uppercase tracking-wider text-fg-subtle bg-surface-2 px-2 py-0.5 rounded-md">
               {recentTransactions?.length || 0}
             </span>
@@ -152,10 +145,10 @@ export const ActionLedger = ({
               <Search className="w-3.5 h-3.5 text-fg-subtle absolute left-3 top-1/2 -translate-y-1/2" />
               <input
                 type="text"
-                placeholder="Search all transactions..."
+                placeholder="Search history..."
                 value={searchQuery}
                 onChange={(e) => onSearchChange(e.target.value)}
-                className="w-full bg-surface-2 border border-line rounded-xl py-2 pl-9 pr-8 text-xs text-fg placeholder:text-fg-subtle outline-none focus:border-brand focus:ring-2 focus:ring-brand/20 transition-all"
+                className="w-full bg-surface-2 border border-transparent rounded-xl py-2 pl-9 pr-8 text-xs text-fg placeholder:text-fg-subtle outline-none focus:bg-surface focus:border-brand transition-all"
               />
               {searchQuery && (
                 <button
@@ -170,62 +163,57 @@ export const ActionLedger = ({
             <button
               onClick={onRefresh}
               disabled={isRefreshing}
-              className={`shrink-0 w-9 h-9 flex items-center justify-center rounded-xl transition-all border border-line ${
-                isRefreshing
-                  ? 'text-fg-subtle/50 cursor-not-allowed bg-surface-2'
-                  : 'text-fg-muted hover:text-fg hover:bg-surface-2 bg-surface'
+              className={`shrink-0 w-9 h-9 flex items-center justify-center rounded-xl transition-all ${
+                isRefreshing ? 'text-fg-subtle/50 cursor-not-allowed' : 'text-fg-muted hover:text-fg hover:bg-surface-2'
               }`}
-              title="Refresh transactions"
             >
               <RefreshCw className={`w-3.5 h-3.5 ${isRefreshing ? 'animate-spin' : ''}`} />
             </button>
           </div>
         </div>
 
-        <div className="bg-surface border border-line rounded-2xl overflow-hidden flex flex-col flex-1 max-h-[60vh]">
-          <div className="overflow-y-auto overscroll-contain scrollbar-thin flex-1">
-            {isSearching ? (
-              // Show a clean spinner instead of the empty state while searching/loading
-              <div className="p-8 flex flex-col items-center justify-center h-full text-fg-subtle">
-                <Loader2 className="w-6 h-6 animate-spin mb-3" />
-                <p className="text-sm font-bold text-fg">
-                  {searchQuery.trim() ? 'Searching...' : 'Loading transactions...'}
-                </p>
-              </div>
-            ) : groupedTransactions.length === 0 ? (
-              // Empty state INSIDE the list container so search bar remains
-              <div className="p-8 text-center text-fg-subtle h-full flex flex-col items-center justify-center">
-                <Search className="w-6 h-6 mx-auto mb-2 opacity-50" />
-                <p className="text-sm font-bold text-fg">No results found</p>
-                <p className="text-xs mt-1">Try a different search term or clear the search.</p>
-                <button
-                  onClick={() => onSearchChange('')}
-                  className="mt-4 inline-flex items-center justify-center px-4 py-2 bg-surface-2 border border-line hover:bg-surface-3 text-fg text-xs font-bold rounded-lg transition-colors"
-                >
-                  Clear search
-                </button>
-              </div>
-            ) : (
-              groupedTransactions.map((group) => {
+        {/* LIST */}
+        <div className="mt-2">
+          {isSearching ? (
+            <div className="py-12 flex flex-col items-center justify-center text-fg-subtle">
+              <Loader2 className="w-6 h-6 animate-spin mb-3" />
+              <p className="text-sm font-bold text-fg">
+                {searchQuery.trim() ? 'Searching...' : 'Loading...'}
+              </p>
+            </div>
+          ) : groupedTransactions.length === 0 ? (
+            <div className="py-12 text-center text-fg-subtle">
+              <Search className="w-6 h-6 mx-auto mb-2 opacity-50" />
+              <p className="text-sm font-bold text-fg">No results found</p>
+              <p className="text-xs mt-1">Try a different search term.</p>
+              <button
+                onClick={() => onSearchChange('')}
+                className="mt-4 inline-flex items-center justify-center px-4 py-2 bg-surface-2 hover:bg-surface-3 text-fg text-xs font-bold rounded-lg transition-colors"
+              >
+                Clear search
+              </button>
+            </div>
+          ) : (
+            <div className="space-y-2">
+              {groupedTransactions.map((group) => {
                 const { moneyIn, moneyOut } = getDailyTotals(group.transactions)
                 const hasFlow = moneyIn > 0 || moneyOut > 0
                 const isToday = group.isToday
                 const isExpanded = isGroupExpanded(group)
 
                 return (
-                  <div key={group.date} className="border-b border-line last:border-0">
-                    {/* GROUP HEADER */}
+                  <div key={group.date}>
+                    {/* STICKY DATE HEADER (Sticky on mobile, static on desktop) */}
                     <div
-                      className="flex items-center gap-3 px-4 py-3 cursor-pointer hover:bg-surface-2 transition-colors select-none sticky top-0 bg-surface/95 backdrop-blur-sm z-10 border-b border-line/50"
+                      className="sticky md:static top-[164px] z-20 md:z-auto bg-page/95 md:bg-transparent backdrop-blur-md md:backdrop-blur-none flex items-center gap-3 py-2 -mx-2 md:mx-0 px-2 md:px-0 cursor-pointer select-none"
                       onClick={() => toggleGroup(group.date)}
                     >
                       <div className="flex items-center gap-2 flex-1 min-w-0">
-                        <Calendar className="w-3.5 h-3.5 text-fg-subtle shrink-0" />
-                        <span className={`text-xs font-bold truncate ${isToday ? 'text-brand' : 'text-fg'}`}>
+                        <span className={`text-xs font-bold ${isToday ? 'text-brand' : 'text-fg-subtle'}`}>
                           {group.label}
                         </span>
                         {!isExpanded && (
-                          <span className="text-[10px] font-medium text-fg-subtle shrink-0">
+                          <span className="text-[10px] font-medium text-fg-subtle">
                             ({group.transactions.length})
                           </span>
                         )}
@@ -246,7 +234,7 @@ export const ActionLedger = ({
 
                     {/* GROUP ROWS */}
                     <Collapse open={isExpanded}>
-                      <div className="divide-y divide-line bg-surface-2/30">
+                      <div className="flex flex-col">
                         {group.transactions.map((tx) => {
                           const isIncome = !tx.source_account_id && tx.destination_account_id
                           const isTransfer = tx.source_account_id && tx.destination_account_id
@@ -255,11 +243,25 @@ export const ActionLedger = ({
                           const srcAcc = accountFor(tx.source_account_id)
                           const destAcc = accountFor(tx.destination_account_id)
 
+                          const actions = [
+                            {
+                              label: 'Edit',
+                              icon: <Edit2 className="w-3.5 h-3.5" />,
+                              onClick: () => beginEdit(tx)
+                            },
+                            {
+                              label: 'Delete',
+                              icon: <Trash2 className="w-3.5 h-3.5" />,
+                              danger: true,
+                              onClick: () => setPendingDelete(tx)
+                            }
+                          ]
+
                           return (
                             <div
                               key={tx.id}
                               id={`tx-${globalIndex}`}
-                              className="flex items-center justify-between gap-3 px-4 py-3 hover:bg-surface-2 transition-all animate-enter"
+                              className="flex items-center justify-between gap-3 py-3 px-1 border-b border-line/20 last:border-0 hover:bg-surface-2/30 transition-all rounded-lg"
                             >
                               <div className="flex flex-col gap-1 min-w-0 flex-1">
                                 <p className="text-sm font-bold text-fg truncate">
@@ -296,30 +298,14 @@ export const ActionLedger = ({
                                 </div>
                               </div>
 
-                              <div className="flex flex-col items-end gap-1 shrink-0">
+                              <div className="flex items-center gap-2 shrink-0">
                                 <span className={`text-sm font-bold tabular-figures whitespace-nowrap ${
                                   isIncome ? 'text-success' : isTransfer ? 'text-fg-muted' : 'text-fg'
                                 }`}>
                                   {isIncome ? '+' : isTransfer ? '' : '-'}{formatMYR(tx.amount)}
                                 </span>
                                 
-                                <div className="ml-auto flex items-center justify-end gap-1 opacity-100 transition-opacity">
-                                  <button
-                                    onClick={() => beginEdit(tx)}
-                                    className="w-7 h-7 flex items-center justify-center text-fg-subtle hover:text-fg hover:bg-surface-3 rounded-md transition-all"
-                                    aria-label="Edit transaction"
-                                  >
-                                    <Edit2 className="w-3.5 h-3.5" />
-                                  </button>
-
-                                  <button
-                                    onClick={() => setPendingDelete(tx)}
-                                    className="w-7 h-7 flex items-center justify-center text-fg-subtle hover:text-danger hover:bg-danger-soft rounded-md transition-all"
-                                    aria-label="Delete transaction"
-                                  >
-                                    <Trash2 className="w-3.5 h-3.5" />
-                                  </button>
-                                </div>
+                                <RowMenu actions={actions} ariaLabel="Transaction actions" />
                               </div>
                             </div>
                           )
@@ -328,25 +314,26 @@ export const ActionLedger = ({
                     </Collapse>
                   </div>
                 )
-              })
-            )}
-          </div>
-
-          {hasMore && !isSearching && (
-            <div className="p-3 border-t border-line bg-surface flex justify-center shrink-0">
-              <button
-                onClick={onLoadMore}
-                disabled={isLoadingMore}
-                className="inline-flex items-center gap-2 px-6 py-2.5 rounded-xl text-xs font-bold text-fg bg-surface-2 border border-line hover:bg-surface-3 transition-colors disabled:opacity-50"
-                style={{ minHeight: 44 }}
-              >
-                {isLoadingMore ? <Loader2 className="w-4 h-4 animate-spin" /> : null}
-                {isLoadingMore ? 'Loading more...' : 'Load More Transactions'}
-              </button>
+              })}
             </div>
           )}
         </div>
-      </section>
+
+        {/* LOAD MORE */}
+        {hasMore && !isSearching && (
+          <div className="pt-4 flex justify-center pb-8">
+            <button
+              onClick={onLoadMore}
+              disabled={isLoadingMore}
+              className="inline-flex items-center gap-2 px-6 py-2.5 rounded-xl text-xs font-bold text-fg bg-surface-2 border border-line hover:bg-surface-3 transition-colors disabled:opacity-50"
+              style={{ minHeight: 44 }}
+            >
+              {isLoadingMore ? <Loader2 className="w-4 h-4 animate-spin" /> : null}
+              {isLoadingMore ? 'Loading more...' : 'Load More Transactions'}
+            </button>
+          </div>
+        )}
+      </div>
 
       {editingTx && (
         <ModalWrapper title="Edit Transaction" closeModal={endEdit}>
@@ -371,7 +358,7 @@ export const ActionLedger = ({
           message={(() => {
             const isBill = !!(pendingDelete.metadata && pendingDelete.metadata.commitment_id)
             return isBill
-              ? 'This is a bill payment. Deleting it marks the bill unpaid. The bill and its other payments stay intact.'
+              ? 'This is a bill payment. Deleting it marks the bill unpaid.'
               : "This can't be undone."
           })()}
           confirmLabel="Delete"
