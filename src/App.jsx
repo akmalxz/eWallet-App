@@ -145,6 +145,18 @@ export default function App() {
     categories
   })
 
+  const [includeSavings, setIncludeSavings] = useState(() => {
+    try { return localStorage.getItem('burnRateIncludeSavings') !== 'false' } catch { return true }
+  })
+
+  const toggleIncludeSavings = () => {
+    setIncludeSavings(prev => {
+      const next = !prev
+      try { localStorage.setItem('burnRateIncludeSavings', String(next)) } catch {}
+      return next
+    })
+  }
+
   const { radarSchedule, radarStats, velocityStats, cashFlowData } = useDashboardMetrics({
     accounts,
     commitments,
@@ -152,7 +164,8 @@ export default function App() {
     monthlyExpenses,
     scopeAccountId: homeAccountId,
     receivablesThisMonth: pendingReceivablesThisMonth,
-    profile
+    profile,
+    includeSavings
   })
 
   const accountApi = useAccountActions({
@@ -278,6 +291,8 @@ export default function App() {
             homeAccountId={homeAccountId}
             onHomeAccountChange={setHomeAccountId}
             velocityStats={velocityStats}
+            includeSavings={includeSavings}
+            onToggleIncludeSavings={toggleIncludeSavings}
             cashFlowData={cashFlowData}
             monthlyExpenses={monthlyExpenses}
             monthlyInflows={monthlyInflows}

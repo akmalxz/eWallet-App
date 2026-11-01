@@ -1,6 +1,6 @@
 // src/pages/DashboardPage.jsx
 import { useState } from 'react'
-import { Receipt, Users, TrendingUp } from 'lucide-react'
+import { Activity, Receipt, Users } from 'lucide-react'
 import { AccountCards } from '../components/dashboard/AccountCards'
 import { BurnRateWidget } from '../components/dashboard/BurnRateWidget'
 import { CashFlowHeatmap } from '../components/dashboard/CashFlowHeatmap'
@@ -27,8 +27,6 @@ export function DashboardPage({
   onHomeAccountChange,
   velocityStats,
   cashFlowData,
-  monthlyExpenses,
-  monthlyInflows,
   onAddAccount,
   onLogTransaction,
   onManageAccount,
@@ -40,7 +38,9 @@ export function DashboardPage({
   showToast,
   fetchRecentTransactions,
   fetchAccounts,
-  fetchMonthlyData
+  fetchMonthlyData,
+  includeSavings,             // <-- NEW
+  onToggleIncludeSavings      // <-- NEW
 }) {
   const { friends } = useFriendRequests(user)
 
@@ -53,7 +53,6 @@ export function DashboardPage({
     refreshProfile,
   })
 
-  // Global Privacy State
   const [showBalances, setShowBalances] = useState(() => {
     try {
       const stored = localStorage.getItem('hideBalances')
@@ -66,9 +65,7 @@ export function DashboardPage({
   const toggleBalances = () => {
     setShowBalances((prev) => {
       const next = !prev
-      try {
-        localStorage.setItem('hideBalances', String(!next))
-      } catch {}
+      try { localStorage.setItem('hideBalances', String(!next)) } catch {}
       return next
     })
   }
@@ -96,7 +93,6 @@ export function DashboardPage({
         fetchMonthlyData={fetchMonthlyData}
       />
 
-      {/* ONBOARDING CHECKLIST */}
       {onboarding.shouldShow && !isLoading && (
         <OnboardingChecklist
           steps={onboarding.steps}
@@ -107,7 +103,6 @@ export function DashboardPage({
         />
       )}
 
-      {/* WALLET CARDS */}
       <section>
         {isLoading ? (
           <div>
@@ -139,7 +134,6 @@ export function DashboardPage({
         )}
       </section>
 
-      {/* QUICK ACTIONS TOOLBAR */}
       <section className="relative z-10 bg-surface border border-line/60 rounded-2xl overflow-hidden flex divide-x divide-line shadow-sm">
         <button
           onClick={() => onNavigate('network')}
@@ -156,18 +150,8 @@ export function DashboardPage({
           <Receipt className="w-4 h-4 text-fg-muted group-hover:text-fg transition-colors" />
           <span className="text-[10px] font-bold text-fg-muted uppercase tracking-wider group-hover:text-fg transition-colors">Split Bill</span>
         </button>
-
-        {/* NEW */}
-        <button
-          onClick={() => onNavigate('wealth')}
-          className="flex-1 py-3.5 flex flex-col items-center justify-center gap-1.5 hover:bg-surface-2 transition-colors group"
-        >
-          <TrendingUp className="w-4 h-4 text-fg-muted group-hover:text-fg transition-colors" />
-          <span className="text-[10px] font-bold text-fg-muted uppercase tracking-wider group-hover:text-fg transition-colors">Wealth</span>
-        </button>
       </section>
 
-      {/* THIS MONTH */}
       <section className="pt-2">
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
           <h2 className="text-xs font-bold text-fg-subtle uppercase tracking-wider">
@@ -200,6 +184,8 @@ export function DashboardPage({
               onSeeTrends={() => onSeeTrends('overview')}
               onOpenHelp={onOpenBurnRateHelp}
               hideFreeMoney={!showBalances}
+              includeSavings={includeSavings}                 // <-- NEW
+              onToggleIncludeSavings={onToggleIncludeSavings} // <-- NEW
             />
           </div>
           <div className="lg:pl-6">

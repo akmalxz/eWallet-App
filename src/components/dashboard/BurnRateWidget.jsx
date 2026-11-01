@@ -2,7 +2,7 @@
 import { useState, useEffect, useRef } from 'react'
 import {
   TrendingUp, TrendingDown, AlertCircle, ChevronDown, ChevronUp,
-  Coffee, Check, ArrowRight, HelpCircle, PartyPopper
+  Coffee, Check, ArrowRight, HelpCircle, PartyPopper, PiggyBank, Wallet
 } from 'lucide-react'
 import { formatMYR } from '../../utils/formatters'
 import { COLORS } from '../../utils/analytics/chartColors'
@@ -47,7 +47,9 @@ export const BurnRateWidget = ({
   isLoading = false,
   onSeeTrends,
   onOpenHelp,
-  hideFreeMoney = false
+  hideFreeMoney = false,
+  includeSavings = true,           // <-- NEW
+  onToggleIncludeSavings           // <-- NEW
 }) => {
   const [showDetails, setShowDetails] = useState(() => {
     try { return localStorage.getItem('burnRateExpanded') === 'true' } catch { return false }
@@ -70,6 +72,7 @@ export const BurnRateWidget = ({
     payday,
     isPaydayToday = false,
     balance = 0,
+    excludedSavingsBalance = 0,      // <-- NEW
     billsBeforePayday = 0,
     freeMoney = 0,
     everydaySpentThisMonth = 0,
@@ -212,15 +215,51 @@ export const BurnRateWidget = ({
         </div>
       ) : (
         <>
+          {/* HERO — Free money: MASKED */}
           <div className="mb-5">
-            <p className="text-[11px] text-fg-subtle uppercase font-bold tracking-wider mb-1">Free money</p>
+            <div className="flex items-center justify-between mb-1.5">
+              <p className="text-[11px] text-fg-subtle uppercase font-bold tracking-wider">Free money</p>
+              
+              {/* POLISHED TOGGLE */}
+              {onToggleIncludeSavings && (
+                <button
+                  onClick={onToggleIncludeSavings}
+                  className={`group flex items-center gap-1.5 px-2.5 py-1 rounded-full transition-all duration-200 border ${
+                    includeSavings
+                      ? 'bg-brand-soft/50 border-brand/20 text-brand hover:bg-brand-soft'
+                      : 'bg-surface-2 border-line text-fg-muted hover:text-fg hover:bg-surface-3'
+                  }`}
+                  title={includeSavings ? "Exclude ASB/TH from available cash" : "Include ASB/TH in available cash"}
+                >
+                  {includeSavings ? (
+                    <PiggyBank className="w-3.5 h-3.5" />
+                  ) : (
+                    <Wallet className="w-3.5 h-3.5" />
+                  )}
+                  <span className="text-[10px] font-bold tracking-wide uppercase">
+                    {includeSavings ? 'All funds' : 'Excl. Savings'}
+                  </span>
+                </button>
+              )}
+            </div>
+            
             <div
               className={`text-4xl font-black tracking-tighter tabular-figures ${freeMoneyNegative ? 'text-danger' : 'text-fg'}`}
               aria-label={hideFreeMoney ? 'Free money hidden' : undefined}
             >
               {hideFreeMoney ? '••••••' : <AnimatedNumber value={freeMoney} format={formatMYR} />}
             </div>
-            <p className="text-[11px] text-fg-muted mt-1">Available to spend before payday.</p>
+            
+            <p className="text-[11px] text-fg-muted mt-1">
+              Available to spend before payday.
+            </p>
+
+            {/* TRANSPARENCY NOTE */}
+            {!hideFreeMoney && excludedSavingsBalance > 0 && (
+              <p className="text-[10px] text-fg-subtle mt-1.5">
+                Excludes {formatMYR(excludedSavingsBalance)} in savings.
+              </p>
+            )}
           </div>
 
           <div className="grid grid-cols-2 gap-4 mb-5 border-y border-line py-3">
@@ -322,7 +361,6 @@ export const BurnRateWidget = ({
         >
           <div className="overflow-hidden">
             
-            {/* Flat list layout for details */}
             <div className="flex flex-col border-t border-line/60">
               
               {/* The Equation */}

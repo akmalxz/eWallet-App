@@ -13,35 +13,16 @@ import {
 import { resolveAccountScope } from '../accounts/accountScope'
 import { computeCommitmentSchedule } from '../commitments/commitmentSchedule'
 
-// ===========================================================================
-// Named thresholds
-// ===========================================================================
 export const TIGHT_THRESHOLD = 0.90
 export const CRITICAL_RUNWAY_DAYS = 7
 export const NEAR_PAYDAY_DAYS = 5
 
-// Fraction trimmed from EACH end when computing the "typical" previous-cycle
-// daily spend. 10% on a 30-day cycle means the highest 3 and lowest 3 days
-// are excluded — enough to neutralise a one-off large purchase without
-// discarding legitimate variance.
 export const PREV_CYCLE_TRIM_FRACTION = 0.10
 
-// ===========================================================================
-// Statistical helpers
-// ===========================================================================
-/**
- * Trimmed mean — drop the top and bottom `trimFraction` of values,
- * average the rest.
- *
- * Used for `prevCycleDailyAvg` so a single big purchase in the previous
- * cycle doesn't inflate the fallback prior that gets blended into the
- * first two days of the current cycle.
- */
 const trimmedMean = (values, trimFraction = PREV_CYCLE_TRIM_FRACTION) => {
   const valid = values.filter(Number.isFinite)
   if (valid.length === 0) return 0
   if (valid.length < 5) {
-    // Too few samples to trim meaningfully — plain mean is fine.
     return valid.reduce((s, v) => s + v, 0) / valid.length
   }
   const sorted = [...valid].sort((a, b) => a - b)
@@ -53,9 +34,6 @@ const trimmedMean = (values, trimFraction = PREV_CYCLE_TRIM_FRACTION) => {
   return trimmed.reduce((s, v) => s + v, 0) / trimmed.length
 }
 
-// ===========================================================================
-// Classification
-// ===========================================================================
 export const isCommitmentPayment = (tx) => {
   if (!tx) return false
   const meta = tx.metadata
@@ -72,9 +50,10 @@ export const isRealExpense = (tx) => {
   return amt > 0
 }
 
-// ===========================================================================
-// Main engine
-// ===========================================================================
+// Liquidity helpers
+const isSemiLiquid = (acc) => ['fixed_price_ut', 'pilgrimage'].includes(acc.classification)
+const isLocked = (acc) => ['investment', 'credit'].includes(acc.classification)
+
 export const computeBurnRate = ({
   accounts = [],
   expenses = [],
@@ -85,16 +64,15 @@ export const computeBurnRate = ({
   isHoliday = () => false,
   receivablesThisMonth = 0,
   paydayType = 'last_working_day',
-  paydayDate = null
+  paydayDate = null,
+  includeSavings = true // <-- NEW
 }) => {
   const { scopedAccounts, accountIds, scopeLabel } = resolveAccountScope(
     accounts,
     scopeAccountId
   )
 
-  // ------------------------------------------------------------
   // 1. Dates & Cycles
-  // ------------------------------------------------------------
   const payday = nextPayday(now, isHoliday, paydayType, paydayDate)
   const paydayToday = isTodayPayday(now, isHoliday, paydayType, paydayDate)
   const daysToPayday = Math.max(0, daysBetweenMY(now, payday))
@@ -110,17 +88,22 @@ export const computeBurnRate = ({
   const daysPassed = Math.max(1, daysBetweenMY(cycleStart, now) + 1)
   const prevCycleLength = Math.max(1, daysBetweenMY(prevCycleStart, prevCycleEnd) + 1)
 
-  // ------------------------------------------------------------
-  // 2. Balance
-  // ------------------------------------------------------------
-  const balance = scopedAccounts.reduce(
-    (s, a) => s + (Number(a.balance) || 0),
-    0
-  )
+  // 2. Balance (Liquidity Tier filtering)
+  let balance = 0
+  let excludedSavingsBalance = 0
 
-  // ------------------------------------------------------------
+  for (const acc of scopedAccounts) {
+    if (isLocked(acc)) continue
+
+    if (!includeSavings && isSemiLiquid(acc)) {
+      excludedSavingsBalance += Number(acc.balance) || 0
+      continue
+    }
+    
+    balance += Number(acc.balance) || 0
+  }
+
   // 3. Bills before payday
-  // ------------------------------------------------------------
   const schedule = computeCommitmentSchedule({
     commitments,
     payments,
@@ -136,12 +119,7 @@ export const computeBurnRate = ({
   const billCount = schedule.unpaidPeriods.length
   const freeMoney = balance - billsBeforePayday
 
-  // ------------------------------------------------------------
   // 4. Everyday spending (Cycle-aware)
-  //
-  // prevCycleDailyTotals accumulates per-day spend for the previous
-  // cycle so we can compute a robust "typical daily rate" afterwards.
-  // ------------------------------------------------------------
   let thisCycleEveryday = 0
   let prevCycleSamePeriodTotal = 0
   let reviewCount = 0
@@ -176,14 +154,7 @@ export const computeBurnRate = ({
   const receivablesOffset = Math.max(0, Number(receivablesThisMonth) || 0)
   const netThisCycleEveryday = Math.max(0, thisCycleEveryday - receivablesOffset)
 
-  // ------------------------------------------------------------
   // 5. Daily average + early-cycle blend
-  //
-  // prevCycleDailyAvg is a trimmed mean of per-day totals (zero-days
-  // included — a day with no spend is a real data point for a rate).
-  // This makes the early-cycle blend robust to one-off large purchases
-  // in the previous cycle.
-  // ------------------------------------------------------------
   const prevCycleDaysList = []
   for (let i = 0; i < prevCycleLength; i++) {
     const dayDate = new Date(prevCycleStart.getTime() + i * 86400000)
@@ -199,16 +170,12 @@ export const computeBurnRate = ({
     ? (rawDailyAvg * daysPassed + prevCycleDailyAvg * (3 - daysPassed)) / 3
     : rawDailyAvg
 
-  // ------------------------------------------------------------
   // 6. Safe daily spend
-  // ------------------------------------------------------------
   const safeDailySpend = (daysToPayday > 0 && freeMoney > 0)
     ? freeMoney / daysToPayday
     : 0
 
-  // ------------------------------------------------------------
   // 7. Runway
-  // ------------------------------------------------------------
   let runwayDays
   if (freeMoney < 0) {
     runwayDays = 0
@@ -235,9 +202,7 @@ export const computeBurnRate = ({
   const expectedBalanceAtPayday =
     freeMoney - (dailyAverage * daysToPayday)
 
-  // ------------------------------------------------------------
   // 8. Trend
-  // ------------------------------------------------------------
   const thisCycleGrossDailyAvg = thisCycleEveryday / daysPassed
   const prevCycleSamePeriodDailyAvg = daysPassed > 0
     ? prevCycleSamePeriodTotal / Math.min(daysPassed, prevCycleLength)
@@ -246,9 +211,7 @@ export const computeBurnRate = ({
     ? ((thisCycleGrossDailyAvg - prevCycleSamePeriodDailyAvg) / prevCycleSamePeriodDailyAvg) * 100
     : 0
 
-  // ------------------------------------------------------------
   // 9. Status
-  // ------------------------------------------------------------
   let status
   let shortfall = 0
 
@@ -271,9 +234,6 @@ export const computeBurnRate = ({
     status = 'on_track'
   }
 
-  // ------------------------------------------------------------
-  // Return
-  // ------------------------------------------------------------
   return {
     scopeLabel,
     now,
@@ -281,6 +241,7 @@ export const computeBurnRate = ({
     isPaydayToday: paydayToday,
 
     balance,
+    excludedSavingsBalance, // <-- Expose for UI transparency
     billsBeforePayday,
     freeMoney,
     everydaySpentThisMonth: netThisCycleEveryday,
