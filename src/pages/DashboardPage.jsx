@@ -1,6 +1,6 @@
 // src/pages/DashboardPage.jsx
 import { useState } from 'react'
-import { Activity, Receipt, Users } from 'lucide-react'
+import { Activity, Receipt, Users, TrendingUp } from 'lucide-react'
 import { AccountCards } from '../components/dashboard/AccountCards'
 import { BurnRateWidget } from '../components/dashboard/BurnRateWidget'
 import { CashFlowHeatmap } from '../components/dashboard/CashFlowHeatmap'
@@ -149,6 +149,14 @@ export function DashboardPage({
         >
           <Receipt className="w-4 h-4 text-fg-muted group-hover:text-fg transition-colors" />
           <span className="text-[10px] font-bold text-fg-muted uppercase tracking-wider group-hover:text-fg transition-colors">Split Bill</span>
+        </button>
+
+        <button
+          onClick={() => onNavigate('wealth')}
+          className="flex-1 py-3.5 flex flex-col items-center justify-center gap-1.5 hover:bg-surface-2 transition-colors group"
+        >
+          <TrendingUp className="w-4 h-4 text-fg-muted group-hover:text-fg transition-colors" />
+          <span className="text-[10px] font-bold text-fg-muted uppercase tracking-wider group-hover:text-fg transition-colors">Wealth</span>
         </button>
       </section>
 
