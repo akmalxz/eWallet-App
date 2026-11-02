@@ -38,7 +38,10 @@ export const SpendingStructure = ({ income, expenses, everyday, profile }) => {
         ))}
       </div>
 
-      {/* Stats */}
+      {/* Stats — shares, not amounts. Each value is a percentage of
+          income (e.g. 35 = 35 sen of every RM 1 earned), so it must
+          NOT be run through formatMYR — that would print "RM 35.00"
+          and read as an absolute amount. */}
       <div className="grid grid-cols-3 gap-2">
         {parts.map((p) => (
           <div key={p.label} className="text-center">
@@ -46,7 +49,7 @@ export const SpendingStructure = ({ income, expenses, everyday, profile }) => {
               <span className="w-2 h-2 rounded-full" style={{ backgroundColor: p.color }} />
               <span className="text-[10px] font-bold text-fg-subtle uppercase tracking-wider">{p.label}</span>
             </div>
-            <p className="text-sm font-black text-fg mt-1 tabular-figures">{formatMYR(p.pct)}</p>
+            <p className="text-sm font-black text-fg mt-1 tabular-figures">{p.pct.toFixed(0)}%</p>
           </div>
         ))}
       </div>
@@ -54,7 +57,7 @@ export const SpendingStructure = ({ income, expenses, everyday, profile }) => {
       {/* Warnings / Insights */}
       {s.keptPct < 0 && (
         <p className="text-xs text-fg-muted">
-          You spent about {formatMYR(Math.abs(s.keptPct))} more than you earned for every RM 100 of income.
+          You spent about {Math.abs(s.keptPct).toFixed(0)}% more than you earned.
         </p>
       )}
       {s.billsPct > 50 && (

@@ -265,10 +265,12 @@ const CalendarHeatmap = ({ expenses, accounts }) => {
       
       const isToday = k === today
       const isPending = isToday && spent === undefined
-      const isMissing = spent === undefined && !isPending
-      const isLowSpend = !isPending && !isMissing && spent < threshold
-      
-      let isGrace = false
+      // A past day with no transactions counts as low-spend: zero is
+      // below any positive threshold, and rewarding saving is the whole
+      // point of a streak in a savings app. Penalising zero-spend days
+      // (treating them as "forgot to log" by default) breaks streaks on
+      // the user's best behaviour.
+      const isLowSpend = !isPending && (spent === undefined || spent < threshold)
 
       if (isLowSpend) {
         freeDays++
@@ -279,12 +281,11 @@ const CalendarHeatmap = ({ expenses, accounts }) => {
       } else if (!isPending) {
         if (!graceUsed) {
           graceUsed = true
-          isGrace = true
           statusMap.set(k, 'grace')
         } else {
           currentRun = 0
           graceUsed = false
-          statusMap.set(k, isMissing ? 'missing' : 'over')
+          statusMap.set(k, 'over')
         }
       } else {
         statusMap.set(k, 'pending')

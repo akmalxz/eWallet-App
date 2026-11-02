@@ -21,7 +21,7 @@ const PAGE_INFO = {
     summary: 'Shows when you spend, and helps you build better habits.',
     points: [
       { heading: 'Low-Spend Streaks', text: 'We find your "typical" daily spend and set a goal to stay under half of that amount. The calendar shows a flame icon on days you hit the goal.' },
-      { heading: 'Grace Days', text: 'If you overspend or forget to log, you get one free pass (a snowflake icon) before your current streak resets. Use them wisely!' },
+      { heading: 'Grace Days', text: 'If you overspend, you get one free pass (a snowflake icon) before your current streak resets. Days with no spending count toward your streak.' },
       { heading: 'Spending by Day of Week', text: 'Solid bars are this week. Faded bars are your average over the selected period.' }
     ]
   },

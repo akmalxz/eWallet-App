@@ -28,7 +28,7 @@ export const MainTrendChart = ({ expenses, periodMonths, accounts = [] }) => {
     setGranularity(defaultGranularity(periodMonths))
   }, [periodMonths])
 
-  const { currentBuckets, peakBucket, avg, isEmpty } = useMemo(() => {
+  const { currentBuckets, peakBucket, avg, isEmpty, hasPreviousData } = useMemo(() => {
     const now = new Date()
     const nowMY = toMYDate(now)
 
@@ -130,6 +130,13 @@ export const MainTrendChart = ({ expenses, periodMonths, accounts = [] }) => {
       previousTotal: previous[i]?.total || 0
     }))
 
+    // A "previous period" line only makes sense if at least one previous
+    // bucket actually received data. Without this guard, users whose fetch
+    // window doesn't extend far enough back (short history, or the 12M
+    // tab against a 13-month fetch) see a misleading flat-zero comparison
+    // line — which reads as "I spent nothing last period".
+    const hasPreviousData = merged.some(b => b.previousTotal > 0)
+
     const nonZero = current.filter((b) => b.total > 0)
     const isEmpty = nonZero.length === 0
 
@@ -142,7 +149,7 @@ export const MainTrendChart = ({ expenses, periodMonths, accounts = [] }) => {
       ? current.slice(0, -1).reduce((s, b) => s + b.total, 0) / Math.max(1, current.length - 1)
       : 0
 
-    return { currentBuckets: merged, peakBucket: peak, avg: avgVal, isEmpty }
+    return { currentBuckets: merged, peakBucket: peak, avg: avgVal, isEmpty, hasPreviousData }
   }, [expenses, periodMonths, granularity])
 
   const selectedBucket = selectedBucketKey
@@ -209,13 +216,19 @@ export const MainTrendChart = ({ expenses, periodMonths, accounts = [] }) => {
             <RechartsTooltip
               content={
                 <ChartTooltip
-                  rows={(d) => [
-                    { label: 'This period', value: d.total,         color: theme.current },
-                    { label: 'Previous',    value: d.previousTotal, color: theme.prev }
-                  ]}
+                  rows={(d) => hasPreviousData
+                    ? [
+                        { label: 'This period', value: d.total,         color: theme.current },
+                        { label: 'Previous',    value: d.previousTotal, color: theme.prev }
+                      ]
+                    : [
+                        { label: 'This period', value: d.total,         color: theme.current }
+                      ]
+                  }
                   footer={(d) => {
-                    const diff = d.total - d.previousTotal
+                    if (!hasPreviousData) return null
                     if (d.previousTotal === 0) return 'No comparison'
+                    const diff = d.total - d.previousTotal
                     const pct = ((diff / d.previousTotal) * 100).toFixed(0)
                     return `${diff >= 0 ? '+' : ''}${pct}% vs previous`
                   }}
@@ -239,15 +252,17 @@ export const MainTrendChart = ({ expenses, periodMonths, accounts = [] }) => {
               />
             )}
 
-            <Line
-              type="monotone"
-              dataKey="previousTotal"
-              stroke={theme.prev}
-              strokeWidth={1.5}
-              strokeDasharray="4 4"
-              dot={false}
-              activeDot={false}
-            />
+            {hasPreviousData && (
+              <Line
+                type="monotone"
+                dataKey="previousTotal"
+                stroke={theme.prev}
+                strokeWidth={1.5}
+                strokeDasharray="4 4"
+                dot={false}
+                activeDot={false}
+              />
+            )}
 
             <Line
               type="monotone"

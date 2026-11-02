@@ -74,9 +74,9 @@ describe('computeCashFlow', () => {
     const result = computeCashFlow({
       accounts: [ACC_A],
       expenses: [
-        tx(100, d(2026, 8, 10), 'acc-a'),  // Sept 10 → within period (dayOfMonth = 15)
-        tx(999, d(2026, 8, 20), 'acc-a'),  // Sept 20 → past dayOfMonth, excluded
-        tx(150, d(2026, 9, 5), 'acc-a')    // Oct 5 → current
+        tx(100, d(2026, 8, 10), 'acc-a'),
+        tx(999, d(2026, 8, 20), 'acc-a'),
+        tx(150, d(2026, 9, 5), 'acc-a')
       ],
       scopeAccountId: 'all',
       now: d(2026, 9, 15)
@@ -101,7 +101,7 @@ describe('computeCashFlow', () => {
     expect(result[0].value).toBe(100)
   })
 
-  it('excludes transactions flagged needs_review', () => {
+  it('includes transactions flagged needs_review (consistent with burn rate)', () => {
     const result = computeCashFlow({
       accounts: [ACC_A],
       expenses: [
@@ -112,7 +112,7 @@ describe('computeCashFlow', () => {
       now: d(2026, 9, 15)
     })
     expect(result).toHaveLength(1)
-    expect(result[0].value).toBe(100)
+    expect(result[0].value).toBe(1099)
   })
 
   it('excludes zero and negative amounts', () => {
@@ -163,7 +163,7 @@ describe('computeCashFlow', () => {
       accounts: [ACC_A],
       expenses: [
         tx(100, d(2026, 9, 5), 'acc-a'),
-        tx(999, d(2026, 9, 5), 'acc-b')   // acc-b not in accounts
+        tx(999, d(2026, 9, 5), 'acc-b')
       ],
       scopeAccountId: 'all',
       now: d(2026, 9, 15)
@@ -200,7 +200,6 @@ describe('computeCashFlow', () => {
       scopeAccountId: 'all',
       now: d(2026, 9, 15)
     })
-    // Total 4030, 3% = 120.9. E (20) and F (10) fall out → both roll into Other.
     expect(result.map(r => r.name)).toEqual(['A', 'B', 'C', 'D', 'Other'])
     expect(result[4].value).toBe(30)
   })
@@ -238,8 +237,8 @@ describe('computeCashFlow', () => {
     const result = computeCashFlow({
       accounts: [ACC_A],
       expenses: [
-        tx(100, d(2026, 8, 10), 'acc-a'),  // last month
-        tx(150, d(2026, 9, 5), 'acc-a')    // current month
+        tx(100, d(2026, 8, 10), 'acc-a'),
+        tx(150, d(2026, 9, 5), 'acc-a')
       ],
       scopeAccountId: 'all',
       now: d(2026, 9, 15)

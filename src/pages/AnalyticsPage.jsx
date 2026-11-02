@@ -117,8 +117,14 @@ export function AnalyticsPage({
     return income.filter(tx => tx.destination_account_id === selectedAccount)
   }, [income, selectedAccount])
 
-  const spendingSource =
-    mode === 'everyday' ? filteredEverydayExpenses : filteredExpenses
+  // Account-scoped + mode-scoped, but NOT period-scoped.
+  // Consumed by HeadlineInsights (which filters internally to the
+  // current cycle) and MainTrendChart (which needs 2N cycles of
+  // data to populate its previous-period comparison line).
+  const spendingSource = useMemo(
+    () => (mode === 'everyday' ? filteredEverydayExpenses : filteredExpenses),
+    [mode, filteredEverydayExpenses, filteredExpenses]
+  )
 
   // ----------------------------------------------------------
   // Period range: the last N *completed* pay cycles, excluding
@@ -315,13 +321,12 @@ export function AnalyticsPage({
               {tab === 'overview' && (
                 <>
                   <HeadlineInsights
-                    expenses={periodScopedExpenses}
-                    periodMonths={period}
+                    expenses={spendingSource}
                     onNavigate={handleTabNavigate}
                     profile={profile}
                   />
                   <MainTrendChart
-                    expenses={periodScopedExpenses}
+                    expenses={spendingSource}
                     periodMonths={period}
                     accounts={accounts}
                   />
@@ -352,7 +357,7 @@ export function AnalyticsPage({
                     accounts={accounts}
                     selectedAccountId={selectedAccount}
                     accountLabel={activeAccountName}
-                    onAddIncome={onBack}
+                    onAddIncome={handleLogTransaction}
                     profile={profile}
                   />
                   <SpendingStructure

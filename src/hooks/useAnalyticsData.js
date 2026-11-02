@@ -61,6 +61,15 @@ export const useAnalyticsData = (user, showToast) => {
   // rate engine — same rule, applied consistently. This means a
   // transaction is a commitment if EITHER its metadata has a
   // commitment_id OR its category is "Commitments".
+  //
+  // IMPORTANT: the Income category check runs FIRST. This handles
+  // the common mislogging pattern where a user records their salary
+  // as an "expense" from their main account with category
+  // "Income > salary". Without the priority ordering, such a
+  // transaction would be classified as spending — inflating
+  // consumption and silently vanishing from income. (This is the
+  // classification analogue of the same fix applied in
+  // `useSavingsRate`.)
   // ----------------------------------------------------------
   const { expenses, everydayExpenses, income } = useMemo(() => {
     const exp = []
@@ -68,15 +77,22 @@ export const useAnalyticsData = (user, showToast) => {
     const inc = []
 
     for (const tx of rawTransactions) {
-      const hasSource = !!tx.source_account_id
-      const hasDest = !!tx.destination_account_id
       const isIncomeCat =
         (tx.category || '').toLowerCase().startsWith('income')
+
+      // Category-based income takes priority regardless of shape.
+      if (isIncomeCat) {
+        inc.push(tx)
+        continue
+      }
+
+      const hasSource = !!tx.source_account_id
+      const hasDest = !!tx.destination_account_id
 
       if (hasSource && !hasDest) {
         exp.push(tx)
         if (!isCommitmentPayment(tx)) everydayExp.push(tx)
-      } else if ((!hasSource && hasDest) || isIncomeCat) {
+      } else if (!hasSource && hasDest) {
         inc.push(tx)
       }
       // transfers (both set) fall through: excluded

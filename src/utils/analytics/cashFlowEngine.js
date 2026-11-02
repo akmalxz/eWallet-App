@@ -26,7 +26,12 @@ export const computeCashFlow = ({
 
   for (const tx of expenses) {
     if (!accountIds.has(tx.source_account_id)) continue
-    if (tx.needs_review) continue
+    // `needs_review` is intentionally NOT filtered here. Pending OCR
+    // entries represent real money movement; only their category is
+    // uncertain. The burn rate engine and useAnalyticsData already
+    // include them (burn rate tracks a `reviewCount` nudge separately).
+    // Keeping cash flow aligned means the donut, the burn rate, and
+    // the analytics trend all agree on what "spent this cycle" means.
     const amt = Number(tx.amount) || 0
     if (amt <= 0) continue
 

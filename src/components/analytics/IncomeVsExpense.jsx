@@ -6,7 +6,7 @@ import {
   CartesianGrid, Tooltip as RechartsTooltip, Legend
 } from 'recharts'
 import { formatMYR } from '../../utils/formatters'
-import { lastNCycles, toMYDate } from '../../utils/dateHelpers' // <-- Changed
+import { lastNCycles, toMYDate } from '../../utils/dateHelpers'
 import { useChartTheme } from '../../hooks/useChartTheme'
 import { ChartTooltip, EmptyState } from './AnalyticsShared'
 
@@ -18,25 +18,26 @@ export const IncomeVsExpense = ({
   selectedAccountId = 'all',
   accountLabel = 'All accounts',
   onAddIncome,
-  profile // <-- Added
+  profile
 }) => {
   const theme = useChartTheme()
 
   const { months, stats } = useMemo(() => {
     const now = new Date()
-    
-    // Use pay cycles instead of calendar months
-    const cycleList = lastNCycles(periodMonths, now, profile?.payday_type, profile?.payday_date)
-    const data = cycleList.map(c => ({ 
-      key: c.key, 
-      label: c.label, 
-      start: c.startDate, 
-      end: c.endDate, 
-      income: 0, 
-      expense: 0 
+
+    // Fetch one extra cycle so that after excluding the current
+    // (incomplete) cycle we still surface `periodMonths` completed
+    // cycles in the chart and the copy.
+    const cycleList = lastNCycles(periodMonths + 1, now, profile?.payday_type, profile?.payday_date)
+    const data = cycleList.map(c => ({
+      key: c.key,
+      label: c.label,
+      start: c.startDate,
+      end: c.endDate,
+      income: 0,
+      expense: 0
     }))
 
-    // Helper to find which cycle a transaction belongs to
     const findCycle = (txDate) => {
       const d = toMYDate(txDate)
       return data.find(c => d >= c.start && d <= c.end)
@@ -51,11 +52,12 @@ export const IncomeVsExpense = ({
       if (cycle) cycle.expense += Number(tx.amount) || 0
     })
 
-    // Find the current cycle key to exclude it from totals
+    // The current cycle is excluded from the chart and from stats —
+    // its bar would render as zero (upstream data is scoped to
+    // completed cycles), which reads as "this cycle you earned
+    // nothing". Everything the user sees is a completed cycle.
     const currentCycle = lastNCycles(1, now, profile?.payday_type, profile?.payday_date)[0]
     const currentCycleKey = currentCycle.key
-
-    // Only include completed cycles in the stats
     const completed = data.filter(d => d.key !== currentCycleKey)
 
     const totalIncome = completed.reduce((s, d) => s + d.income, 0)
@@ -67,7 +69,7 @@ export const IncomeVsExpense = ({
     const avgExpense = completed.length > 0 ? totalExpense / completed.length : 0
 
     return {
-      months: data,
+      months: completed,
       stats: { totalIncome, totalExpense, net, savingsRate, avgIncome, avgExpense }
     }
   }, [income, expenses, periodMonths, profile?.payday_type, profile?.payday_date])
@@ -78,7 +80,7 @@ export const IncomeVsExpense = ({
   const rateColor = (() => {
     if (stats.savingsRate === null) return theme.neutral
     if (stats.savingsRate >= 20) return theme.down
-    if (stats.savingsRate >= 0) return '#f59e0b'
+    if (stats.savingsRate >= 0) return theme.category[2]  // amber, theme-aware
     return theme.up
   })()
 
@@ -119,13 +121,13 @@ export const IncomeVsExpense = ({
               For <strong>{accountLabel}</strong>: you saved{' '}
               <strong className="tabular-figures">{formatMYR(stats.net)}</strong> out of{' '}
               <strong className="tabular-figures">{formatMYR(stats.totalIncome)}</strong>{' '}
-              income over the last {periodMonths} cycles.
+              income over the last {months.length} completed {months.length === 1 ? 'cycle' : 'cycles'}.
             </>
           ) : (
             <>
               You saved <strong className="tabular-figures">{formatMYR(stats.net)}</strong> out of{' '}
               <strong className="tabular-figures">{formatMYR(stats.totalIncome)}</strong>{' '}
-              income over the last {periodMonths} cycles.
+              income over the last {months.length} completed {months.length === 1 ? 'cycle' : 'cycles'}.
             </>
           )}
         </p>

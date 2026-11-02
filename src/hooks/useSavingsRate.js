@@ -13,26 +13,25 @@ const WEALTH_CLASSIFICATIONS = new Set([
  *
  *   savings_rate = (income − consumption) / income
  *
- * Consumption:
- *   - expense transactions (source set, destination null — guaranteed
- *     by the query that feeds `transactions`)
- *   - excludes needs_review
- *   - excludes any transaction whose category starts with "Income"
- *     (covers the rare case where a user logged salary as an expense)
+ * Classification rules — kept in lockstep with useAnalyticsData:
  *
- * Income:
- *   - inflows where source_account_id is null (true income)
- *   - OR inflows whose category starts with "Income" (mislogged salary
- *     that has both source and destination set)
- *
- * Wealth contribution:
- *   - inflows whose destination is a wealth account
- *   - a subset of "kept" — the difference between kept and contribution
- *     is money that stayed in cash
+ *   - Any transaction whose category starts with "Income" is income,
+ *     regardless of source/destination shape. This handles the common
+ *     mislogging pattern where salary is recorded as an expense from
+ *     the main account (source set, destination null).
+ *   - Transfers (both source and destination set) are neither income
+ *     nor consumption.
+ *   - Transfers into wealth-classified accounts (ASB/TH/Investment)
+ *     contribute to `wealthContribution` — a subset of "kept".
+ *   - `needs_review` transactions are INCLUDED. Pending OCR entries
+ *     represent real money movement; only their category is uncertain.
+ *     This matches burnRateEngine and useAnalyticsData.
  *
  * @param {object} opts
  * @param {Array} opts.transactions  from useTransactions.monthlyExpenses
+ *                                   (guaranteed destination null)
  * @param {Array} opts.inflows       from useTransactions.monthlyInflows
+ *                                   (guaranteed destination set)
  * @param {Array} opts.accounts      used to identify wealth destinations
  * @param {object} opts.profile      payday config
  * @returns {{
@@ -85,20 +84,29 @@ export function useSavingsRate({
       let consumption = 0
       let wealthContribution = 0
 
-      // Consumption: expenses in range
+      // `transactions` = source-set, destination-null (from monthlyExpenses).
+      // Income-categorised entries are mislogged salaries — counted as
+      // income, not consumption. Range check MUST precede classification:
+      // otherwise a salary dated outside this cycle would be counted in
+      // every cycle's income.
       for (const tx of transactions) {
-        if (tx.needs_review) continue
-        if (isIncomeCategory(tx)) continue
         if (!inRange(tx.transaction_date, start, end)) continue
+
+        if (isIncomeCategory(tx)) {
+          income += Number(tx.amount) || 0
+          continue
+        }
+
         consumption += Number(tx.amount) || 0
       }
 
-      // Income + wealth contributions: inflows in range
+      // `inflows` = destination-set (from monthlyInflows). Income and
+      // wealth contributions are both extracted from this list.
       for (const tx of inflows) {
-        if (tx.needs_review) continue
         if (!inRange(tx.transaction_date, start, end)) continue
 
-        // Pure income (source null) OR mislogged salary (Income category)
+        // Pure income (source null) OR mislogged salary logged as a
+        // transfer with an Income category.
         if (!tx.source_account_id || isIncomeCategory(tx)) {
           income += Number(tx.amount) || 0
           continue

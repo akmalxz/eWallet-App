@@ -14,14 +14,17 @@ const MIN_DAYS = 14
 const MIN_TX = 15
 const MIN_PCT = 15
 
-export const HeadlineInsights = ({ expenses, periodMonths, onNavigate, profile }) => {
+// Note: this component intentionally ignores the period selector.
+// Insights are "what's happening right now" — always current-cycle
+// vs previous-cycle — regardless of whether the user is viewing 3M,
+// 6M, or 12M of trend data.
+export const HeadlineInsights = ({ expenses, onNavigate, profile }) => {
   const theme = useChartTheme()
 
   const insights = useMemo(() => {
     if (!expenses.length) return []
 
     const now = new Date()
-    // 1. Get current and previous cycle dates
     const { startDate: thisCycleStart } = getPayCycle(now, profile?.payday_type, profile?.payday_date)
     const prevCycleEndSeed = new Date(thisCycleStart.getTime() - 86400000)
     const { startDate: prevCycleStart, endDate: prevCycleEnd } = getPayCycle(prevCycleEndSeed, profile?.payday_type, profile?.payday_date)
@@ -35,7 +38,6 @@ export const HeadlineInsights = ({ expenses, periodMonths, onNavigate, profile }
 
     if (dayCount.size < MIN_DAYS || periodExpenses.length < MIN_TX) return []
 
-    // 2. Weekday Math
     const totalsByWeekday = [0, 0, 0, 0, 0, 0, 0]
     const occurrencesByWeekday = [0, 0, 0, 0, 0, 0, 0]
 
@@ -68,7 +70,6 @@ export const HeadlineInsights = ({ expenses, periodMonths, onNavigate, profile }
       ? ((weekendAvg - weekdayAvg) / weekdayAvg) * 100
       : 0
 
-    // 3. Category Spike Math (Current Cycle vs Previous Cycle)
     const mainCat = (cat) => (cat || 'Uncategorized').split(' > ')[0]
     const thisCatTotals = {}
     const prevCatTotals = {}
@@ -93,7 +94,6 @@ export const HeadlineInsights = ({ expenses, periodMonths, onNavigate, profile }
       }
     })
 
-    // 4. Cycle-to-Date Math (Comparison vs same days last cycle)
     const daysPassed = Math.max(1, Math.round((now - thisCycleStart) / 86400000))
     const prevCycleSamePeriodEnd = new Date(prevCycleStart.getTime() + daysPassed * 86400000)
 
@@ -110,7 +110,6 @@ export const HeadlineInsights = ({ expenses, periodMonths, onNavigate, profile }
 
     const ctdPct = lastCTD > 0 ? ((ctd - lastCTD) / lastCTD) * 100 : null
 
-    // 5. Build Cards
     const cards = []
 
     if (peakAvg > 0) {
@@ -177,7 +176,7 @@ export const HeadlineInsights = ({ expenses, periodMonths, onNavigate, profile }
     }
 
     return cards.sort((a, b) => b.score - a.score).slice(0, 4)
-  }, [expenses, periodMonths, profile?.payday_type, profile?.payday_date])
+  }, [expenses, profile?.payday_type, profile?.payday_date])
 
   if (insights.length === 0) {
     return (
