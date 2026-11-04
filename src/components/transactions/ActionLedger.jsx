@@ -77,8 +77,10 @@ export const ActionLedger = ({
 
   const groupedTransactions = useMemo(() => {
     if (!recentTransactions || recentTransactions.length === 0) return []
-    const todayKey = dayKey(new Date())
-    const yesterdayKey = dayKey(new Date(Date.now() - 24 * 60 * 60 * 1000))
+    const today = new Date()
+    const todayKey = dayKey(today)
+    const yesterday = new Date(today.getFullYear(), today.getMonth(), today.getDate() - 1)
+    const yesterdayKey = dayKey(yesterday)
     const groups = {}
 
     recentTransactions.forEach((tx) => {

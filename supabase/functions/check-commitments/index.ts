@@ -85,6 +85,24 @@ serve(async (req) => {
       // ============================================
       // IDEMPOTENCY: Skip if already processed today
       // ============================================
+      const { data: existingPayment } = await supabaseClient
+        .from('commitments_payments')
+        .select('id, transaction_id')
+        .eq('commitment_id', commitment.id)
+        .eq('period_year', nowMY.getUTCFullYear())
+        .eq('period_month', currentMonth + 1)
+        .eq('status', 'paid')
+        .limit(1)
+
+      if (existingPayment && existingPayment.length > 0) {
+        results.push({
+          commitment: commitment.name,
+          status: 'already_processed',
+          transaction_id: existingPayment[0].transaction_id
+        })
+        continue
+      }
+
       const { data: existing, error: checkError } = await supabaseClient
         .from('transactions')
         .select('id')
@@ -155,6 +173,25 @@ serve(async (req) => {
         })
         console.error('Error inserting:', insertError)
         continue
+      }
+
+      // ============================================
+      // RECORD PAYMENT IN COMMITMENTS_PAYMENTS
+      // ============================================
+      const txId = inserted?.[0]?.id
+      const { error: paymentError } = await supabaseClient
+        .from('commitments_payments')
+        .insert({
+          user_id: ownerId,
+          commitment_id: commitment.id,
+          period_year: nowMY.getUTCFullYear(),
+          period_month: currentMonth + 1,
+          status: 'paid',
+          transaction_id: txId
+        })
+
+      if (paymentError) {
+        console.error('Failed to record commitment payment:', paymentError)
       }
 
       // ============================================

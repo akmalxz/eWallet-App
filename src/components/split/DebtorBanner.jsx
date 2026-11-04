@@ -86,7 +86,9 @@ export function DebtorBanner({ user }) {
   }
 
   useEffect(() => {
-    fetchDebts()
+    queueMicrotask(() => {
+      fetchDebts()
+    })
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user?.id])
 

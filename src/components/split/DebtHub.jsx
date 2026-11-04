@@ -103,7 +103,9 @@ export function DebtHub({ user, showToast, onDebtsChanged }) {
   }
 
   useEffect(() => {
-    if (user?.id) fetchDebts()
+    if (user?.id) {
+      queueMicrotask(() => fetchDebts())
+    }
   }, [user?.id, fetchDebts])
 
   useEffect(() => {

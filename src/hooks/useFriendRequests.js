@@ -35,11 +35,7 @@ export function useFriendRequests(user, showToast) {
 
   // Unique channel prefix so multiple hook instances (Header + NetworkPage)
   // don't collide on the same Supabase Realtime channel name.
-  const instanceIdRef = useRef(
-    typeof crypto !== 'undefined' && crypto.randomUUID
-      ? crypto.randomUUID().slice(0, 8)
-      : Math.random().toString(36).slice(2, 10)
-  )
+  const instanceIdRef = useRef('')
 
   const fetchNetworkData = useCallback(
     async ({ silent = false } = {}) => {
@@ -105,7 +101,9 @@ export function useFriendRequests(user, showToast) {
 
   // Initial fetch, and refetch whenever the signed-in user changes.
   useEffect(() => {
-    fetchNetworkData()
+    queueMicrotask(() => {
+      fetchNetworkData()
+    })
   }, [fetchNetworkData])
 
   // Realtime — keep the list in sync with Supabase.
@@ -115,6 +113,11 @@ export function useFriendRequests(user, showToast) {
     if (!userId) return
 
     const handleChange = () => fetchNetworkData({ silent: true })
+    if (!instanceIdRef.current) {
+      instanceIdRef.current = typeof crypto !== 'undefined' && crypto.randomUUID
+        ? crypto.randomUUID().slice(0, 8)
+        : Math.random().toString(36).slice(2, 10)
+    }
     const suffix = instanceIdRef.current
 
     const incoming = supabase

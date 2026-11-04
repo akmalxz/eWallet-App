@@ -43,7 +43,9 @@ export const useAnalyticsData = (user, showToast) => {
   }, [user, showToast])
 
   useEffect(() => {
-    fetchData()
+    queueMicrotask(() => {
+      fetchData()
+    })
   }, [fetchData])
 
   // ----------------------------------------------------------

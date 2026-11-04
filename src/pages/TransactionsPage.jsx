@@ -138,15 +138,15 @@ export function TransactionsPage({
   const [page, setPage] = useState(1)
   const [hasMore, setHasMore] = useState(true)
   const [isLoadingMore, setIsLoadingMore] = useState(false)
-  const [isSearching, setIsSearching] = useState(false)
+  const [isFetchingSearch, setIsFetchingSearch] = useState(false)
   
+  const isSearching = searchQuery !== debouncedQuery || isFetchingSearch
   const isInitialMount = useRef(true)
 
   useEffect(() => {
-    if (searchQuery !== debouncedQuery) setIsSearching(true)
     const t = setTimeout(() => setDebouncedQuery(searchQuery), 300)
     return () => clearTimeout(t)
-  }, [searchQuery, debouncedQuery])
+  }, [searchQuery])
 
   useEffect(() => {
     if (isInitialMount.current) {
@@ -156,11 +156,19 @@ export function TransactionsPage({
     
     let isMounted = true
     const doFetch = async () => {
-      const res = await fetchRecentTransactions({ limit: 50, offset: 0, search: debouncedQuery })
-      if (isMounted) {
-        setHasMore(res.hasMore)
-        setPage(1)
-        setIsSearching(false)
+      queueMicrotask(() => {
+        if (isMounted) setIsFetchingSearch(true)
+      })
+      try {
+        const res = await fetchRecentTransactions({ limit: 50, offset: 0, search: debouncedQuery })
+        if (isMounted) {
+          setHasMore(res.hasMore)
+          setPage(1)
+        }
+      } finally {
+        if (isMounted) {
+          setIsFetchingSearch(false)
+        }
       }
     }
     doFetch()

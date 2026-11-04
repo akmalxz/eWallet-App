@@ -1,6 +1,6 @@
 // src/hooks/useSavingsRate.js
 import { useMemo } from 'react'
-import { getPayCycle, toMYDate } from '../utils/dateHelpers'
+import { getPayCycle } from '../utils/dateHelpers'
 
 const WEALTH_CLASSIFICATIONS = new Set([
   'fixed_price_ut',
@@ -63,7 +63,7 @@ export function useSavingsRate({
     )
 
     const inRange = (dateStr, start, end) => {
-      const d = toMYDate(dateStr)
+      const d = new Date(dateStr)
       return d >= start && d <= end
     }
 
@@ -112,8 +112,9 @@ export function useSavingsRate({
           continue
         }
 
-        // Otherwise it's a transfer. Count only transfers into wealth.
-        if (wealthIds.has(tx.destination_account_id)) {
+        // Otherwise it's a transfer. Count only new transfers into wealth
+        // from non-wealth accounts (not intra-wealth transfers).
+        if (wealthIds.has(tx.destination_account_id) && !wealthIds.has(tx.source_account_id)) {
           wealthContribution += Number(tx.amount) || 0
         }
       }

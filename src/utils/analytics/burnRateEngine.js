@@ -126,7 +126,7 @@ export const computeBurnRate = ({
   const prevCycleDailyTotals = new Map()
 
   const prevCycleSamePeriodEnd = new Date(
-    prevCycleStart.getTime() + (daysPassed - 1) * 86400000
+    prevCycleStart.getTime() + (now.getTime() - cycleStart.getTime())
   )
 
   for (const tx of expenses) {
@@ -135,7 +135,7 @@ export const computeBurnRate = ({
     if (tx.needs_review) reviewCount++
     if (isCommitmentPayment(tx)) continue
 
-    const txDate = toMYDate(tx.transaction_date)
+    const txDate = new Date(tx.transaction_date)
 
     if (txDate >= cycleStart && txDate <= now) {
       thisCycleEveryday += Number(tx.amount) || 0

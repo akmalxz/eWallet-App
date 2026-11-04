@@ -1,5 +1,5 @@
 // src/components/split/DebtDetailSheet.jsx
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect } from 'react'
 import {
   X, Clock, Utensils, CheckCircle2, Loader2, AlertTriangle, MessageSquare
 } from 'lucide-react'
@@ -19,6 +19,12 @@ export function DebtDetailSheet({
   const [loading, setLoading] = useState(true)
   const [claims, setClaims] = useState([])
   const [localDebt, setLocalDebt] = useState(debt)
+  const [prevDebt, setPrevDebt] = useState(debt)
+  if (prevDebt !== debt) {
+    setPrevDebt(debt)
+    setLocalDebt(debt)
+    setLoading(true)
+  }
 
   // Dispute UI state
   const [showDisputeForm, setShowDisputeForm] = useState(false)
@@ -31,31 +37,31 @@ export function DebtDetailSheet({
   const [rejectNote, setRejectNote] = useState('')
   const [showRejectForm, setShowRejectForm] = useState(false)
 
-  useEffect(() => { setLocalDebt(debt) }, [debt])
+  useEffect(() => {
+    let ignore = false
+    async function load() {
+      if (!debt) return
+      try {
+        const q = supabase
+          .from('split_claims')
+          .select('id, item_name, item_price, share_weight, user_id, contact_id')
+          .eq('session_id', debt.session_id)
 
-  const fetchClaims = useCallback(async () => {
-    if (!debt) return
-    setLoading(true)
-    try {
-      const q = supabase
-        .from('split_claims')
-        .select('id, item_name, item_price, share_weight, user_id, contact_id')
-        .eq('session_id', debt.session_id)
+        if (debt.debtor_user_id) q.eq('user_id', debt.debtor_user_id)
+        else if (debt.debtor_contact_id) q.eq('contact_id', debt.debtor_contact_id)
 
-      if (debt.debtor_user_id) q.eq('user_id', debt.debtor_user_id)
-      else if (debt.debtor_contact_id) q.eq('contact_id', debt.debtor_contact_id)
-
-      const { data, error } = await q
-      if (error) throw error
-      setClaims(data || [])
-    } catch {
-      setClaims([])
-    } finally {
-      setLoading(false)
+        const { data, error } = await q
+        if (error) throw error
+        if (!ignore) setClaims(data || [])
+      } catch {
+        if (!ignore) setClaims([])
+      } finally {
+        if (!ignore) setLoading(false)
+      }
     }
+    load()
+    return () => { ignore = true }
   }, [debt])
-
-  useEffect(() => { fetchClaims() }, [fetchClaims])
 
   useEffect(() => {
     const onKey = (e) => {

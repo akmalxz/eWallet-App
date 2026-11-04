@@ -93,7 +93,11 @@ export function SessionHistory({ user }) {
   }, [user?.id])
 
   useEffect(() => {
-    if (user?.id) fetchHistory(limit)
+    if (user?.id) {
+      queueMicrotask(() => {
+        fetchHistory(limit)
+      })
+    }
   }, [user?.id, limit, fetchHistory])
 
   useEffect(() => {

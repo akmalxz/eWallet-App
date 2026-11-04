@@ -21,12 +21,14 @@ const GRANULARITY_OPTIONS = [
 
 export const MainTrendChart = ({ expenses, periodMonths, accounts = [] }) => {
   const theme = useChartTheme()
+  const [prevPeriodMonths, setPrevPeriodMonths] = useState(periodMonths)
   const [granularity, setGranularity] = useState(defaultGranularity(periodMonths))
   const [selectedBucketKey, setSelectedBucketKey] = useState(null)
 
-  useEffect(() => {
+  if (prevPeriodMonths !== periodMonths) {
+    setPrevPeriodMonths(periodMonths)
     setGranularity(defaultGranularity(periodMonths))
-  }, [periodMonths])
+  }
 
   const { currentBuckets, peakBucket, avg, isEmpty, hasPreviousData } = useMemo(() => {
     const now = new Date()

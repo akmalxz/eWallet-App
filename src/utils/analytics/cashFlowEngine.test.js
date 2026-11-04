@@ -172,7 +172,7 @@ describe('computeCashFlow', () => {
     expect(result[0].value).toBe(100)
   })
 
-  it('rolls the tail into "Other" when there are more than 5 categories', () => {
+  it('returns all categories sorted descending without artificial capping', () => {
     const mk = (cat, amt) => tx(amt, d(2026, 9, 5), 'acc-a', { category: cat })
     const result = computeCashFlow({
       accounts: [ACC_A],
@@ -184,12 +184,11 @@ describe('computeCashFlow', () => {
       now: d(2026, 9, 15)
     })
     expect(result).toHaveLength(6)
-    expect(result.map(r => r.name)).toEqual(['A', 'B', 'C', 'D', 'E', 'Other'])
-    expect(result[5].value).toBe(50)
-    expect(result[5].isOther).toBe(true)
+    expect(result.map(r => r.name)).toEqual(['A', 'B', 'C', 'D', 'E', 'F'])
+    expect(result.map(r => r.value)).toEqual([100, 90, 80, 70, 60, 50])
   })
 
-  it('filters categories below 3% out of the top 5', () => {
+  it('preserves small categories rather than filtering them out', () => {
     const mk = (cat, amt) => tx(amt, d(2026, 9, 5), 'acc-a', { category: cat })
     const result = computeCashFlow({
       accounts: [ACC_A],
@@ -200,8 +199,10 @@ describe('computeCashFlow', () => {
       scopeAccountId: 'all',
       now: d(2026, 9, 15)
     })
-    expect(result.map(r => r.name)).toEqual(['A', 'B', 'C', 'D', 'Other'])
-    expect(result[4].value).toBe(30)
+    expect(result).toHaveLength(6)
+    expect(result.map(r => r.name)).toEqual(['A', 'B', 'C', 'D', 'E', 'F'])
+    expect(result.find(r => r.name === 'E').value).toBe(20)
+    expect(result.find(r => r.name === 'F').value).toBe(10)
   })
 
   it('attaches transactions to each category row', () => {
@@ -218,7 +219,7 @@ describe('computeCashFlow', () => {
     expect(result[0].txns).toHaveLength(2)
   })
 
-  it('flattens all sub-threshold transactions into the Other row', () => {
+  it('attaches transactions to each category row including small categories', () => {
     const mk = (cat, amt) => tx(amt, d(2026, 9, 5), 'acc-a', { category: cat })
     const result = computeCashFlow({
       accounts: [ACC_A],
@@ -229,8 +230,9 @@ describe('computeCashFlow', () => {
       scopeAccountId: 'all',
       now: d(2026, 9, 15)
     })
-    const other = result.find(r => r.name === 'Other')
-    expect(other.txns).toHaveLength(2)
+    const catE = result.find(r => r.name === 'E')
+    expect(catE.txns).toHaveLength(1)
+    expect(catE.txns[0].amount).toBe(20)
   })
 
   it('excludes last-month transactions from the txns list', () => {

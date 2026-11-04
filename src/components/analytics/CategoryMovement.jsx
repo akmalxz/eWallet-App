@@ -16,7 +16,6 @@ export const CategoryMovement = ({ expenses, periodMonths }) => {
 
   const {
     rows,
-    months,
     stackedData,
     topCategories,
     thisMonthTotal
@@ -244,7 +243,9 @@ export const CategoryMovement = ({ expenses, periodMonths }) => {
               <button
                 key={m.key}
                 onClick={() => setSelectedMonthKey(prev => (prev === m.key ? null : m.key))}
-                className="flex-1 flex flex-col items-center gap-1 group"
+                className={`flex-1 flex flex-col items-center gap-1 group rounded-t transition-all ${
+                  selectedMonthKey === m.key ? 'ring-2 ring-brand rounded-lg p-0.5' : ''
+                }`}
               >
                 <div className="w-full h-32 flex flex-col-reverse rounded-t overflow-hidden">
                   {segments.map((s, i) => (

@@ -1,5 +1,5 @@
 // src/utils/analytics/cashFlowEngine.js
-import { toMYDate, getPayCycle } from '../dateHelpers'
+import { getPayCycle } from '../dateHelpers'
 import { rollUpToMain } from './categoryColors'
 import { resolveAccountScope } from '../accounts/accountScope'
 
@@ -16,7 +16,10 @@ export const computeCashFlow = ({
   
   // 2. Get previous cycle (for comparison)
   const prevCycleEndSeed = new Date(start.getTime() - 86400000)
-  const { startDate: prevStart, endDate: prevEnd } = getPayCycle(prevCycleEndSeed, paydayType, paydayDate)
+  const { startDate: prevStart } = getPayCycle(prevCycleEndSeed, paydayType, paydayDate)
+  const prevCycleSamePeriodEnd = new Date(
+    prevStart.getTime() + (now.getTime() - start.getTime())
+  )
 
   const { accountIds } = resolveAccountScope(accounts, scopeAccountId)
 
@@ -35,14 +38,14 @@ export const computeCashFlow = ({
     const amt = Number(tx.amount) || 0
     if (amt <= 0) continue
 
-    const txDate = toMYDate(tx.transaction_date).getTime()
+    const txDate = new Date(tx.transaction_date).getTime()
     const cat = rollUpToMain(tx.category)
 
     if (txDate >= start.getTime() && txDate <= end.getTime()) {
       thisByCat[cat] = (thisByCat[cat] || 0) + amt
       if (!txByCat[cat]) txByCat[cat] = []
       txByCat[cat].push(tx)
-    } else if (txDate >= prevStart.getTime() && txDate <= prevEnd.getTime()) {
+    } else if (txDate >= prevStart.getTime() && txDate <= prevCycleSamePeriodEnd.getTime()) {
       lastByCat[cat] = (lastByCat[cat] || 0) + amt
     }
   }

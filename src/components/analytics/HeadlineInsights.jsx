@@ -5,7 +5,7 @@ import {
 } from 'lucide-react'
 import { formatMYR } from '../../utils/formatters'
 import {
-  toMYDate, myWeekdayIndex, WEEKDAY_LABELS, getPayCycle
+  toMYDate, myWeekdayIndex, WEEKDAY_LABELS, getPayCycle, dayKey
 } from '../../utils/dateHelpers'
 import { useChartTheme } from '../../hooks/useChartTheme'
 import { EmptyState } from './AnalyticsShared'
@@ -30,11 +30,11 @@ export const HeadlineInsights = ({ expenses, onNavigate, profile }) => {
     const { startDate: prevCycleStart, endDate: prevCycleEnd } = getPayCycle(prevCycleEndSeed, profile?.payday_type, profile?.payday_date)
 
     const periodExpenses = expenses.filter(
-      tx => toMYDate(tx.transaction_date) >= thisCycleStart
+      tx => new Date(tx.transaction_date) >= thisCycleStart
     )
 
     const dayCount = new Set()
-    periodExpenses.forEach(tx => dayCount.add(toMYDate(tx.transaction_date).getTime()))
+    periodExpenses.forEach(tx => dayCount.add(dayKey(tx.transaction_date)))
 
     if (dayCount.size < MIN_DAYS || periodExpenses.length < MIN_TX) return []
 
@@ -98,12 +98,12 @@ export const HeadlineInsights = ({ expenses, onNavigate, profile }) => {
     const prevCycleSamePeriodEnd = new Date(prevCycleStart.getTime() + daysPassed * 86400000)
 
     const ctd = expenses
-      .filter(tx => toMYDate(tx.transaction_date) >= thisCycleStart)
+      .filter(tx => new Date(tx.transaction_date) >= thisCycleStart)
       .reduce((s, tx) => s + Number(tx.amount), 0)
 
     const lastCTD = expenses
       .filter(tx => {
-        const d = toMYDate(tx.transaction_date)
+        const d = new Date(tx.transaction_date)
         return d >= prevCycleStart && d <= prevCycleSamePeriodEnd
       })
       .reduce((s, tx) => s + Number(tx.amount), 0)

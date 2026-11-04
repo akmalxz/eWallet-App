@@ -74,8 +74,7 @@ export default function App() {
     fetchCategories,
     fetchRecentTransactions,
     fetchCommitments,
-    fetchMonthlyData,
-    fetchReceivables
+    fetchMonthlyData
   } = useTransactions(user, showToast)
 
   const commitmentsApi = useCommitments({ 
@@ -100,7 +99,9 @@ export default function App() {
   useEffect(() => {
     if (!isAuthenticated) return
     if (sessionExpired.consume()) {
-      showToast('Your session expired. Please sign in again.', 'warning')
+      queueMicrotask(() => {
+        showToast('Your session expired. Please sign in again.', 'warning')
+      })
     }
   }, [isAuthenticated, showToast])
 
@@ -109,9 +110,13 @@ export default function App() {
     trackEvent('view_opened', { view: currentView })
   }, [currentView, isAuthenticated])
 
-  useEffect(() => {
-    if (currentView !== 'split') setSplitInitialTab('new')
-  }, [currentView])
+  const [prevView, setPrevView] = useState(currentView)
+  if (prevView !== currentView) {
+    setPrevView(currentView)
+    if (currentView !== 'split') {
+      setSplitInitialTab('new')
+    }
+  }
 
   const hasFetchedRef = useRef(false)
   useEffect(() => {
@@ -152,7 +157,7 @@ export default function App() {
   const toggleIncludeSavings = () => {
     setIncludeSavings(prev => {
       const next = !prev
-      try { localStorage.setItem('burnRateIncludeSavings', String(next)) } catch {}
+      try { localStorage.setItem('burnRateIncludeSavings', String(next)) } catch { /* ignore */ }
       return next
     })
   }

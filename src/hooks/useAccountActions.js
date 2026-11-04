@@ -18,21 +18,22 @@ export function useAccountActions({
   const sortedAccounts = useMemo(() => {
     return [...activeAccounts].sort((a, b) => {
       if (a.is_pinned !== b.is_pinned) return a.is_pinned ? -1 : 1
-      const aOrder = a.sort_order ?? 0
-      const bOrder = b.sort_order ?? 0
-      return aOrder - bOrder
+      const aOrder = a.display_order ?? a.sort_order ?? 0
+      const bOrder = b.display_order ?? b.sort_order ?? 0
+      if (aOrder !== bOrder) return aOrder - bOrder
+      return (Number(b.balance) || 0) - (Number(a.balance) || 0)
     })
   }, [activeAccounts])
 
   const [selectedAccount, setSelectedAccount] = useState(null)
   const [requestedModal, setRequestedModal] = useState(null)
+  const [prevView, setPrevView] = useState(currentView)
 
-  useEffect(() => {
+  if (prevView !== currentView) {
+    setPrevView(currentView)
     if (currentView !== 'profile') setRequestedModal(null)
-    // If we navigate away from the log page, clear the specific account selection.
-    // This ensures clicking the nav "Log" button defaults back to accounts[0].
     if (currentView !== 'log') setSelectedAccount(null)
-  }, [currentView])
+  }
 
   const goToAddAccount = () => {
     setRequestedModal('banks')
@@ -102,7 +103,7 @@ export function useAccountActions({
     try {
       const results = await Promise.all(
         newList.map((a, i) =>
-          supabase.from('accounts').update({ sort_order: i }).eq('id', a.id).select()
+          supabase.from('accounts').update({ display_order: i }).eq('id', a.id).select()
         )
       )
       const failed = results.find((r) => r.error || !r.data || r.data.length === 0)

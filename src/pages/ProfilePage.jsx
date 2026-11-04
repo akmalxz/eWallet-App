@@ -73,11 +73,13 @@ export function ProfilePage({
   fetchRecentTransactions, // <-- Added
   fetchMonthlyData,
 }) {
+  const [prevInitialModal, setPrevInitialModal] = useState(initialModal)
   const [activeModal, setActiveModal] = useState(initialModal)
 
-  useEffect(() => {
+  if (prevInitialModal !== initialModal) {
+    setPrevInitialModal(initialModal)
     if (initialModal) setActiveModal(initialModal)
-  }, [initialModal])
+  }
 
   const openModal = (section) => setActiveModal(section)
   const closeModal = () => setActiveModal(null)

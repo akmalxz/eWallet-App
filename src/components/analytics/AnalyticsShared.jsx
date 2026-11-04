@@ -45,12 +45,13 @@ const PAGE_INFO = {
 
 export const PageInfo = ({ tab }) => {
   const [open, setOpen] = useState(false)
+  const [prevTab, setPrevTab] = useState(tab)
+  if (prevTab !== tab) {
+    setPrevTab(tab)
+    setOpen(false)
+  }
   const panelId = useId()
   const info = PAGE_INFO[tab]
-
-  useEffect(() => {
-    setOpen(false)
-  }, [tab])
 
   useEffect(() => {
     if (!open) return

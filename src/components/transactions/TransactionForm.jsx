@@ -62,24 +62,32 @@ export function TransactionForm({
   // Format raw digits (e.g., "1234") into "12.34"
   const displayAmount = rawAmount ? (Number(rawAmount) / 100).toFixed(2) : ''
 
+  const [prevTxType, setPrevTxType] = useState(txType)
+  const [prevAccounts, setPrevAccounts] = useState(accounts)
+  const [prevInitialAccountId, setPrevInitialAccountId] = useState(initialAccountId)
+
+  if (prevTxType !== txType) {
+    setPrevTxType(txType)
+    setCategory('uncategorized')
+    setErrors({})
+  }
+
+  if (accounts !== prevAccounts || initialAccountId !== prevInitialAccountId) {
+    setPrevAccounts(accounts)
+    setPrevInitialAccountId(initialAccountId)
+    if (accounts.length > 0) {
+      const defaultSource = initialAccountId || accounts[0].id
+      const defaultDest = accounts.length > 1 ? accounts[1].id : accounts[0].id
+      if (!source) setSource(defaultSource)
+      if (!dest) setDest(defaultDest)
+    }
+  }
+
   useEffect(() => {
     if (amountRef.current) {
       amountRef.current.focus()
     }
   }, [])
-
-  useEffect(() => {
-    if (!accounts.length) return
-    const defaultSource = initialAccountId || accounts[0].id
-    const defaultDest = accounts.length > 1 ? accounts[1].id : accounts[0].id
-    setSource(prev => prev || defaultSource)
-    setDest(prev => prev || defaultDest)
-  }, [accounts, initialAccountId])
-
-  useEffect(() => {
-    setCategory('uncategorized')
-    setErrors({})
-  }, [txType])
 
   const incomeCategory = useMemo(
     () => mainCategories.find(c => c.name.toLowerCase() === 'income'),

@@ -111,7 +111,17 @@ export function SplitBillPage({
 
   // 2. Participant State
   const [activeClaimant, setActiveClaimant] = useState(user?.id)
-  const [sessionParticipants, setSessionParticipants] = useState([])
+  const [sessionParticipants, setSessionParticipants] = useState(() =>
+    user ? [{ id: user.id, name: 'Me', type: 'user' }] : []
+  )
+  const [prevUser, setPrevUser] = useState(user)
+  if (prevUser !== user) {
+    setPrevUser(user)
+    if (user && sessionParticipants.length === 0) {
+      setSessionParticipants([{ id: user.id, name: 'Me', type: 'user' }])
+    }
+  }
+
   const [isAddModalOpen, setIsAddModalOpen] = useState(false)
   const [networkFriends, setNetworkFriends] = useState([])
   const [ghostContacts, setGhostContacts] = useState([])
@@ -129,28 +139,29 @@ export function SplitBillPage({
 
   // 4. Ledger-logging State (Issue 2)
   const [logToLedger, setLogToLedger] = useState(true)
-  const [logAccountId, setLogAccountId] = useState('')
-
-  // Lock body scroll when any inline modal is open
-  useBodyScrollLock(showReviewModal || isAddModalOpen)
-
-  useEffect(() => {
+  const [logAccountId, setLogAccountId] = useState(() => {
+    const hub = accounts.find(a => a.classification === 'hub' && !a.is_archived)
+    const first = accounts.find(a => !a.is_archived)
+    return hub?.id || first?.id || ''
+  })
+  const [prevAccounts, setPrevAccounts] = useState(accounts)
+  if (prevAccounts !== accounts) {
+    setPrevAccounts(accounts)
     if (accounts.length > 0 && !logAccountId) {
       const hub = accounts.find(a => a.classification === 'hub' && !a.is_archived)
       const first = accounts.find(a => !a.is_archived)
       setLogAccountId(hub?.id || first?.id || '')
     }
-  }, [accounts, logAccountId])
+  }
 
-  useEffect(() => {
+  const [prevInitialTab, setPrevInitialTab] = useState(initialTab)
+  if (prevInitialTab !== initialTab) {
+    setPrevInitialTab(initialTab)
     setActiveTab(initialTab)
-  }, [initialTab])
+  }
 
-  useEffect(() => {
-    if (user) {
-      setSessionParticipants([{ id: user.id, name: 'Me', type: 'user' }])
-    }
-  }, [user])
+  // Lock body scroll when any inline modal is open
+  useBodyScrollLock(showReviewModal || isAddModalOpen)
 
   const refreshPendingCount = async () => {
     if (!user?.id) return
@@ -163,7 +174,9 @@ export function SplitBillPage({
   }
 
   useEffect(() => {
-    refreshPendingCount()
+    queueMicrotask(() => {
+      refreshPendingCount()
+    })
 
     const handler = () => refreshPendingCount()
     window.addEventListener('debts-changed', handler)
@@ -236,11 +249,19 @@ export function SplitBillPage({
     fetchNetworkAndContacts()
   }, [user?.id, isAddModalOpen])
 
-  useEffect(() => {
-    if (!isAddModalOpen) setShowGhosts(false)
-  }, [isAddModalOpen])
+  const [prevIsAddModalOpen, setPrevIsAddModalOpen] = useState(isAddModalOpen)
+  const [prevSearchQuery, setPrevSearchQuery] = useState(searchQuery)
 
-  useEffect(() => {
+  if (prevIsAddModalOpen !== isAddModalOpen) {
+    setPrevIsAddModalOpen(isAddModalOpen)
+    if (!isAddModalOpen) {
+      setShowGhosts(false)
+      setProfileSearchResults([])
+    }
+  }
+
+  if (prevSearchQuery !== searchQuery) {
+    setPrevSearchQuery(searchQuery)
     if (
       searchQuery.trim().length > 0 &&
       ghostContacts.some(g =>
@@ -249,18 +270,15 @@ export function SplitBillPage({
     ) {
       setShowGhosts(true)
     }
-  }, [searchQuery, ghostContacts])
+    if (searchQuery.trim().length < 2 && profileSearchResults.length > 0) {
+      setProfileSearchResults([])
+    }
+  }
 
   useEffect(() => {
-    if (!isAddModalOpen) {
-      setProfileSearchResults([])
-      return
-    }
+    if (!isAddModalOpen) return
     const q = searchQuery.trim()
-    if (q.length < 2) {
-      setProfileSearchResults([])
-      return
-    }
+    if (q.length < 2) return
 
     let cancelled = false
     const t = setTimeout(async () => {
@@ -398,14 +416,17 @@ export function SplitBillPage({
     })
   }
 
-  const { totalClaimed, subtotal } = useMemo(() => {
-    if (!receiptData) return { totalClaimed: 0, subtotal: 0 }
+  const { totalClaimed, subtotal, isAllClaimed } = useMemo(() => {
+    if (!receiptData) return { totalClaimed: 0, subtotal: 0, isAllClaimed: false }
     let claimed = 0
     receiptData.items.forEach((item, index) => {
       const claimants = claims[index] || []
       if (claimants.length > 0) claimed += item.price
     })
-    return { totalClaimed: claimed, subtotal: receiptData.subtotal }
+    const roundedClaimed = Math.round(claimed * 100) / 100
+    const roundedSubtotal = Math.round((Number(receiptData.subtotal) || 0) * 100) / 100
+    const isAllClaimed = Math.abs(roundedClaimed - roundedSubtotal) < 0.01
+    return { totalClaimed: roundedClaimed, subtotal: roundedSubtotal, isAllClaimed }
   }, [receiptData, claims])
 
   // ============================================
@@ -413,7 +434,7 @@ export function SplitBillPage({
   // ============================================
 
   const handleOpenReview = () => {
-    if (!receiptData || totalClaimed !== subtotal) return
+    if (!receiptData || !isAllClaimed) return
 
     const rawTotals = {}
     sessionParticipants.forEach(p => rawTotals[p.id] = 0)
@@ -1151,7 +1172,7 @@ export function SplitBillPage({
                     <div className="flex justify-between text-xs font-bold mb-1.5">
                       <span className="text-fg-muted">Items Claimed</span>
                       <span
-                        className={`tabular-figures ${totalClaimed === subtotal ? 'text-success' : 'text-fg'}`}
+                        className={`tabular-figures ${isAllClaimed ? 'text-success' : 'text-fg'}`}
                       >
                         RM {totalClaimed.toFixed(2)} / RM {subtotal.toFixed(2)}
                       </span>
@@ -1159,15 +1180,15 @@ export function SplitBillPage({
                     <div className="h-2.5 w-full bg-surface-3 rounded-full overflow-hidden mb-4">
                       <div
                         className={`h-full transition-all duration-300 ${
-                          totalClaimed === subtotal ? 'bg-success' : 'bg-brand-solid'
+                          isAllClaimed ? 'bg-success' : 'bg-brand-solid'
                         }`}
-                        style={{ width: `${Math.min((totalClaimed / subtotal) * 100, 100)}%` }}
+                        style={{ width: `${Math.min((totalClaimed / Math.max(subtotal, 0.01)) * 100, 100)}%` }}
                       />
                     </div>
 
                     <button
                       onClick={handleOpenReview}
-                      disabled={totalClaimed !== subtotal}
+                      disabled={!isAllClaimed}
                       className="w-full bg-brand-solid hover:bg-brand-solid-hover text-white py-2.5 rounded-xl text-sm font-bold transition-colors disabled:opacity-50"
                       style={{ minHeight: 44 }}
                     >

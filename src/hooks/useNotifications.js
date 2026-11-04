@@ -143,7 +143,11 @@ export function useNotifications(user) {
     }
   }, [user?.id])
 
-  useEffect(() => { fetchNotifications() }, [fetchNotifications])
+  useEffect(() => {
+    queueMicrotask(() => {
+      fetchNotifications()
+    })
+  }, [fetchNotifications])
 
   useEffect(() => {
     const handler = () => fetchNotifications()

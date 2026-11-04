@@ -23,13 +23,17 @@ export function useWealthHistory(user, accounts, { monthsBack = 6 } = {}) {
   )
 
   useEffect(() => {
-    if (!user?.id || activeAccounts.length === 0) {
-      setLoading(false)
-      setRawTransactions([])
-      return
-    }
-
     let cancelled = false
+
+    if (!user?.id || activeAccounts.length === 0) {
+      queueMicrotask(() => {
+        if (!cancelled) {
+          setLoading(false)
+          setRawTransactions([])
+        }
+      })
+      return () => { cancelled = true }
+    }
 
     const monthsAgoCutoff = new Date()
     monthsAgoCutoff.setMonth(monthsAgoCutoff.getMonth() - monthsBack)
@@ -72,7 +76,9 @@ export function useWealthHistory(user, accounts, { monthsBack = 6 } = {}) {
       setLoading(false)
     }
 
-    fetchHistory()
+    queueMicrotask(() => {
+      if (!cancelled) fetchHistory()
+    })
     return () => { cancelled = true }
   }, [user?.id, monthsBack, activeAccounts.length])
 
