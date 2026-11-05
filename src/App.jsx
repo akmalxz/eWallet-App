@@ -434,6 +434,8 @@ export default function App() {
               user={user}
               profile={profile}
               accounts={accountApi.activeAccounts}
+              commitments={commitments}
+              commitmentPayments={commitmentPayments}
               categories={categories}
               onBack={() => setCurrentView('dashboard')}
               onLogTransaction={() => setCurrentView('log')}

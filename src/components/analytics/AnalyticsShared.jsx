@@ -18,11 +18,20 @@ const PAGE_INFO = {
   },
   trends: {
     title: 'About Trends',
-    summary: 'Shows when you spend, and helps you build better habits.',
+    summary: 'Compare week-over-week spending pace and track daily spending against your safe target.',
     points: [
-      { heading: 'Low-Spend Streaks', text: 'We find your "typical" daily spend and set a goal to stay under half of that amount. The calendar shows a flame icon on days you hit the goal.' },
-      { heading: 'Grace Days', text: 'If you overspend, you get one free pass (a snowflake icon) before your current streak resets. Days with no spending count toward your streak.' },
-      { heading: 'Spending by Day of Week', text: 'Solid bars are this week. Faded bars are your average over the selected period.' }
+      {
+        heading: 'Weekly Cycle Comparison',
+        text: 'Pairs each week of your current pay cycle against the corresponding week of your last cycle. The cycle pace banner shows whether your spending is pacing higher or lower, and tapping any week reveals categorized transactions sorted by date.'
+      },
+      {
+        heading: 'Daily Spending Calendar',
+        text: 'A visual heatmap of your spending each day with gradients reflecting spending density. Pulsing green dots indicate days kept within your daily target, while pulsing red dots highlight days that exceeded it. Tap any day to inspect categorized transactions.'
+      },
+      {
+        heading: 'Daily Target Calculation',
+        text: 'By default, your target is calculated from your spendable liquid cash (all non-savings accounts minus upcoming unpaid commitments) divided by days until payday. Tap the target value anytime to customize it.'
+      }
     ]
   },
   categories: {

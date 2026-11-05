@@ -1,9 +1,6 @@
 // src/utils/analytics/burnRateEngine.js
 import {
   toMYDate,
-  monthKey,
-  getDaysInMonthMY,
-  getDayOfMonthMY,
   nextPayday,
   isTodayPayday,
   daysBetweenMY,
@@ -19,7 +16,7 @@ export const NEAR_PAYDAY_DAYS = 5
 
 export const PREV_CYCLE_TRIM_FRACTION = 0.10
 
-const trimmedMean = (values, trimFraction = PREV_CYCLE_TRIM_FRACTION) => {
+export const trimmedMean = (values, trimFraction = PREV_CYCLE_TRIM_FRACTION) => {
   const valid = values.filter(Number.isFinite)
   if (valid.length === 0) return 0
   if (valid.length < 5) {

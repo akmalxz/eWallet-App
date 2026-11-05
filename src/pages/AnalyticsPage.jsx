@@ -69,7 +69,8 @@ export function AnalyticsPage({
   user,
   profile,
   accounts = [],
-  categories = [],
+  commitments = [],
+  commitmentPayments = [],
   onBack,
   onLogTransaction,
   showToast
@@ -334,7 +335,15 @@ export function AnalyticsPage({
               )}
 
               {tab === 'trends' && (
-                <PatternViews expenses={periodScopedExpenses} accounts={accounts} />
+                <PatternViews
+                  expenses={periodScopedExpenses}
+                  allExpenses={spendingSource}
+                  income={filteredIncome}
+                  accounts={accounts}
+                  commitments={commitments}
+                  commitmentPayments={commitmentPayments}
+                  profile={profile}
+                />
               )}
 
               {tab === 'categories' && (
