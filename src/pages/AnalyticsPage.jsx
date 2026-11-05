@@ -8,8 +8,7 @@ import { MainTrendChart } from '../components/analytics/MainTrendChart'
 import { PatternViews } from '../components/analytics/PatternViews'
 import { IncomeVsExpense } from '../components/analytics/IncomeVsExpense'
 import { SpendingStructure } from '../components/analytics/SpendingStructure'
-import { SmallLeaks } from '../components/analytics/SmallLeaks'
-import { TopCategories } from '../components/analytics/TopCategories'
+import { CategoryViews } from '../components/analytics/CategoryViews'
 import { periodRange } from '../utils/analytics/dateRange'
 import { toMYDate } from '../utils/dateHelpers'
 import { AccountSelector } from '../components/shared/AccountSelector'
@@ -176,6 +175,7 @@ export function AnalyticsPage({
       : accounts.find(a => a.id === selectedAccount)?.account_name || 'Account'
 
   const showModeControl = tab !== 'income'
+  const showPeriodControl = tab !== 'categories' && tab !== 'trends'
 
   const isTrulyEmpty =
     !loading &&
@@ -200,18 +200,20 @@ export function AnalyticsPage({
         </div>
         {showFilters && (
           <div className="flex items-start gap-3 shrink-0">
-            <div>
-              <div className="w-56">
-                <SlidingSegmentedControl
-                  items={PERIOD_ITEMS}
-                  value={period}
-                  onChange={setPeriod}
-                />
+            {showPeriodControl && (
+              <div>
+                <div className="w-56">
+                  <SlidingSegmentedControl
+                    items={PERIOD_ITEMS}
+                    value={period}
+                    onChange={setPeriod}
+                  />
+                </div>
+                <p className="text-[10px] text-fg-subtle mt-1 text-center tabular-figures whitespace-nowrap">
+                  {range.label}
+                </p>
               </div>
-              <p className="text-[10px] text-fg-subtle mt-1 text-center tabular-figures whitespace-nowrap">
-                {range.label}
-              </p>
-            </div>
+            )}
             {showModeControl && (
               <div className="w-56">
                 <SlidingSegmentedControl
@@ -275,7 +277,7 @@ export function AnalyticsPage({
           </div>
 
           <div className="md:hidden space-y-3">
-            {showModeControl ? (
+            {showPeriodControl && showModeControl ? (
               <>
                 <div className="grid grid-cols-2 gap-2">
                   <SlidingSegmentedControl
@@ -293,7 +295,7 @@ export function AnalyticsPage({
                   {range.label}
                 </p>
               </>
-            ) : (
+            ) : showPeriodControl ? (
               <>
                 <SlidingSegmentedControl
                   items={PERIOD_ITEMS}
@@ -304,7 +306,13 @@ export function AnalyticsPage({
                   {range.label}
                 </p>
               </>
-            )}
+            ) : showModeControl ? (
+              <SlidingSegmentedControl
+                items={MODE_ITEMS}
+                value={mode}
+                onChange={setMode}
+              />
+            ) : null}
 
             <AccountSelector
               accounts={accounts}
@@ -313,7 +321,9 @@ export function AnalyticsPage({
             />
           </div>
 
-          <PageInfo tab={tab} />
+          <div className={tab === 'categories' ? 'hidden md:block' : ''}>
+            <PageInfo tab={tab} />
+          </div>
 
           {loading ? (
             <AnalyticsSkeleton />
@@ -347,14 +357,13 @@ export function AnalyticsPage({
               )}
 
               {tab === 'categories' && (
-                <>
-                  <SmallLeaks
-                    expenses={periodScopedEveryday}
-                    periodMonths={period}
-                    accounts={accounts}
-                  />
-                  <TopCategories expenses={periodScopedExpenses} accounts={accounts} />
-                </>
+                <CategoryViews
+                  expenses={spendingSource}
+                  accounts={accounts}
+                  commitments={commitments}
+                  commitmentPayments={commitmentPayments}
+                  profile={profile}
+                />
               )}
 
               {tab === 'income' && (

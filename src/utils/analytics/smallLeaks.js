@@ -13,11 +13,15 @@ const quantile = (arr, q) => {
   return s[lo] + (s[hi] - s[lo]) * (pos - lo)
 }
 
-export const findSmallLeaks = (expenses, { minCount = 4, limit = 5 } = {}) => {
-  if (!expenses || expenses.length < 20) return []
+export const findSmallLeaks = (
+  expenses,
+  { minCount = 4, minTotalTxns = 15, limit = 5 } = {}
+) => {
+  if (!expenses || expenses.length < minTotalTxns) return []
 
   // "Small" = an average purchase below what 60% of all your purchases cost.
-  const smallCutoff = quantile(expenses.map((t) => Number(t.amount) || 0), 0.6)
+  const amounts = expenses.map((t) => Number(t.amount) || 0)
+  const smallCutoff = quantile(amounts, 0.6) || 35
   const groups = new Map()
 
   expenses.forEach((tx) => {

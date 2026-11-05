@@ -36,10 +36,20 @@ const PAGE_INFO = {
   },
   categories: {
     title: 'About Categories',
-    summary: 'Where your money goes, and where you can save.',
+    summary: 'Track where your money goes on a daily, weekly, or monthly basis.',
     points: [
-      { heading: 'Small Spends That Add Up', text: 'Things you buy often, where each purchase is small but the total isn’t. Tap one to see every purchase.' },
-      { heading: 'Where Your Money Went', text: 'Your top spending categories ranked by total amount. Tap any category to drill down into its sub-categories and individual transactions.' }
+      {
+        heading: 'Daily, Weekly & Monthly Lenses',
+        text: 'Switch between viewing today’s spending, this week’s breakdown, or your full pay cycle. Use the arrows to step back in time and compare against the same pace in the previous period.'
+      },
+      {
+        heading: 'Where Your Money Went',
+        text: 'All categories ranked by spend with proportion bars and pace benchmarks. Tap any category to inspect subcategories, date-sorted purchases, and weekly rhythm across Monday to Sunday.'
+      },
+      {
+        heading: 'Small Spends That Add Up',
+        text: 'Surfaces recurring small purchases (like coffee, parking, snacks, or delivery) in the selected week or cycle that quietly accumulate into a larger total.'
+      }
     ]
   },
   income: {
