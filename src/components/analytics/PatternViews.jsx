@@ -118,8 +118,8 @@ const DayCategorizedTransactions = ({
                   }`}
                 />
                 {isOver
-                  ? `Over limit by ${formatMYR(diff)}`
-                  : `Within limit (${formatMYR(diff)} remaining)`}
+                  ? `+${formatMYR(diff)} over target`
+                  : `${formatMYR(diff)} under target`}
               </span>
             )}
             {cell.total === 0 && (
@@ -131,12 +131,14 @@ const DayCategorizedTransactions = ({
           </div>
 
           <p className="text-xs text-fg-muted mt-1">
-            Total spending:{' '}
             <strong className="text-fg tabular-figures font-black text-sm">
               {formatMYR(cell.total)}
             </strong>
-            {cell.txns.length > 0 &&
-              ` · ${cell.txns.length} transaction${cell.txns.length === 1 ? '' : 's'}`}
+            {cell.txns.length > 0 && (
+              <span className="text-fg-subtle">
+                {` · ${cell.txns.length} purchase${cell.txns.length === 1 ? '' : 's'}`}
+              </span>
+            )}
           </p>
         </div>
 
@@ -153,7 +155,7 @@ const DayCategorizedTransactions = ({
       {/* Transaction List (No card look: unboxed rows directly on page) */}
       {cell.txns.length === 0 ? (
         <div className="py-8 text-center text-xs text-fg-muted">
-          No expenses recorded on this day. Target was {formatMYR(dailyLimit)}.
+          No expenses recorded on this day.
         </div>
       ) : (
         <div className="space-y-5 pt-1">
@@ -286,7 +288,7 @@ const WeekCategorizedTransactions = ({ txns = [], accounts = [] }) => {
   if (txns.length === 0) {
     return (
       <div className="py-8 text-center text-xs text-fg-muted">
-        No expenses recorded in this week.
+        No expenses recorded this week.
       </div>
     )
   }
@@ -550,7 +552,7 @@ const WeeklyCycleComparison = ({
             Weekly Cycle Comparison
           </h3>
           <p className="text-xs text-fg-muted mt-0.5">
-            Compare each week of this pay cycle against your last pay cycle
+            Week-by-week pace vs last cycle
           </p>
         </div>
 
@@ -574,7 +576,7 @@ const WeeklyCycleComparison = ({
             {formatMYR(cycleData.thisCycleSoFar)}
           </span>
           <span className="text-fg-subtle">
-            vs {formatMYR(cycleData.lastCycleSamePeriod)} at this point last cycle
+            vs {formatMYR(cycleData.lastCycleSamePeriod)} last cycle
           </span>
         </div>
 
@@ -589,11 +591,11 @@ const WeeklyCycleComparison = ({
             }`}
           >
             {cycleData.cycleDiff < 0 ? (
-              <>↓ Trending lower (-{formatMYR(Math.abs(cycleData.cycleDiff))})</>
+              <>↓ -{formatMYR(Math.abs(cycleData.cycleDiff))}</>
             ) : cycleData.cycleDiff > 0 ? (
-              <>↑ Trending higher (+{formatMYR(cycleData.cycleDiff)})</>
+              <>↑ +{formatMYR(cycleData.cycleDiff)}</>
             ) : (
-              <>On track with last cycle</>
+              <>On track</>
             )}
           </span>
         </div>
@@ -689,7 +691,7 @@ const WeeklyCycleComparison = ({
                 {selectedComp.isCurrent && (
                   <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-brand/10 text-brand border border-brand/20">
                     <span className="w-1.5 h-1.5 rounded-full bg-brand animate-pulse" />
-                    In progress (Day {selectedComp.thisWeek.elapsedDays} of 7)
+                    Day {selectedComp.thisWeek.elapsedDays} of 7
                   </span>
                 )}
                 {!selectedComp.isUpcoming && (
@@ -703,11 +705,11 @@ const WeeklyCycleComparison = ({
                     }`}
                   >
                     {selectedComp.diff < 0 ? (
-                      <>↓ {formatMYR(Math.abs(selectedComp.diff))} less than last cycle ({Math.abs(selectedComp.pct).toFixed(0)}%)</>
+                      <>↓ -{formatMYR(Math.abs(selectedComp.diff))} (-{Math.abs(selectedComp.pct).toFixed(0)}%)</>
                     ) : selectedComp.diff > 0 ? (
-                      <>↑ +{formatMYR(selectedComp.diff)} more than last cycle (+{selectedComp.pct.toFixed(0)}%)</>
+                      <>↑ +{formatMYR(selectedComp.diff)} (+{selectedComp.pct.toFixed(0)}%)</>
                     ) : (
-                      <>On par with last cycle</>
+                      <>On track</>
                     )}
                   </span>
                 )}
@@ -1141,7 +1143,7 @@ const CalendarHeatmap = ({
                 type="button"
                 onClick={handleResetLimit}
                 className="px-2 py-0.5 text-xs font-medium text-fg-subtle hover:text-fg hover:bg-surface-2 rounded-md transition-colors cursor-pointer"
-                title="Reset to automatic target based on spendable liquid cash"
+                title="Reset to automatic target"
               >
                 Auto
               </button>
@@ -1164,10 +1166,10 @@ const CalendarHeatmap = ({
               className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md hover:bg-surface-2 text-xs font-bold text-fg transition-colors group cursor-pointer"
               title={
                 isCustomMode
-                  ? 'Custom daily spending goal (click to edit)'
+                  ? 'Custom daily target'
                   : isCurrentMonth && spendableCashData.spendableCash > 0
-                  ? `Based on ${formatMYR(spendableCashData.spendableCash)} liquid cash (excl. savings) ÷ ${spendableCashData.daysToPayday}d to payday (click to edit)`
-                  : 'Based on 90-day typical spending pattern (click to edit)'
+                  ? `${formatMYR(spendableCashData.spendableCash)} liquid · ${spendableCashData.daysToPayday}d to payday`
+                  : 'Based on 90-day baseline'
               }
             >
               <span className="tabular-figures">{formatMYR(dailyLimit)}</span>
@@ -1183,10 +1185,10 @@ const CalendarHeatmap = ({
 
         <p className="text-[11px] text-fg-subtle">
           {isCustomMode
-            ? 'Custom daily spending goal'
+            ? 'Custom target'
             : isCurrentMonth && spendableCashData.spendableCash > 0
-            ? `Based on ${formatMYR(spendableCashData.spendableCash)} liquid cash (excl. savings) ÷ ${spendableCashData.daysToPayday}d to payday`
-            : 'Based on 90-day typical spending pattern'}
+            ? `${formatMYR(spendableCashData.spendableCash)} liquid · ${spendableCashData.daysToPayday}d to payday`
+            : '90-day baseline'}
         </p>
       </div>
 
@@ -1285,7 +1287,7 @@ const CalendarHeatmap = ({
               <span className="animate-pulse absolute inline-flex h-full w-full rounded-full bg-emerald-400/80 scale-125" />
               <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500 shadow-sm shadow-emerald-500/50" />
             </span>
-            <span>Within limit (≤ {formatMYR(dailyLimit)})</span>
+            <span>≤ {formatMYR(dailyLimit)} (Target)</span>
           </div>
 
           <div className="flex items-center gap-1.5">
@@ -1293,7 +1295,7 @@ const CalendarHeatmap = ({
               <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-rose-400 opacity-75" />
               <span className="relative inline-flex rounded-full h-2 w-2 bg-rose-500 shadow-sm shadow-rose-500/50" />
             </span>
-            <span>Over limit (&gt; {formatMYR(dailyLimit)})</span>
+            <span>&gt; {formatMYR(dailyLimit)} (Over)</span>
           </div>
         </div>
       </div>
