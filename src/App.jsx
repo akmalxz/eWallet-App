@@ -1,5 +1,5 @@
 // src/App.jsx
-import { useState, useCallback, useEffect, useRef, lazy, Suspense } from 'react'
+import { useState, useMemo, useCallback, useEffect, useRef, lazy, Suspense } from 'react'
 import { AlertTriangle } from 'lucide-react'
 
 import { supabase, sessionExpired } from './lib/supabaseClient'
@@ -134,6 +134,10 @@ export default function App() {
     .filter(r => r.isThisMonth)
     .length
 
+  const hasPendingOCR = useMemo(() => {
+    return (recentTransactions || []).some(tx => Boolean(tx?.needs_review))
+  }, [recentTransactions])
+
   const ledgerApi = useLedgerMutations({
     user,
     showToast,
@@ -266,7 +270,11 @@ export default function App() {
         onNavigate={handleNavigateFromNotifications}
       />
 
-      <NavigationBar currentView={currentView} setCurrentView={setCurrentView} />
+      <NavigationBar
+        currentView={currentView}
+        setCurrentView={setCurrentView}
+        hasPendingOCR={hasPendingOCR}
+      />
 
       <main className="max-w-6xl mx-auto px-3 md:px-4 py-4 md:py-8">
         <div key={currentView} className="animate-enter">

@@ -17,7 +17,7 @@ const NAV_ITEMS = [
 
 const DASHBOARD_SUBVIEWS = ['network', 'split']
 
-export const NavigationBar = ({ currentView, setCurrentView }) => {
+export const NavigationBar = ({ currentView, setCurrentView, hasPendingOCR = false }) => {
   const navKey = DASHBOARD_SUBVIEWS.includes(currentView)
     ? 'dashboard'
     : currentView
@@ -65,19 +65,30 @@ export const NavigationBar = ({ currentView, setCurrentView }) => {
             {NAV_ITEMS.map((item) => {
               const Icon = item.icon
               const isActive = item.id === navKey
+              const showBadge = item.id === 'transactions' && hasPendingOCR
+              const buttonLabel = showBadge ? `${item.label} (Pending OCR review)` : item.label
+
               return (
                 <button
                   key={item.id}
                   onClick={() => handleNavClick(item.id)}
-                  aria-label={item.label}
-                  title={item.label}
-                  className="relative z-10 flex-1 h-full min-w-0 p-0 m-0 flex items-center justify-center gap-2"
+                  aria-label={buttonLabel}
+                  title={buttonLabel}
+                  className="relative z-10 flex-1 h-full min-w-0 p-0 m-0 flex items-center justify-center gap-2 cursor-pointer"
                 >
-                  <Icon className={`w-5 h-5 shrink-0 transition-colors duration-300 ${
-                    isActive
-                      ? 'text-brand'
-                      : 'text-fg-subtle hover:text-fg-muted'
-                  }`} />
+                  <div className="relative inline-flex items-center justify-center">
+                    <Icon className={`w-5 h-5 shrink-0 transition-colors duration-300 ${
+                      isActive
+                        ? 'text-brand'
+                        : 'text-fg-subtle hover:text-fg-muted'
+                    }`} />
+                    {showBadge && (
+                      <span
+                        className="absolute -top-1 -right-1 w-2.5 h-2.5 rounded-full bg-rose-500 ring-2 ring-surface dark:ring-surface shadow-xs pointer-events-none"
+                        aria-hidden="true"
+                      />
+                    )}
+                  </div>
                   <span className={`text-sm font-semibold transition-colors duration-300 ${
                     isActive
                       ? 'text-brand'
@@ -116,19 +127,30 @@ export const NavigationBar = ({ currentView, setCurrentView }) => {
           {NAV_ITEMS.map((item) => {
             const Icon = item.icon
             const isActive = item.id === navKey
+            const showBadge = item.id === 'transactions' && hasPendingOCR
+            const buttonLabel = showBadge ? `${item.label} (Pending OCR review)` : item.label
+
             return (
               <button
                 key={item.id}
                 onClick={() => handleNavClick(item.id)}
-                aria-label={item.label}
-                className="relative z-10 flex-1 h-full min-w-0 p-0 m-0 flex items-center justify-center transition-transform duration-100 active:scale-90"
+                aria-label={buttonLabel}
+                className="relative z-10 flex-1 h-full min-w-0 p-0 m-0 flex items-center justify-center transition-transform duration-100 active:scale-90 cursor-pointer"
               >
                 <span className="flex items-center justify-center w-10 h-10 leading-none">
-                  <Icon className={`block w-5 h-5 shrink-0 transition-colors duration-300 ${
-                    isActive
-                      ? 'text-brand'
-                      : 'text-fg-subtle'
-                  }`} />
+                  <div className="relative inline-flex items-center justify-center">
+                    <Icon className={`block w-5 h-5 shrink-0 transition-colors duration-300 ${
+                      isActive
+                        ? 'text-brand'
+                        : 'text-fg-subtle'
+                    }`} />
+                    {showBadge && (
+                      <span
+                        className="absolute -top-1 -right-1 w-2.5 h-2.5 rounded-full bg-rose-500 ring-2 ring-surface dark:ring-surface shadow-xs pointer-events-none"
+                        aria-hidden="true"
+                      />
+                    )}
+                  </div>
                 </span>
               </button>
             )

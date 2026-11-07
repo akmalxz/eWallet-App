@@ -150,7 +150,7 @@ export const useTransactions = (user, showToast) => {
     } catch {
       setPendingReceivables([])
     }
-  }, [user?.id])
+  }, [user])
 
   const fetchInitialData = useCallback(async () => {
     if (!user) {
@@ -184,6 +184,29 @@ export const useTransactions = (user, showToast) => {
     window.addEventListener('debts-changed', handler)
     return () => window.removeEventListener('debts-changed', handler)
   }, [fetchReceivables, user?.id])
+
+  useEffect(() => {
+    if (!user?.id) return
+    const channel = supabase
+      .channel(`transactions_realtime_${user.id}`)
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'transactions',
+          filter: `user_id=eq.${user.id}`
+        },
+        () => {
+          fetchRecentTransactions({ limit: 50, offset: 0, append: false })
+        }
+      )
+      .subscribe()
+
+    return () => {
+      supabase.removeChannel(channel)
+    }
+  }, [user?.id, fetchRecentTransactions])
 
   return {
     accounts,
