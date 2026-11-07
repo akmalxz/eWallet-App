@@ -4,7 +4,7 @@ import {
   Target, AlertTriangle, Calendar, Plus, CheckCircle,
   ChevronDown, ChevronUp, ChevronRight, Power, Trash2,
   CircleSlash, AlertOctagon, Pencil, Loader2, Undo2,
-  List, ArrowRight, SkipForward
+  List, SkipForward
 } from 'lucide-react'
 import { formatMYR } from '../../utils/formatters'
 import {
@@ -74,29 +74,33 @@ export const CommitmentRadar = ({
     profile?.payday_date
   )
 
-  const activeAll = commitments.filter((c) => c.is_active)
+  const paidCommitments = useMemo(() => {
+    return commitments
+      .filter((c) => c.is_active)
+      .map((c) => {
+        const pmt = payments.find((p) => p.commitment_id === c.id && p.status === 'paid')
+        if (!pmt) return null
+        const due = dueDateForMonth(c.due_day_of_month, pmt.period_year, pmt.period_month - 1)
+        if (due >= cycleStart && due <= cycleEnd) return { comm: c, pmt, dueKey: dayKey(due) }
+        return null
+      })
+      .filter(Boolean)
+      .sort((a, b) => a.comm.due_day_of_month - b.comm.due_day_of_month)
+  }, [commitments, payments, cycleStart, cycleEnd])
 
-  const paidCommitments = activeAll
-    .map((c) => {
-      const pmt = payments.find((p) => p.commitment_id === c.id && p.status === 'paid')
-      if (!pmt) return null
-      const due = dueDateForMonth(c.due_day_of_month, pmt.period_year, pmt.period_month - 1)
-      if (due >= cycleStart && due <= cycleEnd) return { comm: c, pmt, dueKey: dayKey(due) }
-      return null
-    })
-    .filter(Boolean)
-    .sort((a, b) => a.comm.due_day_of_month - b.comm.due_day_of_month)
-
-  const skippedCommitments = activeAll
-    .map((c) => {
-      const pmt = payments.find((p) => p.commitment_id === c.id && p.status === 'skipped')
-      if (!pmt) return null
-      const due = dueDateForMonth(c.due_day_of_month, pmt.period_year, pmt.period_month - 1)
-      if (due >= cycleStart && due <= cycleEnd) return { comm: c, pmt, dueKey: dayKey(due) }
-      return null
-    })
-    .filter(Boolean)
-    .sort((a, b) => a.comm.due_day_of_month - b.comm.due_day_of_month)
+  const skippedCommitments = useMemo(() => {
+    return commitments
+      .filter((c) => c.is_active)
+      .map((c) => {
+        const pmt = payments.find((p) => p.commitment_id === c.id && p.status === 'skipped')
+        if (!pmt) return null
+        const due = dueDateForMonth(c.due_day_of_month, pmt.period_year, pmt.period_month - 1)
+        if (due >= cycleStart && due <= cycleEnd) return { comm: c, pmt, dueKey: dayKey(due) }
+        return null
+      })
+      .filter(Boolean)
+      .sort((a, b) => a.comm.due_day_of_month - b.comm.due_day_of_month)
+  }, [commitments, payments, cycleStart, cycleEnd])
 
   const hasAnyCommitments = commitments.length > 0
 
@@ -347,7 +351,7 @@ export const CommitmentRadar = ({
             {formatMYR(currentBalance)}
           </p>
           <p className="text-[11px] text-fg-muted mt-1 mb-4">
-            Across your linked accounts.
+            Across your operational accounts.
           </p>
         </div>
 

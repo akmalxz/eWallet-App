@@ -27,8 +27,38 @@ export function useDashboardMetrics({
   }, [commitments, commitmentPayments, accounts, profile?.payday_type, profile?.payday_date])
 
   const radarStats = useMemo(() => {
-    const currentBalance = accounts
-      .filter((a) => !a.is_archived)
+    // Bill-funding accounts (active commitments with an assigned account)
+    const billAccountIds = new Set(
+      (commitments || [])
+        .filter((c) => c.is_active && c.account_id)
+        .map((c) => c.account_id)
+    )
+
+    // Option 1: Operational Cash Only.
+    // Exclude locked / semi-liquid wealth accounts (ASB, Tabung Haji, Investments, Credit Cards).
+    // Exclude savings accounts UNLESS the user explicitly assigned an active bill to it.
+    const NON_OPERATIONAL_CLASSES = new Set([
+      'savings',
+      'fixed_price_ut',
+      'pilgrimage',
+      'investment',
+      'credit'
+    ])
+
+    const currentBalance = (accounts || [])
+      .filter((a) => {
+        if (a.is_archived) return false
+        const cls = (a.classification || '').toLowerCase()
+        if (cls === 'credit') return false
+
+        // Always include operational accounts (hub, ewallet, digital_bank, or general asset)
+        if (!NON_OPERATIONAL_CLASSES.has(cls)) return true
+
+        // For savings accounts, include ONLY if explicitly designated to pay an active bill
+        if (cls === 'savings' && billAccountIds.has(a.id)) return true
+
+        return false
+      })
       .reduce((sum, a) => sum + (Number(a.balance) || 0), 0)
 
     const totalRequired = radarSchedule.total
@@ -41,7 +71,7 @@ export function useDashboardMetrics({
       isSafe,
       shortfall: Math.max(0, totalRequired - currentBalance)
     }
-  }, [accounts, radarSchedule])
+  }, [accounts, commitments, radarSchedule])
 
   const velocityStats = useMemo(() => {
     return computeBurnRate({
