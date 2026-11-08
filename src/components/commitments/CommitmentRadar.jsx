@@ -239,7 +239,7 @@ export const CommitmentRadar = ({
       if (res?.success) setConfirm(null)
     },
     undo: async () => {
-      const res = await onUnmarkAsPaid(confirm.comm.id, confirm.pmt.period_year, confirm.pmt.period_month)
+      const res = await onUnmarkAsPaid(confirm.commitment.id, confirm.pmt.period_year, confirm.pmt.period_month)
       if (res?.success) setConfirm(null)
     }
   }
