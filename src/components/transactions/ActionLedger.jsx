@@ -1,8 +1,8 @@
 // src/components/transactions/ActionLedger.jsx
 import { useState, useMemo } from 'react'
 import {
-  RefreshCw, Trash2, Edit2, Plus, Inbox, Calendar,
-  ChevronDown, ChevronUp, Search, X, Loader2, MoreVertical
+  RefreshCw, Trash2, Edit2, Plus, Inbox,
+  ChevronDown, ChevronUp, Search, X, Loader2, SlidersHorizontal
 } from 'lucide-react'
 import { formatMYR } from '../../utils/formatters'
 import { toMYDate, dayKey } from '../../utils/dateHelpers'
@@ -66,6 +66,13 @@ export const ActionLedger = ({
   onAddTransaction,
   searchQuery,
   onSearchChange,
+  selectedAccountId = '',
+  onAccountChange,
+  selectedCategory = '',
+  onCategoryChange,
+  selectedSubcategory = '',
+  onSubcategoryChange,
+  onClearAllFilters,
   hasMore,
   onLoadMore,
   isLoadingMore,
@@ -74,6 +81,41 @@ export const ActionLedger = ({
   const [editingTx, setEditingTx] = useState(null)
   const [expandedGroups, setExpandedGroups] = useState({})
   const [pendingDelete, setPendingDelete] = useState(null)
+  const [isFilterOpen, setIsFilterOpen] = useState(false)
+
+  const activeAccounts = useMemo(
+    () => (accounts || []).filter((a) => !a.is_archived),
+    [accounts]
+  )
+
+  const selectedMainCatObj = useMemo(
+    () => (mainCategories || []).find((m) => m.name === selectedCategory),
+    [mainCategories, selectedCategory]
+  )
+
+  const activeSubCategories = useMemo(
+    () => (selectedMainCatObj && getSubCategories ? getSubCategories(selectedMainCatObj.id) : []),
+    [selectedMainCatObj, getSubCategories]
+  )
+
+  const activeFilterCount =
+    (selectedAccountId ? 1 : 0) +
+    (selectedCategory ? 1 : 0) +
+    (selectedSubcategory ? 1 : 0)
+
+  const hasActiveSearchOrFilter = Boolean(
+    (searchQuery && searchQuery.trim()) || activeFilterCount > 0
+  )
+
+  const filteredSummary = useMemo(() => {
+    if (!hasActiveSearchOrFilter || !recentTransactions) return null
+    const { moneyIn, moneyOut } = getDailyTotals(recentTransactions)
+    return {
+      count: recentTransactions.length,
+      moneyIn,
+      moneyOut
+    }
+  }, [hasActiveSearchOrFilter, recentTransactions])
 
   const groupedTransactions = useMemo(() => {
     if (!recentTransactions || recentTransactions.length === 0) return []
@@ -96,19 +138,29 @@ export const ActionLedger = ({
   }, [recentTransactions])
 
   const toggleGroup = (dateKey) => {
-    setExpandedGroups((prev) => ({ ...prev, [dateKey]: !prev[dateKey] }))
+    setExpandedGroups((prev) => {
+      const current =
+        prev[dateKey] !== undefined
+          ? prev[dateKey]
+          : hasActiveSearchOrFilter || dateKey === dayKey(new Date())
+      return { ...prev, [dateKey]: !current }
+    })
   }
 
   const isGroupExpanded = (group) => {
-    if (group.isToday) return true
-    return expandedGroups[group.date] ?? false
+    if (expandedGroups[group.date] !== undefined) {
+      return expandedGroups[group.date]
+    }
+    if (group.isToday || hasActiveSearchOrFilter) return true
+    return false
   }
 
   const beginEdit = (tx) => setEditingTx(tx)
   const endEdit = () => setEditingTx(null)
   const accountFor = (id) => accounts.find((a) => a.id === id)
+  const selectedAccountObj = selectedAccountId ? accountFor(selectedAccountId) : null
 
-  if ((!recentTransactions || recentTransactions.length === 0) && !searchQuery && !isSearching) {
+  if ((!recentTransactions || recentTransactions.length === 0) && !hasActiveSearchOrFilter && !isSearching) {
     return (
       <section className="flex flex-col items-center justify-center py-16 text-fg-subtle">
         <div className="w-14 h-14 bg-surface-2 border border-line rounded-2xl flex items-center justify-center mb-4 text-fg-subtle">
@@ -147,7 +199,7 @@ export const ActionLedger = ({
               <Search className="w-3.5 h-3.5 text-fg-subtle absolute left-3 top-1/2 -translate-y-1/2" />
               <input
                 type="text"
-                placeholder="Search history..."
+                placeholder="Search description, category, bank..."
                 value={searchQuery}
                 onChange={(e) => onSearchChange(e.target.value)}
                 className="w-full bg-surface-2 border border-transparent rounded-xl py-2 pl-9 pr-8 text-xs text-fg placeholder:text-fg-subtle outline-none focus:bg-surface focus:border-brand transition-all"
@@ -161,6 +213,26 @@ export const ActionLedger = ({
                 </button>
               )}
             </div>
+
+            <button
+              type="button"
+              onClick={() => setIsFilterOpen((prev) => !prev)}
+              aria-label="Filter transactions"
+              aria-expanded={isFilterOpen}
+              title="Filter by bank, category, or subcategory"
+              className={`relative shrink-0 w-9 h-9 flex items-center justify-center rounded-xl transition-all cursor-pointer ${
+                isFilterOpen || activeFilterCount > 0
+                  ? 'bg-brand/10 text-brand border border-brand/25'
+                  : 'text-fg-muted hover:text-fg hover:bg-surface-2'
+              }`}
+            >
+              <SlidersHorizontal className="w-3.5 h-3.5" />
+              {activeFilterCount > 0 && (
+                <span className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-brand-solid text-white text-[9px] font-black flex items-center justify-center shadow-xs pointer-events-none">
+                  {activeFilterCount}
+                </span>
+              )}
+            </button>
             
             <button
               onClick={onRefresh}
@@ -173,6 +245,188 @@ export const ActionLedger = ({
             </button>
           </div>
         </div>
+
+        {/* COLLAPSIBLE FILTER PANEL */}
+        <Collapse open={isFilterOpen}>
+          <div className="pt-2 pb-3 mb-2 border-b border-line/30 space-y-3">
+            {/* 1. Bank / Account Filter */}
+            {activeAccounts.length > 0 && (
+              <div className="space-y-1.5">
+                <span className="block text-[10px] font-bold uppercase tracking-wider text-fg-subtle">
+                  Bank / Account
+                </span>
+                <div className="flex items-center gap-1.5 overflow-x-auto pb-1 no-scrollbar">
+                  <button
+                    type="button"
+                    onClick={() => onAccountChange && onAccountChange('')}
+                    className={`no-min-tap h-7 px-2.5 rounded-lg text-[11px] font-bold shrink-0 transition-all cursor-pointer ${
+                      !selectedAccountId
+                        ? 'bg-fg text-page shadow-xs'
+                        : 'bg-surface-2 text-fg-muted hover:text-fg hover:bg-surface-3'
+                    }`}
+                  >
+                    All
+                  </button>
+                  {activeAccounts.map((acc) => {
+                    const isSelected = selectedAccountId === acc.id
+                    const theme = getColorTheme(acc.color_theme)
+                    const [c1, c2] = theme.gradient
+                    return (
+                      <button
+                        key={acc.id}
+                        type="button"
+                        onClick={() =>
+                          onAccountChange && onAccountChange(isSelected ? '' : acc.id)
+                        }
+                        className={`no-min-tap h-7 px-2.5 rounded-lg text-[11px] font-semibold inline-flex items-center gap-1.5 shrink-0 transition-all cursor-pointer ${
+                          isSelected
+                            ? 'bg-fg text-page font-bold shadow-xs'
+                            : 'bg-surface-2 text-fg-muted hover:text-fg hover:bg-surface-3'
+                        }`}
+                      >
+                        <span
+                          className="w-2 h-2 rounded-full shrink-0"
+                          style={{ background: `linear-gradient(135deg, ${c1}, ${c2})` }}
+                        />
+                        <span>{acc.account_name}</span>
+                      </button>
+                    )
+                  })}
+                </div>
+              </div>
+            )}
+
+            {/* 2. Category Filter */}
+            {mainCategories && mainCategories.length > 0 && (
+              <div className="space-y-1.5">
+                <span className="block text-[10px] font-bold uppercase tracking-wider text-fg-subtle">
+                  Category
+                </span>
+                <div className="flex items-center gap-1.5 overflow-x-auto pb-1 no-scrollbar">
+                  <button
+                    type="button"
+                    onClick={() => onCategoryChange && onCategoryChange('')}
+                    className={`no-min-tap h-7 px-2.5 rounded-lg text-[11px] font-bold shrink-0 transition-all cursor-pointer ${
+                      !selectedCategory
+                        ? 'bg-fg text-page shadow-xs'
+                        : 'bg-surface-2 text-fg-muted hover:text-fg hover:bg-surface-3'
+                    }`}
+                  >
+                    All
+                  </button>
+                  {mainCategories.map((main) => {
+                    const isSelected = selectedCategory === main.name
+                    return (
+                      <button
+                        key={main.id}
+                        type="button"
+                        onClick={() =>
+                          onCategoryChange && onCategoryChange(isSelected ? '' : main.name)
+                        }
+                        className={`no-min-tap h-7 px-2.5 rounded-lg text-[11px] font-semibold shrink-0 transition-all cursor-pointer ${
+                          isSelected
+                            ? 'bg-fg text-page font-bold shadow-xs'
+                            : 'bg-surface-2 text-fg-muted hover:text-fg hover:bg-surface-3'
+                        }`}
+                      >
+                        {main.name}
+                      </button>
+                    )
+                  })}
+                </div>
+              </div>
+            )}
+
+            {/* 3. Contextual Subcategory Filter (Only shown when a category with subcategories is selected) */}
+            {selectedCategory && activeSubCategories.length > 0 && (
+              <div className="space-y-1.5">
+                <span className="block text-[10px] font-bold uppercase tracking-wider text-fg-subtle">
+                  Subcategory ({selectedCategory})
+                </span>
+                <div className="flex items-center gap-1.5 overflow-x-auto pb-1 no-scrollbar">
+                  <button
+                    type="button"
+                    onClick={() => onSubcategoryChange && onSubcategoryChange('')}
+                    className={`no-min-tap h-7 px-2.5 rounded-lg text-[11px] font-bold shrink-0 transition-all cursor-pointer ${
+                      !selectedSubcategory
+                        ? 'bg-brand text-white shadow-xs'
+                        : 'bg-surface-2 text-fg-muted hover:text-fg hover:bg-surface-3'
+                    }`}
+                  >
+                    All {selectedCategory}
+                  </button>
+                  {activeSubCategories.map((sub) => {
+                    const isSelected = selectedSubcategory === sub.name
+                    return (
+                      <button
+                        key={sub.id}
+                        type="button"
+                        onClick={() =>
+                          onSubcategoryChange && onSubcategoryChange(isSelected ? '' : sub.name)
+                        }
+                        className={`no-min-tap h-7 px-2.5 rounded-lg text-[11px] font-semibold shrink-0 transition-all cursor-pointer ${
+                          isSelected
+                            ? 'bg-brand text-white font-bold shadow-xs'
+                            : 'bg-surface-2 text-fg-muted hover:text-fg hover:bg-surface-3'
+                        }`}
+                      >
+                        {sub.name}
+                      </button>
+                    )
+                  })}
+                </div>
+              </div>
+            )}
+          </div>
+        </Collapse>
+
+        {/* ACTIVE FILTERS & SUMMARY BAR */}
+        {hasActiveSearchOrFilter && (
+          <div className="flex flex-wrap items-center justify-between gap-2 py-2 border-b border-line/20 text-[11px]">
+            <div className="flex flex-wrap items-center gap-1.5">
+              {selectedAccountObj && (
+                <button
+                  type="button"
+                  onClick={() => onAccountChange && onAccountChange('')}
+                  className="no-min-tap inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-brand/10 text-brand font-bold border border-brand/20 hover:bg-brand/15 transition-colors cursor-pointer"
+                >
+                  <span>{selectedAccountObj.account_name}</span>
+                  <X className="w-3 h-3" />
+                </button>
+              )}
+              {selectedCategory && (
+                <button
+                  type="button"
+                  onClick={() => onCategoryChange && onCategoryChange('')}
+                  className="no-min-tap inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-brand/10 text-brand font-bold border border-brand/20 hover:bg-brand/15 transition-colors cursor-pointer"
+                >
+                  <span>
+                    {selectedCategory}
+                    {selectedSubcategory ? ` > ${selectedSubcategory}` : ''}
+                  </span>
+                  <X className="w-3 h-3" />
+                </button>
+              )}
+              {filteredSummary && (
+                <span className="text-fg-subtle font-medium tabular-figures pl-1">
+                  {filteredSummary.count} {filteredSummary.count === 1 ? 'entry' : 'entries'}
+                  {filteredSummary.moneyOut > 0 && ` · -${formatMYR(filteredSummary.moneyOut)}`}
+                  {filteredSummary.moneyIn > 0 && ` · +${formatMYR(filteredSummary.moneyIn)}`}
+                </span>
+              )}
+            </div>
+
+            <button
+              type="button"
+              onClick={() =>
+                onClearAllFilters ? onClearAllFilters() : onSearchChange('')
+              }
+              className="no-min-tap text-[11px] font-bold text-fg-subtle hover:text-fg transition-colors cursor-pointer"
+            >
+              Reset all
+            </button>
+          </div>
+        )}
 
         {/* LIST */}
         <div className="mt-2">
@@ -187,12 +441,14 @@ export const ActionLedger = ({
             <div className="py-12 text-center text-fg-subtle">
               <Search className="w-6 h-6 mx-auto mb-2 opacity-50" />
               <p className="text-sm font-bold text-fg">No results found</p>
-              <p className="text-xs mt-1">Try a different search term.</p>
+              <p className="text-xs mt-1">Try adjusting your search or filter selections.</p>
               <button
-                onClick={() => onSearchChange('')}
+                onClick={() =>
+                  onClearAllFilters ? onClearAllFilters() : onSearchChange('')
+                }
                 className="mt-4 inline-flex items-center justify-center px-4 py-2 bg-surface-2 hover:bg-surface-3 text-fg text-xs font-bold rounded-lg transition-colors"
               >
-                Clear search
+                Clear filters
               </button>
             </div>
           ) : (

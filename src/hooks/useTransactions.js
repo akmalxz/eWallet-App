@@ -42,18 +42,50 @@ export const useTransactions = (user, showToast) => {
   }, [user])
 
   const fetchRecentTransactions = useCallback(async (options = {}) => {
-    const { limit = 50, offset = 0, search = '', append = false } = options
+    const {
+      limit = 50,
+      offset = 0,
+      search = '',
+      accountId = '',
+      category = '',
+      subcategory = '',
+      matchedAccountIds = [],
+      append = false
+    } = options
     if (!user) return { hasMore: false }
+
+    const trimmedSearch = (search || '').trim()
+    const isFiltered = Boolean(trimmedSearch || accountId || category || subcategory)
 
     let query = supabase
       .from('transactions')
       .select('id, amount, source_account_id, destination_account_id, category, transaction_date, description, needs_review, created_at, metadata')
       .eq('user_id', user.id)
 
-    if (search) {
+    if (trimmedSearch) {
       // Escape single quotes for Postgres ilike
-      const safeSearch = search.replace(/'/g, "''")
-      query = query.or(`description.ilike.%${safeSearch}%,category.ilike.%${safeSearch}%`)
+      const safeSearch = trimmedSearch.replace(/'/g, "''")
+      const orClauses = [
+        `description.ilike.%${safeSearch}%`,
+        `category.ilike.%${safeSearch}%`
+      ]
+      if (Array.isArray(matchedAccountIds) && matchedAccountIds.length > 0) {
+        const idList = matchedAccountIds.join(',')
+        orClauses.push(`source_account_id.in.(${idList})`)
+        orClauses.push(`destination_account_id.in.(${idList})`)
+      }
+      query = query.or(orClauses.join(','))
+    }
+
+    if (accountId) {
+      query = query.or(`source_account_id.eq.${accountId},destination_account_id.eq.${accountId}`)
+    }
+
+    if (category && subcategory) {
+      query = query.eq('category', `${category} > ${subcategory}`)
+    } else if (category) {
+      const safeCat = category.replace(/'/g, "''")
+      query = query.or(`category.eq."${safeCat}",category.like."${safeCat} > %"`)
     }
 
     const { data, error } = await query
@@ -63,7 +95,15 @@ export const useTransactions = (user, showToast) => {
       .range(offset, offset + limit - 1)
 
     if (!error && data) {
-      setRecentTransactions(prev => append ? [...prev, ...data] : data)
+      setRecentTransactions(prev => {
+        if (append) return [...prev, ...data]
+        if (isFiltered) {
+          const pending = (prev || []).filter(tx => tx.needs_review)
+          const dataIds = new Set(data.map(d => d.id))
+          return [...pending.filter(p => !dataIds.has(p.id)), ...data]
+        }
+        return data
+      })
       return { hasMore: data.length === limit, data }
     }
     return { hasMore: false, data: [] }

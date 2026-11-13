@@ -1,6 +1,6 @@
 // src/pages/TransactionsPage.jsx
 import { useState, useMemo, useEffect, useRef } from 'react'
-import { ScanText, Check, RefreshCw, X, CheckCircle2, ChevronDown, AlertCircle } from 'lucide-react'
+import { ScanText, Check, X, ChevronDown } from 'lucide-react'
 import { ActionLedger } from '../components/transactions/ActionLedger'
 import { ConfirmSheet } from '../components/shared/ConfirmSheet'
 import { formatMYR } from '../utils/formatters'
@@ -116,11 +116,9 @@ function PendingOCRRow({ tx, mainCategories, getSubCategories, onApprove, onDele
 }
 
 export function TransactionsPage({
-  user,
   accounts,
   mainCategories,
   getSubCategories,
-  showToast,
   recentTransactions,
   handleApproveTransaction,
   handleDeleteTransaction,
@@ -135,6 +133,9 @@ export function TransactionsPage({
   
   const [searchQuery, setSearchQuery] = useState('')
   const [debouncedQuery, setDebouncedQuery] = useState('')
+  const [selectedAccountId, setSelectedAccountId] = useState('')
+  const [selectedCategory, setSelectedCategory] = useState('')
+  const [selectedSubcategory, setSelectedSubcategory] = useState('')
   const [page, setPage] = useState(1)
   const [hasMore, setHasMore] = useState(true)
   const [isLoadingMore, setIsLoadingMore] = useState(false)
@@ -142,11 +143,34 @@ export function TransactionsPage({
   
   const isSearching = searchQuery !== debouncedQuery || isFetchingSearch
   const isInitialMount = useRef(true)
+  const hadActiveFilterRef = useRef(false)
 
   useEffect(() => {
     const t = setTimeout(() => setDebouncedQuery(searchQuery), 300)
     return () => clearTimeout(t)
   }, [searchQuery])
+
+  const matchedAccountIds = useMemo(() => {
+    const q = debouncedQuery.trim().toLowerCase()
+    if (!q || !accounts) return []
+    return accounts
+      .filter((acc) => (acc.account_name || '').toLowerCase().includes(q))
+      .map((acc) => acc.id)
+  }, [debouncedQuery, accounts])
+
+  useEffect(() => {
+    hadActiveFilterRef.current = Boolean(
+      debouncedQuery.trim() || selectedAccountId || selectedCategory || selectedSubcategory
+    )
+  }, [debouncedQuery, selectedAccountId, selectedCategory, selectedSubcategory])
+
+  useEffect(() => {
+    return () => {
+      if (hadActiveFilterRef.current) {
+        fetchRecentTransactions({ limit: 50, offset: 0, append: false })
+      }
+    }
+  }, [fetchRecentTransactions])
 
   useEffect(() => {
     if (isInitialMount.current) {
@@ -160,7 +184,15 @@ export function TransactionsPage({
         if (isMounted) setIsFetchingSearch(true)
       })
       try {
-        const res = await fetchRecentTransactions({ limit: 50, offset: 0, search: debouncedQuery })
+        const res = await fetchRecentTransactions({
+          limit: 50,
+          offset: 0,
+          search: debouncedQuery,
+          accountId: selectedAccountId,
+          category: selectedCategory,
+          subcategory: selectedSubcategory,
+          matchedAccountIds
+        })
         if (isMounted) {
           setHasMore(res.hasMore)
           setPage(1)
@@ -174,16 +206,36 @@ export function TransactionsPage({
     doFetch()
     
     return () => { isMounted = false }
-  }, [debouncedQuery, fetchRecentTransactions])
+  }, [debouncedQuery, selectedAccountId, selectedCategory, selectedSubcategory, matchedAccountIds, fetchRecentTransactions])
 
   const handleLoadMore = async () => {
     setIsLoadingMore(true)
     const res = await fetchRecentTransactions({ 
-      limit: 50, offset: page * 50, search: debouncedQuery, append: true 
+      limit: 50,
+      offset: page * 50,
+      search: debouncedQuery,
+      accountId: selectedAccountId,
+      category: selectedCategory,
+      subcategory: selectedSubcategory,
+      matchedAccountIds,
+      append: true 
     })
     setHasMore(res.hasMore)
     setPage(p => p + 1)
     setIsLoadingMore(false)
+  }
+
+  const handleCategoryChange = (catName) => {
+    setSelectedCategory(catName)
+    setSelectedSubcategory('')
+  }
+
+  const handleClearAllFilters = () => {
+    setSearchQuery('')
+    setDebouncedQuery('')
+    setSelectedAccountId('')
+    setSelectedCategory('')
+    setSelectedSubcategory('')
   }
 
   const pendingTransactions = useMemo(
@@ -256,6 +308,13 @@ export function TransactionsPage({
               onAddTransaction={onAddTransaction}
               searchQuery={searchQuery}
               onSearchChange={setSearchQuery}
+              selectedAccountId={selectedAccountId}
+              onAccountChange={setSelectedAccountId}
+              selectedCategory={selectedCategory}
+              onCategoryChange={handleCategoryChange}
+              selectedSubcategory={selectedSubcategory}
+              onSubcategoryChange={setSelectedSubcategory}
+              onClearAllFilters={handleClearAllFilters}
               hasMore={hasMore}
               onLoadMore={handleLoadMore}
               isLoadingMore={isLoadingMore}
