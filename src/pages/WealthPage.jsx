@@ -32,7 +32,7 @@ export function WealthPage({
   const toggleBalances = () => {
     setShowBalances((prev) => {
       const next = !prev
-      try { localStorage.setItem('hideBalances', String(!next)) } catch {}
+      try { localStorage.setItem('hideBalances', String(!next)) } catch { /* ignore */ }
       return next
     })
   }

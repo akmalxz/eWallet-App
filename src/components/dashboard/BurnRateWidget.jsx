@@ -6,7 +6,7 @@ import {
 } from 'lucide-react'
 import { formatMYR } from '../../utils/formatters'
 import { COLORS } from '../../utils/analytics/chartColors'
-import { CRITICAL_RUNWAY_DAYS, NEAR_PAYDAY_DAYS } from '../../utils/analytics/burnRateEngine'
+import { CRITICAL_RUNWAY_DAYS } from '../../utils/analytics/burnRateEngine'
 import { EmptyState } from '../analytics/AnalyticsShared'
 import { AnimatedNumber } from '../shared/AnimatedNumber'
 
@@ -57,7 +57,7 @@ export const BurnRateWidget = ({
   const detailsRef = useRef(null)
 
   useEffect(() => {
-    try { localStorage.setItem('burnRateExpanded', String(showDetails)) } catch {}
+    try { localStorage.setItem('burnRateExpanded', String(showDetails)) } catch { /* ignore */ }
   }, [showDetails])
 
   useEffect(() => {
@@ -70,20 +70,16 @@ export const BurnRateWidget = ({
   const {
     scopeLabel = 'Account',
     payday,
-    isPaydayToday = false,
     balance = 0,
     excludedSavingsBalance = 0,      // <-- NEW
     billsBeforePayday = 0,
     freeMoney = 0,
     everydaySpentThisMonth = 0,
-    rawEverydaySpentThisMonth = 0,
     receivablesOffset = 0,
     dailyAverage = 0,
     safeDailySpend = 0,
     runwayDays = 9999,
     daysToPayday = 0,
-    daysPassed = 0,
-    monthLength = 30,
     runoutDate = null,
     runsOutBeforePayday = false,
     expectedBalanceAtPayday = 0,

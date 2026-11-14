@@ -80,7 +80,7 @@ export function useWealthHistory(user, accounts, { monthsBack = 6 } = {}) {
       if (!cancelled) fetchHistory()
     })
     return () => { cancelled = true }
-  }, [user?.id, monthsBack, activeAccounts.length])
+  }, [user?.id, monthsBack, activeAccounts])
 
   const { history, currentNetWorth, monthDelta } = useMemo(() => {
     if (activeAccounts.length === 0) {

@@ -58,7 +58,6 @@ export const CommitmentFormSheet = ({
     return () => clearTimeout(t)
   }, [])
 
-  const hasChanges = JSON.stringify(draft) !== JSON.stringify(initial)
   const account = accounts.find((a) => a.id === draft.accountId)
   const accountIsArchived = account?.is_archived === true
   const isBnpl = draft.kind === 'bnpl'

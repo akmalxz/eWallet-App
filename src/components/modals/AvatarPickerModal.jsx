@@ -3,9 +3,8 @@ import { useState } from 'react'
 import { Shuffle, Check, Loader2 } from 'lucide-react'
 import { supabase } from '../../lib/supabaseClient'
 import { ModalWrapper } from './ModalWrapper'
-import {
-  Avatar, AVATAR_STYLES, AVATAR_COLORS
-} from '../shared/Avatar'
+import { Avatar } from '../shared/Avatar'
+import { AVATAR_STYLES, AVATAR_COLORS } from '../shared/avatarConstants'
 
 const randomSeed = () =>
   Math.random().toString(36).slice(2, 10)

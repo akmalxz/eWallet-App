@@ -1,5 +1,5 @@
 // src/components/shared/AccountDropdown.jsx
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useMemo, useRef } from 'react'
 import { Check, ChevronDown } from 'lucide-react'
 import { AccountCard } from './AccountCard'
 import { useBodyScrollLock } from '../../hooks/useBodyScrollLock'
@@ -29,7 +29,10 @@ export const AccountDropdown = ({
   // Lock the page behind the picker only while its panel is open.
   useBodyScrollLock(open)
 
-  const options = includeAll ? [ALL_ACCOUNTS, ...accounts] : accounts
+  const options = useMemo(
+    () => (includeAll ? [ALL_ACCOUNTS, ...accounts] : accounts),
+    [includeAll, accounts]
+  )
   const selected = options.find(o => o.id === value) || options[0]
 
   useEffect(() => {

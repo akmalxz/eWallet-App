@@ -47,7 +47,7 @@ supabase.auth.getSession().then(({ data }) => {
 const originalSignOut = supabase.auth.signOut.bind(supabase.auth)
 supabase.auth.signOut = async (...args) => {
   userInitiatedSignOut = true
-  try { sessionStorage.setItem(SIGNING_OUT_KEY, '1') } catch {}
+  try { sessionStorage.setItem(SIGNING_OUT_KEY, '1') } catch { /* ignore */ }
   return originalSignOut(...args)
 }
 
@@ -58,7 +58,7 @@ supabase.auth.onAuthStateChange((event) => {
     try {
       sessionStorage.removeItem(EXPIRED_KEY)
       sessionStorage.removeItem(SIGNING_OUT_KEY)
-    } catch {}
+    } catch { /* ignore */ }
   }
 
   if (event === 'SIGNED_OUT') {
@@ -69,12 +69,12 @@ supabase.auth.onAuthStateChange((event) => {
       })()
 
     if (wasSignedIn && !explicit) {
-      try { sessionStorage.setItem(EXPIRED_KEY, '1') } catch {}
+      try { sessionStorage.setItem(EXPIRED_KEY, '1') } catch { /* ignore */ }
     }
 
     wasSignedIn = false
     userInitiatedSignOut = false
-    try { sessionStorage.removeItem(SIGNING_OUT_KEY) } catch {}
+    try { sessionStorage.removeItem(SIGNING_OUT_KEY) } catch { /* ignore */ }
   }
 })
 

@@ -12,7 +12,6 @@ import {
   Tooltip as RechartsTooltip
 } from 'recharts'
 import { formatMYR } from '../../utils/formatters'
-import { useChartTheme } from '../../hooks/useChartTheme'
 import { useTheme } from '../../hooks/useTheme'
 import { getCategoryColor } from '../../utils/analytics/categoryColors'
 import { EmptyState } from '../analytics/AnalyticsShared'
@@ -152,7 +151,6 @@ export const CashFlowHeatmap = ({
   onAddTransaction,
   onSeeTrends
 }) => {
-  const theme = useChartTheme()
   const { resolved } = useTheme()
   const isDark = resolved === 'dark'
 
@@ -167,7 +165,7 @@ export const CashFlowHeatmap = ({
   const toggleHideExpenses = () => {
     setHideExpenses((prev) => {
       const next = !prev
-      try { localStorage.setItem('hideHeatmapExpenses', String(next)) } catch {}
+      try { localStorage.setItem('hideHeatmapExpenses', String(next)) } catch { /* ignore */ }
       return next
     })
   }

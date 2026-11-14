@@ -1,6 +1,6 @@
 // src/pages/DashboardPage.jsx
 import { useState } from 'react'
-import { Activity, Receipt, Users, TrendingUp } from 'lucide-react'
+import { Receipt, Users, TrendingUp } from 'lucide-react'
 import { AccountCards } from '../components/dashboard/AccountCards'
 import { BurnRateWidget } from '../components/dashboard/BurnRateWidget'
 import { CashFlowHeatmap } from '../components/dashboard/CashFlowHeatmap'
@@ -65,7 +65,7 @@ export function DashboardPage({
   const toggleBalances = () => {
     setShowBalances((prev) => {
       const next = !prev
-      try { localStorage.setItem('hideBalances', String(!next)) } catch {}
+      try { localStorage.setItem('hideBalances', String(!next)) } catch { /* ignore */ }
       return next
     })
   }

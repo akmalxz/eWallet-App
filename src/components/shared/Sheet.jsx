@@ -146,7 +146,7 @@ export const Sheet = ({
     setIsDragging(true)
     try {
       e.currentTarget.setPointerCapture(e.pointerId)
-    } catch {}
+    } catch { /* ignore */ }
   }
 
   const handleDragMove = (e) => {
@@ -159,7 +159,7 @@ export const Sheet = ({
     if (!isDragging) return
     try {
       e.currentTarget.releasePointerCapture(e.pointerId)
-    } catch {}
+    } catch { /* ignore */ }
 
     const elapsed = Math.max(1, Date.now() - (dragStartTimeRef.current || Date.now()))
     const velocity = dragY / elapsed
@@ -182,7 +182,7 @@ export const Sheet = ({
     if (!isDragging) return
     try {
       e.currentTarget.releasePointerCapture(e.pointerId)
-    } catch {}
+    } catch { /* ignore */ }
     setIsDragging(false)
     dragStartYRef.current = null
     dragStartTimeRef.current = null

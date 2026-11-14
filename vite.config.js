@@ -22,6 +22,16 @@ export default defineConfig({
           // Icon libraries
           if (id.includes('lucide-react') || id.includes('react-icons')) return 'vendor-icons'
 
+          // Avatar generation libraries (DiceBear collections, split to stay under 800 kB)
+          if (
+            id.includes('@dicebear/lorelei') ||
+            id.includes('@dicebear/micah') ||
+            id.includes('@dicebear/notionists')
+          ) {
+            return 'vendor-avatars-a'
+          }
+          if (id.includes('@dicebear')) return 'vendor-avatars-b'
+
           // React core — the only chunk guaranteed to load on every page
           if (
             id.includes('react-dom') ||

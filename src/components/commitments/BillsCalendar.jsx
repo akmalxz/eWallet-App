@@ -3,7 +3,6 @@ import { useMemo, useState } from 'react'
 import {
   CalendarDays, ChevronDown, ChevronLeft, ChevronRight, ChevronUp
 } from 'lucide-react'
-import { formatMYR } from '../../utils/formatters'
 import { toMYDate, dayKey, dueDateForMonth, daysInMonth, WEEKDAY_LABELS } from '../../utils/dateHelpers'
 
 const keyFromMY = (d) => `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, '0')}-${String(d.getUTCDate()).padStart(2, '0')}`

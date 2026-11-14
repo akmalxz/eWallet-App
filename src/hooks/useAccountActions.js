@@ -1,5 +1,5 @@
 // src/hooks/useAccountActions.js
-import { useEffect, useMemo, useState } from 'react'
+import { useMemo, useState } from 'react'
 import { supabase } from '../lib/supabaseClient'
 
 export function useAccountActions({

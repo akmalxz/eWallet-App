@@ -141,7 +141,7 @@ export function useNotifications(user) {
     } finally {
       setLoading(false)
     }
-  }, [user?.id])
+  }, [user])
 
   useEffect(() => {
     queueMicrotask(() => {

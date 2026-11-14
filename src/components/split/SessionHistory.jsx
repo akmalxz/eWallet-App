@@ -90,7 +90,7 @@ export function SessionHistory({ user }) {
     } finally {
       setLoading(false)
     }
-  }, [user?.id])
+  }, [user])
 
   useEffect(() => {
     if (user?.id) {

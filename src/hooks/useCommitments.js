@@ -27,14 +27,14 @@ export const useCommitments = ({
   }, [])
 
   // Helper to reduce repetition
-  const refreshRelatedData = async () => {
+  const refreshRelatedData = useCallback(async () => {
     await Promise.all([
       fetchCommitments(),
       fetchRecentTransactions(),
       fetchAccounts(),
       fetchMonthlyData()
     ])
-  }
+  }, [fetchCommitments, fetchRecentTransactions, fetchAccounts, fetchMonthlyData])
 
   const addCommitment = useCallback(
     (payload) =>
@@ -66,7 +66,7 @@ export const useCommitments = ({
           return { success: false, error: err.message }
         }
       }),
-    [guard, user, showToast, fetchCommitments, fetchRecentTransactions, fetchAccounts, fetchMonthlyData]
+    [guard, user, showToast, refreshRelatedData]
   )
 
   const updateCommitment = useCallback(
@@ -96,7 +96,7 @@ export const useCommitments = ({
           return { success: false, error: err.message }
         }
       }),
-    [guard, showToast, fetchCommitments, fetchRecentTransactions, fetchAccounts, fetchMonthlyData]
+    [guard, showToast, refreshRelatedData]
   )
 
   const deleteCommitment = useCallback(
@@ -113,7 +113,7 @@ export const useCommitments = ({
           return { success: false, error: err.message }
         }
       }),
-    [guard, showToast, fetchCommitments, fetchRecentTransactions, fetchAccounts, fetchMonthlyData]
+    [guard, showToast, refreshRelatedData]
   )
 
   const setActive = useCallback(
@@ -133,7 +133,7 @@ export const useCommitments = ({
           return { success: false, error: err.message }
         }
       }),
-    [guard, showToast, fetchCommitments, fetchRecentTransactions, fetchAccounts, fetchMonthlyData]
+    [guard, showToast, refreshRelatedData]
   )
 
   const pauseCommitment = useCallback((id) => setActive(id, false), [setActive])
@@ -160,7 +160,7 @@ export const useCommitments = ({
           return { success: false, error: err.message }
         }
       }),
-    [guard, commitments, showToast, fetchCommitments, fetchRecentTransactions, fetchAccounts, fetchMonthlyData]
+    [guard, commitments, showToast, refreshRelatedData]
   )
 
   const skip = useCallback(
@@ -182,7 +182,7 @@ export const useCommitments = ({
           return { success: false, error: err.message }
         }
       }),
-    [guard, commitments, showToast, fetchCommitments, fetchRecentTransactions, fetchAccounts, fetchMonthlyData]
+    [guard, commitments, showToast, refreshRelatedData]
   )
 
   const undo = useCallback(
@@ -211,7 +211,7 @@ export const useCommitments = ({
           return { success: false, error: err.message }
         }
       }),
-    [guard, commitments, showToast, fetchCommitments, fetchRecentTransactions, fetchAccounts, fetchMonthlyData]
+    [guard, commitments, showToast, refreshRelatedData]
   )
 
   return {

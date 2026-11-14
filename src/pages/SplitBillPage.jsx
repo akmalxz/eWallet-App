@@ -91,7 +91,6 @@ const processImageFile = async (file) => {
 
 export function SplitBillPage({
   user,
-  profile,
   accounts = [],
   showToast,
   onBack,
@@ -322,7 +321,7 @@ export function SplitBillPage({
       setReceiptData(data)
       setClaims({})
       setAppState('review')
-    } catch (err) {
+    } catch {
       showToast('Failed to parse receipt.', 'error')
       setAppState('idle')
     }
@@ -345,7 +344,7 @@ export function SplitBillPage({
       setClaims({})
       setCapturedImage(null)
       setAppState('review')
-    } catch (err) {
+    } catch {
       showToast('Failed to parse receipt image.', 'error')
       setAppState('capturing')
     }
@@ -370,7 +369,7 @@ export function SplitBillPage({
 
       setCapturedImage(processed)
       setAppState('capturing')
-    } catch (err) {
+    } catch {
       showToast('Could not read the image. Try a different file.', 'error')
     }
   }
@@ -629,7 +628,7 @@ export function SplitBillPage({
       setNewGhostName('')
       setIsAddModalOpen(false)
       showToast(`${data.name} added.`, 'success')
-    } catch (err) {
+    } catch {
       showToast('Failed to create guest.', 'error')
     } finally {
       setIsCreatingGhost(false)

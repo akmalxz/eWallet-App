@@ -75,7 +75,7 @@ export function useOnboardingProgress({
     trackEvent('onboarding_dismissed', { completed: completedCount })
 
     if (refreshProfile) await refreshProfile()
-  }, [user?.id, completedCount, refreshProfile])
+  }, [user, completedCount, refreshProfile])
 
   // Auto-dismiss when all steps complete. Ref guard prevents a
   // loop if refreshProfile somehow fails and shouldShow stays true.

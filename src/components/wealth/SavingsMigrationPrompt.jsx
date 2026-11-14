@@ -70,7 +70,7 @@ export const SavingsMigrationPrompt = ({
   const handleDismiss = () => {
     try {
       localStorage.setItem(`savingsMigration.dismissed.${user.id}`, 'true')
-    } catch {}
+    } catch { /* ignore */ }
     setDismissed(true)
   }
 

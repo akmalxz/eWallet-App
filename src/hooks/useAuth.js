@@ -40,7 +40,7 @@ export const useAuth = () => {
   const refreshProfile = useCallback(async () => {
     if (!user?.id) return
     await fetchProfile(user.id, true) // Force fetch on manual refresh
-  }, [user?.id, fetchProfile])
+  }, [user, fetchProfile])
 
   useEffect(() => {
     // 1. Initial session check

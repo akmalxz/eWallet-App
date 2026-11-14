@@ -14,7 +14,6 @@ export const IncomeVsExpense = ({
   income,
   expenses,
   periodMonths,
-  accounts = [],
   selectedAccountId = 'all',
   accountLabel = 'All accounts',
   onAddIncome,

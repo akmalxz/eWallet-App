@@ -1,10 +1,9 @@
 // src/components/analytics/SpendingStructure.jsx
 import { useMemo } from 'react'
-import { formatMYR } from '../../utils/formatters'
 import { useChartTheme } from '../../hooks/useChartTheme'
 import { computeStructure } from '../../utils/analytics/structure'
 
-export const SpendingStructure = ({ income, expenses, everyday, profile }) => {
+export const SpendingStructure = ({ income, expenses, everyday }) => {
   const theme = useChartTheme()
   
   const s = useMemo(

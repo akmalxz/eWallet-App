@@ -1,5 +1,5 @@
 // src/pages/ProfilePage.jsx
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
 import { supabase } from '../lib/supabaseClient'
 import {
   LogOut, Layers, Building2, TrendingUp, TrendingDown,
@@ -60,11 +60,8 @@ export function ProfilePage({
   profile,
   refreshProfile,
   accounts,
-  activeAccounts,
   categories,
-  getSubCategories,
   classifications,
-  commitments = [],
   showToast,
   initialModal = null,
   onNavigate,

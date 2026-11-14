@@ -10,7 +10,7 @@ import { ColorPicker } from '../shared/ColorPicker'
 import { PatternPicker } from '../shared/PatternPicker'
 import { IconPicker } from '../shared/IconPicker'
 import { ConfirmSheet } from '../shared/ConfirmSheet'
-import { COLOR_THEMES, PATTERNS, ICONS } from '../../utils/theme/themeRegistry'
+import { COLOR_THEMES, PATTERNS } from '../../utils/theme/themeRegistry'
 import { detectBankLogo } from '../../utils/theme/bankRegistry'
 import { useBodyScrollLock } from '../../hooks/useBodyScrollLock'
 

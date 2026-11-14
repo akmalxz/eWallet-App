@@ -1,7 +1,7 @@
 // src/pages/NetworkPage.jsx
 import { useState } from 'react'
 import {
-  Search, UserPlus, UserCheck, UserX, Users, Send,
+  Search, UserPlus, UserCheck, UserX, Users,
   Loader2, Check, X, AlertCircle, ChevronLeft
 } from 'lucide-react'
 import { supabase } from '../lib/supabaseClient'

@@ -5,7 +5,6 @@ import { supabase } from '../lib/supabaseClient'
 export function useLedgerMutations({
   user,
   showToast,
-  setRecentTransactions,
   setCommitments,
   setCommitmentPayments,
   fetchRecentTransactions,
@@ -20,7 +19,7 @@ export function useLedgerMutations({
     busyRef.current = true
     setIsRefreshing(true)
     try {
-      const [txResult, commResult, payResult] = await Promise.all([
+      const [, commResult, payResult] = await Promise.all([
         fetchRecentTransactions({ limit: 50, offset: 0, append: false }),
         supabase.from('commitments').select('*'),
         supabase

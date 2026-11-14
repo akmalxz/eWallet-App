@@ -1,5 +1,5 @@
 // src/components/analytics/MainTrendChart.jsx
-import { useState, useMemo, useEffect } from 'react'
+import { useState, useMemo } from 'react'
 import { TrendingUp } from 'lucide-react'
 import {
   ResponsiveContainer, LineChart, Line, XAxis, YAxis,
